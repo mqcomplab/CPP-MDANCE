@@ -1,7 +1,8 @@
 #pragma once
 #include <string>
 #include <iostream>
-using std::string, std::cerr;
+#include <Eigen/Dense>
+using std::string, std::cerr, Eigen::MatrixXf, Eigen::VectorXf, Eigen::VectorXi, Eigen::Index;
 
 enum Weight {fraction, powerN};
 enum DataType {full, condensed};
@@ -22,6 +23,10 @@ enum DataType {full, condensed};
 */
 enum Metric {MSD, AC, CTn, GLe, Ja0, RT, SM};
 enum SimIndex {RR, JT, SM};
+enum ThresholdType{None, Dissimilar};
+enum TrimCriteria{compSim, simToMedoid};
+enum InitiateDiversity{medoid, outlier, random};
+
 /*
  * Indices
  * AC: Austin-Colwell, BUB: Baroni-Urbani-Buser, CTn: Consoni-Todschini n
@@ -29,8 +34,7 @@ enum SimIndex {RR, JT, SM};
  * JT: Jaccard-Tanimoto, RT: Rogers-Tanimoto, RR: Russel-Rao
  * SM: Sokal-Michener, SSn: Sokal-Sneath n
 */
-struct indices{
-    float ac;
+class Indices{
     float bub;
     float fai;
     float gle;
@@ -41,13 +45,35 @@ struct indices{
     float sm;
     float ss1;
     float ss2;
+
+public: 
+    Indices(float bub, float fai, float gle, float ja, float jt, float rt, float rr, float sm, float ss1, float ss2) :
+        bub(bub), fai(fai), gle(gle), ja(ja), jt(jt), rt(rt), rr(rr), sm(sm), ss1(ss1), ss2(ss2) {}; 
+    float getIndex(Metric mt){
+        switch(mt) {
+            case GLe: return gle;
+            case RT: return rt;
+            case SM: return sm;
+        }
+    }
 };
-struct counters{
+struct Counters{
     float a;
+    float wa;
     float d;
+    float wd;
     float totalSim;
+    float totalWsim;
     float totalDis;
+    float totalWdis;
     float p;
+    float wp;
+};
+struct Threshold{
+    ThresholdType type;
+    int c;
+
+    Threshold(ThresholdType type = None, int c = 0): type(type), c(c) {};
 };
 
 Weight parseWeight(string wt) {

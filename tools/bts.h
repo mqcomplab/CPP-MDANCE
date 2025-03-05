@@ -1,7 +1,5 @@
 #pragma once
-#include <Eigen/Dense>
-#include <string>
-using Eigen::MatrixXf, Eigen::VectorXf, Eigen::VectorXi, Eigen::Index, std::string;
+#include "../support/types.h"
 
 float msd(MatrixXf& data, int n_atoms);
 float msd(MatrixXf& data, int n_atoms, VectorXf& c_sum, VectorXf& sq_sum);
