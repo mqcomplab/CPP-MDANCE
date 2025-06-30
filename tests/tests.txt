@@ -1,0 +1,13 @@
+1 3
+bit continuous small
+bts 10
+msd
+extended comparison full
+extended comparison condensed
+calculate medoid
+calculate outlier
+calculate comp sim
+trim length
+trim outliers
+diversity selection
+refine distance matrix
