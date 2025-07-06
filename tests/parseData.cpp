@@ -3,11 +3,13 @@
 #include <fstream>
 #include <vector>
 #include <sstream>
+#include <chrono>
 #include <Eigen/Dense>
-#include "../tools/bts.h"
+#include "../src/tools/bts.h"
+using std::chrono::high_resolution_clock, std::chrono::duration;
 
 Eigen::MatrixXd readCSVtoEigen(const std::string& filename) {
-    std::ifstream file(filename);
+    std::ifstream file("data/"+filename);
     if (!file.is_open()) {
         throw std::runtime_error("Could not open file");
     }
@@ -71,30 +73,20 @@ void printVector(VectorXi& vec){
     std::cout << vec[vec.size()-1] << "]" << std::endl;
 }
 
-void run_tests(MatrixXd data, int M){
-    Eigen::MatrixXd condensedData (2,data.cols());
-    MatrixXd sqData = data.array() * data.array();
-    VectorXd cSum = data.colwise().sum();
-    VectorXd sqSum = sqData.colwise().sum();
-    condensedData.row(0) = cSum;
-    condensedData.row(1) = sqSum;
-    VectorXd compSimilar = compSim(data, Metric::MSD, M);
-    MatrixXd trim = trimOutliers(data, 0.6, Metric::MSD, M);
-    VectorXi diversity = diversitySelection(data, 40, Metric::MSD, M, InitiateDiversity::medoid);
-    MatrixXd distances = refineDisMatrix(data);
-    std::cout << msd(data, M) << "\n" << extendedComparison(data, DataType::full, Metric::MSD, 0, M) << "\n" << extendedComparison(condensedData, DataType::condensed, Metric::MSD, data.rows(), M) << "\n" << calcMedoid(data, Metric::MSD, M) << "\n" << calcOutlier(data, Metric::MSD, M) << "\n";
-    printVector(compSimilar);
-    std::cout << trim.rows() << "\n";
-    printMatrix(trim);
-    printVector(diversity);
-    printMatrix(distances);
+void run_tests(MatrixXd data, int nAtoms){
+    auto start = high_resolution_clock::now();
+    double msd = meanSqDev(data, nAtoms);
+    auto end = high_resolution_clock::now();
+    duration<double> dur = end - start;
+    std::cout << meanSqDev(data, nAtoms) << std::endl;
+    std::cerr << dur.count() << std::endl;
 }
 
 
-void run_tests(std::string filename, int M){
+void run_tests(std::string filename, int nAtoms){
     try {
         Eigen::MatrixXd matrix = readCSVtoEigen(filename);
-        run_tests(matrix, M);
+        run_tests(matrix, nAtoms);
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;
     }
@@ -103,8 +95,9 @@ void run_tests(std::string filename, int M){
 int main() {
     run_tests("bit.csv", 1);
     run_tests("continuous.csv", 2);
-//    run_tests("sim.csv", 50);
+    run_tests("sim.csv", 50);
     run_tests("small.csv", 3);
-//    run_tests("1d.csv", 1);
+    run_tests("1d.csv", 1);
+    run_tests("mid.csv", 3);
     return 0;
 }
