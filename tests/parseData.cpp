@@ -55,7 +55,7 @@ void printMatrix(Eigen::MatrixXd& mat){
     }
 }
 
-void printVector(Eigen::VectorXd& vec){
+void printVector(VectorXd& vec){
     std::cout << "[ ";
     for (int i =0; i < vec.size()-1; ++i) {
       std::cout << vec[i] << ", ";
@@ -63,7 +63,7 @@ void printVector(Eigen::VectorXd& vec){
     std::cout << vec[vec.size()-1] << " ]" << std::endl;
 }
 
-void printVector(vector<int> vec){
+void printVector(VectorXi& vec){
     std::cout << "[";
     for (int i =0; i < vec.size()-1; ++i) {
       std::cout << vec[i] << ", ";
@@ -71,7 +71,7 @@ void printVector(vector<int> vec){
     std::cout << vec[vec.size()-1] << "]" << std::endl;
 }
 
-void run_tests(Eigen::MatrixXd data, int M){
+void run_tests(MatrixXd data, int M){
     Eigen::MatrixXd condensedData (2,data.cols());
     MatrixXd sqData = data.array() * data.array();
     VectorXd cSum = data.colwise().sum();
@@ -80,7 +80,7 @@ void run_tests(Eigen::MatrixXd data, int M){
     condensedData.row(1) = sqSum;
     VectorXd compSimilar = compSim(data, Metric::MSD, M);
     MatrixXd trim = trimOutliers(data, 0.6, Metric::MSD, M);
-    vector<int> diversity = diversitySelection(data, 40, Metric::MSD, M, InitiateDiversity::medoid);
+    VectorXi diversity = diversitySelection(data, 40, Metric::MSD, M, InitiateDiversity::medoid);
     MatrixXd distances = refineDisMatrix(data);
     std::cout << msd(data, M) << "\n" << extendedComparison(data, DataType::full, Metric::MSD, 0, M) << "\n" << extendedComparison(condensedData, DataType::condensed, Metric::MSD, data.rows(), M) << "\n" << calcMedoid(data, Metric::MSD, M) << "\n" << calcOutlier(data, Metric::MSD, M) << "\n";
     printVector(compSimilar);
