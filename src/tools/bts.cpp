@@ -12,7 +12,7 @@
  * Reference: https://github.com/mqcomplab/MDANCE/blob/9a895e72d71fee1d1a4fad1700a806473dff2f71/src/mdance/tools/bts.py#L14
 */ 
 double meanSqDev(MatrixXd& data, int nAtoms){
-    int N = data.rows();
+    Index N = data.rows();
     if (N == 1)
         return 0;
     VectorXd cSum = data.colwise().sum();
@@ -32,7 +32,7 @@ double meanSqDev(MatrixXd& data, int nAtoms){
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/9a895e72d71fee1d1a4fad1700a806473dff2f71/src/mdance/tools/bts.py#L54
 */
-double msdCondensed(VectorXd& cSum, VectorXd& sqSum, int N, int nAtoms){
+double msdCondensed(VectorXd& cSum, VectorXd& sqSum, Index N, int nAtoms){
     if (N == 1)
         return 0;
     /* The following is a step-by-step explanation of what we are returning. May need to use this instead if we run into overflow issues?
@@ -63,7 +63,7 @@ double msdCondensed(VectorXd& cSum, VectorXd& sqSum, int N, int nAtoms){
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L96
 */
-double extendedComparison(MatrixXd& data, int N, int nAtoms, bool isCondensed, Metric mt, Threshold cThreshold, int wPower) {
+double extendedComparison(MatrixXd& data, Index N, int nAtoms, bool isCondensed, Metric mt, Threshold cThreshold, int wPower) {
     // Handle default initialization of Threshold
     if (cThreshold.type == ThresholdType::None)
         cThreshold.value = N % 2;
@@ -92,3 +92,40 @@ double extendedComparison(MatrixXd& data, int N, int nAtoms, bool isCondensed, M
     }
 
 }
+
+/* O(N) Complementary similarity calculation for n-ary objects.
+ *
+ * Parameters:
+ *  - data: A feature array of shape (nSamples, nFeatures).
+ *  - mt: The metric to use when calculating distance between n objects in an array.
+ *  - nAtoms: Number of atoms in the Molecular Dynamics (MD) system. nAtoms=1 for non-MD systems.
+ * 
+ * Returns: Vector (N) of complementary similarities for each object
+ * 
+*/
+VectorXd calculateCompSim(MatrixXd& data, int nAtoms, Metric mt){
+    Index N = data.rows();
+
+    MatrixXd sqData = data.array().square();
+    VectorXd cSum = data.colwise().sum();
+    VectorXd sqSum = sqData.colwise().sum();
+    MatrixXd compC = ((-data).rowwise()+cSum.transpose()) / (N-1);
+    MatrixXd compSq = ((-sqData).rowwise()+sqSum.transpose()) / (N-1);
+
+    VectorXd compSims(N);
+
+    if (mt == Metric::MSD){
+        compSims = (2 * (compSq.array() - compC.array().square())/ nAtoms).rowwise().sum();
+    } else {
+        for (int i=0; i<N; ++i){
+            VectorXd objSq = data.row(i).array().square();
+            MatrixXd compData (2,N);
+            compData.row(0) = cSum.array() - data.row(i).array();
+            compData.row(1) = sqSum.array() - objSq.array();
+            compSims[i] = extendedComparison(compData, N-1, nAtoms, true);
+        }
+    }
+
+   return compSims;
+}
+

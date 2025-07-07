@@ -46,13 +46,13 @@ void printMatrix(Eigen::MatrixXd& mat){
     std::cout << "[ ";
     for (int i =0; i < mat.rows(); ++i) {
       for (int j=0; j < mat.row(i).size()-1; ++j) {
-        std::cout << mat.row(i)[j] << ", ";
+        std::cout << std::setprecision(5) << mat.row(i)[j] << ", ";
       }
       if (i < mat.rows()-1) {
-        std::cout << mat.row(i)[mat.row(i).size()-1] << "; ";
+        std::cout << std::setprecision(5) << mat.row(i)[mat.row(i).size()-1] << "; ";
       }
       else {
-        std::cout << mat.row(i)[mat.row(i).size()-1] << " ]" << std::endl;
+        std::cout << std::setprecision(5) << mat.row(i)[mat.row(i).size()-1] << " ]" << std::endl;
       }
     }
 }
@@ -60,9 +60,9 @@ void printMatrix(Eigen::MatrixXd& mat){
 void printVector(VectorXd& vec){
     std::cout << "[ ";
     for (int i =0; i < vec.size()-1; ++i) {
-      std::cout << vec[i] << ", ";
+      std::cout << std::setprecision(5) << vec[i] << ", ";
     }
-    std::cout << vec[vec.size()-1] << " ]" << std::endl;
+    std::cout << std::setprecision(5) << vec[vec.size()-1] << " ]" << std::endl;
 }
 
 void printVector(VectorXi& vec){
@@ -114,6 +114,15 @@ void run_tests(MatrixXd data, int nAtoms){
     dur = end - start;
     std::cout << ec << std::endl;
     std::cerr << dur.count() << std::endl;
+
+    // compSim test
+
+    start = high_resolution_clock::now();
+    VectorXd vec = calculateCompSim(data, nAtoms);
+    end = high_resolution_clock::now();
+    dur = end - start;
+    printVector(vec);
+    std::cerr << dur.count() << std::endl;
 }
 
 
@@ -127,11 +136,11 @@ void run_tests(std::string filename, int nAtoms){
 }
 
 int main() {
-    // run_tests("bit.csv", 1);
-    // run_tests("continuous.csv", 2);
-    // run_tests("sim.csv", 50);
+    run_tests("bit.csv", 1);
+    run_tests("continuous.csv", 2);
+    run_tests("sim.csv", 50);
     run_tests("small.csv", 3);
     // run_tests("1d.csv", 1);
-    // run_tests("mid.csv", 3);
+    run_tests("mid.csv", 3);
     return 0;
 }

@@ -64,7 +64,7 @@ def csv_to_numpy(filename="testData.csv"):
 def str_parse(val):
     if round(val) - val > -0.00005 and round(val) - val < 0.00005:
         return str(round(val))
-    return str.format('{0:.6}', val)
+    return str.format('{0:.5}', val)
 
 def print_matrix(mat):
     out = "[ "
@@ -90,7 +90,7 @@ def run_tests(matrix, N_atoms):
     msd = bts.mean_sq_dev(matrix, N_atoms=N_atoms)
     t_end = time.perf_counter()
     t_dif = t_end-t_start
-    print(str.format('{0:.6g}', float(msd)))
+    print(str.format('{0:.5g}', float(msd)))
     print(t_dif, file=sys.stderr)
 
     # EC test
@@ -98,7 +98,7 @@ def run_tests(matrix, N_atoms):
     ec = bts.extended_comparison(matrix, 'full', 'MSD', N_atoms=N_atoms)
     t_end = time.perf_counter()
     t_dif = t_end-t_start
-    print(str.format('{0:.6g}', float(ec)))
+    print(str.format('{0:.5g}', float(ec)))
     print(t_dif, file=sys.stderr)
 
     # condensed EC test
@@ -109,7 +109,7 @@ def run_tests(matrix, N_atoms):
     ec = bts.extended_comparison((c_sum, sq_sum), 'condensed', 'MSD', N, N_atoms)
     t_end = time.perf_counter()
     t_dif = t_end-t_start
-    print(str.format('{0:.6g}', float(ec)))
+    print(str.format('{0:.5g}', float(ec)))
     print(t_dif, file=sys.stderr)
 
     # Esim EC test
@@ -117,9 +117,16 @@ def run_tests(matrix, N_atoms):
     ec = bts.extended_comparison([c_sum], 'condensed', metric='RR', N=N, c_threshold=None, w_factor='fraction')
     t_end = time.perf_counter()
     t_dif = t_end-t_start
-    print(str.format('{0:.6g}', float(ec)))
+    print(str.format('{0:.5g}', float(ec)))
     print(t_dif, file=sys.stderr)
     
+     # compSim test
+    t_start = time.perf_counter()
+    val = bts.calculate_comp_sim(matrix, 'MSD', N_atoms=N_atoms)
+    t_end = time.perf_counter()
+    t_dif = t_end-t_start
+    print(print_vector(val))
+    print(t_dif, file=sys.stderr)
 
 # Run tests
 matrix = bit_data()

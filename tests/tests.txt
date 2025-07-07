@@ -1,7 +1,8 @@
 1 5
 bit continuous sim small mid
-bts 4
+bts 5
 msd
 ec
 condensed EC
 esim EC
+compSim

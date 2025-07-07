@@ -1,5 +1,5 @@
 #pragma once
-#include "../support/types.h"
+#include "types.h"
 #include <math.h>
 
 Indices genSimIdx(VectorXd& cTotal, int nObjects, Threshold& cThreshold, int wt);
