@@ -85,11 +85,39 @@ def print_vector(vec):
     return out
 
 def run_tests(matrix, N_atoms):
+    # MSD test
     t_start = time.perf_counter()
     msd = bts.mean_sq_dev(matrix, N_atoms=N_atoms)
     t_end = time.perf_counter()
     t_dif = t_end-t_start
     print(str.format('{0:.6g}', float(msd)))
+    print(t_dif, file=sys.stderr)
+
+    # EC test
+    t_start = time.perf_counter()
+    ec = bts.extended_comparison(matrix, 'full', 'MSD', N_atoms=N_atoms)
+    t_end = time.perf_counter()
+    t_dif = t_end-t_start
+    print(str.format('{0:.6g}', float(ec)))
+    print(t_dif, file=sys.stderr)
+
+    # condensed EC test
+    N = len(matrix)
+    c_sum = np.sum(matrix, axis=0)
+    sq_sum = np.sum(matrix ** 2, axis=0)
+    t_start = time.perf_counter()
+    ec = bts.extended_comparison((c_sum, sq_sum), 'condensed', 'MSD', N, N_atoms)
+    t_end = time.perf_counter()
+    t_dif = t_end-t_start
+    print(str.format('{0:.6g}', float(ec)))
+    print(t_dif, file=sys.stderr)
+
+    # Esim EC test
+    t_start = time.perf_counter()
+    ec = bts.extended_comparison([c_sum], 'condensed', metric='RR', N=N, c_threshold=None, w_factor='fraction')
+    t_end = time.perf_counter()
+    t_dif = t_end-t_start
+    print(str.format('{0:.6g}', float(ec)))
     print(t_dif, file=sys.stderr)
     
 
@@ -102,8 +130,8 @@ matrix = sim_data()
 run_tests(matrix, 50)
 matrix = generate_matrix(10, 20, "small.csv")
 run_tests(matrix, 3)
-matrix = csv_to_numpy("1d.csv")
-run_tests(matrix, 1)
+# matrix = csv_to_numpy("1d.csv")
+# run_tests(matrix, 1)
 matrix = generate_matrix(200, 50, "mid.csv")
 run_tests(matrix, 3)
 

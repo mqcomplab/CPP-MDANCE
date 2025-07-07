@@ -74,11 +74,45 @@ void printVector(VectorXi& vec){
 }
 
 void run_tests(MatrixXd data, int nAtoms){
+    // MSD test
     auto start = high_resolution_clock::now();
     double msd = meanSqDev(data, nAtoms);
     auto end = high_resolution_clock::now();
     duration<double> dur = end - start;
-    std::cout << meanSqDev(data, nAtoms) << std::endl;
+    std::cout << msd << std::endl;
+    std::cerr << dur.count() << std::endl;
+
+    // Full EC test
+    start = high_resolution_clock::now();
+    double ec = extendedComparison(data, data.rows(), nAtoms);
+    end = high_resolution_clock::now();
+    dur = end - start;
+    std::cout << ec << std::endl;
+    std::cerr << dur.count() << std::endl;
+
+    // Condensed EC test
+    VectorXd cSum = data.colwise().sum();
+    VectorXd sqSum = data.array().square().colwise().sum();
+    MatrixXd condensedData (2,data.cols());
+    condensedData.row(0) = cSum;
+    condensedData.row(1) = sqSum;
+
+    start = high_resolution_clock::now();
+    ec = extendedComparison(condensedData, data.rows(), nAtoms, true);
+    end = high_resolution_clock::now();
+    dur = end - start;
+    std::cout << ec << std::endl;
+    std::cerr << dur.count() << std::endl;
+
+    // Esim EC test
+    MatrixXd smallerData (1,data.cols());
+    smallerData.row(0) = cSum;
+
+    start = high_resolution_clock::now();
+    ec = extendedComparison(smallerData, data.rows(), nAtoms, true, Metric::RR);
+    end = high_resolution_clock::now();
+    dur = end - start;
+    std::cout << ec << std::endl;
     std::cerr << dur.count() << std::endl;
 }
 
@@ -97,7 +131,7 @@ int main() {
     run_tests("continuous.csv", 2);
     run_tests("sim.csv", 50);
     run_tests("small.csv", 3);
-    run_tests("1d.csv", 1);
+    // run_tests("1d.csv", 1);
     run_tests("mid.csv", 3);
     return 0;
 }

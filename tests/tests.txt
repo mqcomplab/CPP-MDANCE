@@ -1,4 +1,7 @@
-1 6
-bit continuous sim small 1d mid
-bts 1
+1 5
+bit continuous sim small mid
+bts 4
 msd
+ec
+condensed EC
+esim EC

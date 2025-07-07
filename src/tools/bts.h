@@ -1,5 +1,7 @@
 #pragma once
 #include "../support/types.h"
+#include "esim.h"
 
-double meanSqDev(MatrixXd& data, int nAtoms);
-double msdCondensed(VectorXd& cSum, VectorXd& sqSum, int N, int nAtoms);
+double meanSqDev(MatrixXd& data, int nAtoms = 1);
+double msdCondensed(VectorXd& cSum, VectorXd& sqSum, int N, int nAtoms = 1);
+double extendedComparison(MatrixXd& data, int N = 0, int nAtoms = 1, bool isCondensed = false, Metric mt = Metric::MSD, Threshold cThreshold = Threshold(ThresholdType::None, 1), int wPower = 0);

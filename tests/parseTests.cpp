@@ -37,8 +37,8 @@ int main() {
 
     bool tests[groupNum][maxTestSize][dataNum];
 
-    ifstream pyData("pyResults.txt");
-    ifstream cppData("cppResults.txt");
+    ifstream pyData("results/pyResults.txt");
+    ifstream cppData("results/cppResults.txt");
     string pyLine;
     string cppLine;
 
