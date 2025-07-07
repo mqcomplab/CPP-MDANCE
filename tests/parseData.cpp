@@ -79,16 +79,16 @@ void run_tests(MatrixXd data, int nAtoms){
     double msd = meanSqDev(data, nAtoms);
     auto end = high_resolution_clock::now();
     duration<double> dur = end - start;
-    std::cout << msd << std::endl;
-    std::cerr << dur.count() << std::endl;
+    std::cout << "msd: " << msd << std::endl;
+    std::cerr << "msd: " << dur.count() << std::endl;
 
     // Full EC test
     start = high_resolution_clock::now();
     double ec = extendedComparison(data, data.rows(), nAtoms);
     end = high_resolution_clock::now();
     dur = end - start;
-    std::cout << ec << std::endl;
-    std::cerr << dur.count() << std::endl;
+    std::cout << "ec: " << ec << std::endl;
+    std::cerr << "ec: " << dur.count() << std::endl;
 
     // Condensed EC test
     VectorXd cSum = data.colwise().sum();
@@ -101,8 +101,8 @@ void run_tests(MatrixXd data, int nAtoms){
     ec = extendedComparison(condensedData, data.rows(), nAtoms, true);
     end = high_resolution_clock::now();
     dur = end - start;
-    std::cout << ec << std::endl;
-    std::cerr << dur.count() << std::endl;
+    std::cout << "condensed ec: " << ec << std::endl;
+    std::cerr << "condensed ec: " << dur.count() << std::endl;
 
     // Esim EC test
     MatrixXd smallerData (1,data.cols());
@@ -112,23 +112,41 @@ void run_tests(MatrixXd data, int nAtoms){
     ec = extendedComparison(smallerData, data.rows(), nAtoms, true, Metric::RR);
     end = high_resolution_clock::now();
     dur = end - start;
-    std::cout << ec << std::endl;
-    std::cerr << dur.count() << std::endl;
+    std::cout << "esim ec: " << ec << std::endl;
+    std::cerr << "esim ec: " << dur.count() << std::endl;
 
     // compSim test
-
     start = high_resolution_clock::now();
     VectorXd vec = calculateCompSim(data, nAtoms);
     end = high_resolution_clock::now();
     dur = end - start;
+    std::cout << "compSim: ";
     printVector(vec);
-    std::cerr << dur.count() << std::endl;
+    std::cerr << "compSim: " << dur.count() << std::endl;
+
+    // calcMedoid test
+    start = high_resolution_clock::now();
+    Index idx = calculateMedoid(data, nAtoms);
+    end = high_resolution_clock::now();
+    dur = end - start;
+    std::cout << "calcMedoid: " << idx << std::endl;
+    std::cerr << "calcMedoid: " << dur.count() << std::endl;
+
+    // calcOutlier test
+    start = high_resolution_clock::now();
+    idx = calculateOutlier(data, nAtoms);
+    end = high_resolution_clock::now();
+    dur = end - start;
+    std::cout << "calcOutlier: " << idx << std::endl;
+    std::cerr << "calcOutlier: " << dur.count() << std::endl;
 }
 
 
 void run_tests(std::string filename, int nAtoms){
     try {
         Eigen::MatrixXd matrix = readCSVtoEigen(filename);
+        std::cout << "\n" << filename << "\n----------------------" << std::endl;
+        std::cerr << "\n" << filename << "\n----------------------" << std::endl;
         run_tests(matrix, nAtoms);
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

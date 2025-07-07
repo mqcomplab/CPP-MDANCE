@@ -97,11 +97,12 @@ double extendedComparison(MatrixXd& data, Index N, int nAtoms, bool isCondensed,
  *
  * Parameters:
  *  - data: A feature array of shape (nSamples, nFeatures).
- *  - mt: The metric to use when calculating distance between n objects in an array.
  *  - nAtoms: Number of atoms in the Molecular Dynamics (MD) system. nAtoms=1 for non-MD systems.
+ *  - mt: The metric to use when calculating distance between n objects in an array.
  * 
  * Returns: Vector (N) of complementary similarities for each object
  * 
+ * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L190
 */
 VectorXd calculateCompSim(MatrixXd& data, int nAtoms, Metric mt){
     Index N = data.rows();
@@ -129,3 +130,46 @@ VectorXd calculateCompSim(MatrixXd& data, int nAtoms, Metric mt){
    return compSims;
 }
 
+/* O(N) medoid calculation for n-ary objects.
+ *
+ * Parameters:
+ *  - data: A feature array of shape (nSamples, nFeatures)
+ *     --> Can also be a vector (N) of complementary similarities for each object. Useful when calculating medoid and outlier so you only calculate compSims once.
+ *  - nAtoms: Number of atoms in the Molecular Dynamics (MD) system. nAtoms=1 for non-MD systems.
+ *  - mt: The metric to use when calculating distance between n objects in an array. 
+ * 
+ * Returns: The index of the medoid in the dataset.
+ * 
+ * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L241
+*/
+Index calculateMedoid(MatrixXd& data, int nAtoms, Metric mt) {
+    VectorXd compSims = calculateCompSim(data, nAtoms, mt);
+    return calculateMedoid(compSims, nAtoms, mt);
+}
+Index calculateMedoid(VectorXd& data, int nAtoms, Metric mt) {
+    Index maxIdx;
+    data.maxCoeff(&maxIdx);
+    return maxIdx;
+}
+
+/* O(N) outlier calculation for n-ary objects.
+ *
+ * Parameters:
+ *  - data: A feature array of shape (nSamples, nFeatures)
+ *     --> Can also be a vector (N) of complementary similarities for each object. Useful when calculating medoid and outlier so you only calculate compSims once.
+ *  - nAtoms: Number of atoms in the Molecular Dynamics (MD) system. nAtoms=1 for non-MD systems.
+ *  - mt: The metric to use when calculating distance between n objects in an array. 
+ * 
+ * Returns: The index of the medoid in the dataset.
+ * 
+ * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L271
+*/
+Index calculateOutlier(MatrixXd& data, int nAtoms, Metric mt) {
+    VectorXd compSims = calculateCompSim(data, nAtoms, mt);
+    return calculateOutlier(compSims, nAtoms, mt);
+}
+Index calculateOutlier(VectorXd& data, int nAtoms, Metric mt) {
+    Index minIdx;
+    data.minCoeff(&minIdx);
+    return minIdx;
+}

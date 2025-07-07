@@ -1,25 +1,50 @@
-1.461e-06
-1.07e-06
-1.326e-06
-9.17e-07
-2.593e-06
-5.88e-07
-6.11e-07
-6.02e-07
-4.28e-07
-1.373e-06
-0.00153772
-0.00128986
-1.588e-06
-1.429e-06
-0.0197848
-2.121e-06
-1.219e-06
-1.307e-06
-1.016e-06
-3.841e-06
-1.0189e-05
-9.664e-06
-9.01e-07
-9.04e-07
-0.000177415
+
+bit.csv
+----------------------
+msd: 2.441e-06
+ec: 1.362e-06
+condensed ec: 1.135e-06
+esim ec: 4.756e-06
+compSim: 3.441e-06
+calcMedoid: 2.263e-06
+calcOutlier: 1.619e-06
+
+continuous.csv
+----------------------
+msd: 7.49e-07
+ec: 7.47e-07
+condensed ec: 5.67e-07
+esim ec: 5.47e-07
+compSim: 1.775e-06
+calcMedoid: 1.627e-06
+calcOutlier: 1.513e-06
+
+sim.csv
+----------------------
+msd: 0.00170836
+ec: 0.00139396
+condensed ec: 1.635e-06
+esim ec: 1.365e-06
+compSim: 0.0189915
+calcMedoid: 0.0207471
+calcOutlier: 0.0215969
+
+small.csv
+----------------------
+msd: 1.881e-06
+ec: 8.4e-07
+condensed ec: 8.83e-07
+esim ec: 9.75e-07
+compSim: 3.633e-06
+calcMedoid: 2.442e-06
+calcOutlier: 2.047e-06
+
+mid.csv
+----------------------
+msd: 1.035e-05
+ec: 9.585e-06
+condensed ec: 7.19e-07
+esim ec: 1.068e-06
+compSim: 0.000174656
+calcMedoid: 5.152e-05
+calcOutlier: 5.1131e-05

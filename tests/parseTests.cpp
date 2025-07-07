@@ -43,6 +43,12 @@ int main() {
     string cppLine;
 
     for(int d=0; d<dataNum; ++d){
+        getline(pyData,pyLine);
+        getline(cppData,cppLine);
+        getline(pyData,pyLine);
+        getline(cppData,cppLine);
+        getline(pyData,pyLine);
+        getline(cppData,cppLine);
         for(int i=0; i<groupNum; ++i) {
             for(int j=0; j<testNums[i]; ++j){
                 getline(pyData,pyLine);
