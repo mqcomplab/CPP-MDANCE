@@ -10,3 +10,5 @@ Index calculateMedoid(MatrixXd& data, int nAtoms = 1, Metric mt = Metric::MSD);
 Index calculateMedoid(VectorXd& data, int nAtoms = 1, Metric mt = Metric::MSD);
 Index calculateOutlier(MatrixXd& data, int nAtoms = 1, Metric mt = Metric::MSD);
 Index calculateOutlier(VectorXd& data, int nAtoms = 1, Metric mt = Metric::MSD);
+MatrixXd trimOutliers(MatrixXd& data, int nTrimmed, int nAtoms = 1, bool isMedoid = false);
+MatrixXd trimOutliers(MatrixXd& data, float nTrimmed, int nAtoms = 1, bool isMedoid = false);

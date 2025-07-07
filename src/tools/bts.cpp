@@ -1,5 +1,4 @@
 #include "bts.h"
-#include <iostream>
 
 /* O(N) Mean square deviation(MSD) calculation for n-ary objects.
  *  
@@ -172,4 +171,94 @@ Index calculateOutlier(VectorXd& data, int nAtoms, Metric mt) {
     Index minIdx;
     data.minCoeff(&minIdx);
     return minIdx;
+}
+
+/* O(N * log(nTrimmed)) method of trimming a desired percentage of outliers (most dissimilar) from a feature array.
+ *
+ * Parameters:
+ *  - data: A feature array of shape (nSamples, nFeatures).
+ *  - nTrimmed: The desired # of outliers to be removed. Can be a number (int), or a percentage (float).
+ *  - nAtoms: Number of atoms in the Molecular Dynamics (MD) system. nAtoms=1 for non-MD systems.
+ *  - isMedoid: Criterion to use for data trimming
+ *     --> if (!isMedoid): remove most dissimilar objects based on complement similarity.
+ *     --> if (isMedoid): remove most dissimilar objects based on similarity to the medoid.
+ * 
+ *  Returns: A feature array with the desired outliers removed.
+ * 
+ *  Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L301
+*/
+MatrixXd trimOutliers(MatrixXd& data, int nTrimmed, int nAtoms = 1, bool isMedoid = false, Metric mt) {
+    Index N = data.rows();
+    VectorXd cSum;
+    VectorXd sqSumTotal;
+    Index idx;
+    if (isMedoid) {
+        idx = calculateMedoid(data, nAtoms, mt);
+        cSum = data.row(idx);
+    } else {
+        cSum = data.colwise().sum();
+        sqSumTotal = data.array().square().colwise().sum();
+    }
+
+
+    // We will find our outliers by performing a heapSort using a maxHeap of size nTrimmed
+    vector<pair<double, int>> compSims;
+    compSims.reserve(nTrimmed);
+    for (Index i=0; i<nTrimmed; ++i) {
+        MatrixXd compData (2,data.row(0).size());
+        if (isMedoid) {
+            if (i != idx){
+                compData.row(0) = data.row(i);
+                compData.row(1) = cSum;
+                compSims.emplace_back(pair<double,int>(extendedComparison(compData, N-1, nAtoms, false, mt), i));
+            } else{
+                continue;
+            }
+        } else {
+            compData.row(0) = cSum.array().transpose() - data.row(i).array();
+            compData.row(1) = sqSumTotal.array().transpose() - data.row(i).array().square();
+
+            compSims.emplace_back(pair<double,int>(extendedComparison(compData, N-1, nAtoms, true, mt), i));
+        }
+    }
+    std::make_heap(compSims.begin(),compSims.end());
+    for (Index i=nTrimmed; i<N; ++i) {
+        double simVal;
+        MatrixXd compData (2,data.row(0).size());
+        if (isMedoid) {
+            if (i != idx){
+                compData.row(0) = data.row(i);
+                compData.row(1) = cSum;
+                simVal = extendedComparison(compData, N-1, nAtoms, false, mt);
+            } else {
+                continue;
+            }
+        } else {
+            compData.row(0) = cSum.array().transpose() - data.row(i).array();
+            compData.row(1) = sqSumTotal.array().transpose() - data.row(i).array().square();
+
+            simVal = extendedComparison(compData, N-1, nAtoms, true, mt);
+        }
+
+        if (simVal < compSims[0].first) {
+            std::pop_heap(compSims.begin(), compSims.end());
+            compSims.emplace_back(pair<double,int>(simVal,i));
+            std::push_heap(compSims.begin(), compSims.end());
+        }
+    }
+    vector<bool> isInHeap(N, false);
+    for (Index i=0; i<nTrimmed; ++i){
+        isInHeap[compSims[i].second] = true;
+    }
+    vector<Index> indices;
+    indices.reserve(N - nTrimmed);
+    for (Index i=0; i<N; ++i) {
+        if(!isInHeap[i]){
+            indices.push_back(i);
+        }
+    }
+    return data(indices, Eigen::all);
+}
+MatrixXd trimOutliers(MatrixXd& data, float nTrimmed, int nAtoms = 1, bool isMedoid = false, Metric mt) {
+    return trimOutliers(data, (int) std::floor(data.rows() * nTrimmed), nAtoms, isMedoid, mt);
 }

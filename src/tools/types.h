@@ -1,6 +1,9 @@
 #pragma once
+#include <iostream>
+#include <algorithm>
+#include <vector>
 #include <Eigen/Dense>
-using Eigen::MatrixXd, Eigen::VectorXd, Eigen::VectorXi, Eigen::Index;
+using Eigen::MatrixXd, Eigen::VectorXd, Eigen::VectorXi, Eigen::Index, std::vector, std::pair;
 
 /*
  * Valid values for metric are:
