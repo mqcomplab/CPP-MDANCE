@@ -14,7 +14,21 @@ double fd(double d, int wFactor, int nObjects) {
     return 1-(d-nObjects % 2)/nObjects;
 }
 
-Counters calculateCounters(VectorXd& cTotal, int nObjects, Threshold cThreshold, int wFactor){
+/* Calculate 1-similariy (a), 0-similarity (d), and dissimilarity (dis) counters
+ *
+ * Parameters:
+ *  - cTotal: Vector (nFeatures) containing the sums of each column of the fingerprint matrix.
+ *  - nObjects: Number of objects to be compared.
+ *  - cThreshold: Coincidence threshold
+ *  - wFactor: Type of weight function that will be used
+ *     --> 0 = "fraction": similarity = d[k]/n, 
+ *                      dissimilarity = 1 - (d[k] - nObjects % 2)/nObjects
+ *     --> n = "power_n" : similarity = n**(d[k] - nObjects)
+ *                      dissimilarity = n**(nObjects % 2 - d[k])
+ * 
+ * Returns: Dictionary with the weighted and non-weighted counters.
+*/
+Counters calculateCounters(VectorXd& cTotal, int nObjects, Threshold& cThreshold, int wFactor){
     int a=0;
     int d=0;
     int dis=0;
@@ -41,9 +55,27 @@ Counters calculateCounters(VectorXd& cTotal, int nObjects, Threshold cThreshold,
     return Counters(a, wa, d, wd, dis, wDis);
 }
 
-Indices genSimIdx(VectorXd& cTotal, int nObjects, Threshold cThreshold, int wt) {
+/* Generate a dictionary with the similarity indices.
+ *
+ * Parameters:
+ *  - cTotal: Vector (nFeatures) containing the sums of each column of the fingerprint matrix.
+ *  - nObjects: Number of objects to be compared.
+ *  - cThreshold: Coincidence threshold
+ *  - wFactor: Type of weight function that will be used
+ *     --> 0 = "fraction": similarity = d[k]/n, 
+ *                      dissimilarity = 1 - (d[k] - nObjects % 2)/nObjects
+ *     --> n = "power_n" : similarity = n**(d[k] - nObjects)
+ *                      dissimilarity = n**(nObjects % 2 - d[k])
+ * 
+ * Returns: Dictionary with the similarity indices.
+ * 
+ * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/esim.py#L122
+ * 
+ * TODO: implement other indices https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/esim.py#L253
+*/
+Indices genSimIdx(VectorXd& cTotal, int nObjects, Threshold& cThreshold, int wt) {
     Counters cnt = calculateCounters(cTotal, nObjects, cThreshold, wt);
-    double bub = pow(cnt.wa * cnt.wd, 0.5 + cnt.wa) / pow(cnt.a + cnt.d, 0.5 + cnt.a + cnt.totalDis);
+    double bub = (sqrt(cnt.wa * cnt.wd) + cnt.wa) / (sqrt(cnt.a * cnt.d) + cnt.a + cnt.totalDis);
     double fai = (cnt.wa + 0.5 * cnt.wd) / cnt.p;
     double gle = 2 * cnt.wa / (2 * cnt.a + cnt.totalDis);
     double ja = 3 * cnt.wa / (3 * cnt.a + cnt.totalDis);

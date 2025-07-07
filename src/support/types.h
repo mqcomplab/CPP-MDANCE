@@ -29,7 +29,7 @@ enum class Metric {MSD, BUB, Fai, Gle, Ja, JT, RT, RR, SM, SS1, SS2};
  * type: The way the Threshold is defined.
  * value: The threshold value.
  *
- * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/esim.py#L18
+ * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/esim.py#L29
 */
 enum class ThresholdType{None, Dissimilar, Percent, Integer};
 struct Threshold {

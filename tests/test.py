@@ -119,6 +119,7 @@ def extended_comparison(matrix, data_type='full', metric='MSD', N=None,
             esim_dict = gen_sim_dict(c_sum, n_objects=N, 
                                           c_threshold=c_threshold, 
                                           w_factor=w_factor)
+            print(esim_dict)
             return 1 - esim_dict[metric]
     
 
@@ -209,9 +210,6 @@ def calculate_counters(c_total, n_objects, c_threshold=None, w_factor='fraction'
             return 1
     
     # Calculate a, d, b + c
-    
-    print(c_threshold)
-    print(2*c_total - n_objects)
 
     a_indices = 2 * c_total - n_objects > c_threshold
     d_indices = n_objects - 2 * c_total > c_threshold
@@ -687,5 +685,4 @@ metric='MSD'
 N_atoms=2
 N = len(matrix)
 c_sum = np.sum(matrix, axis=0)
-print([c_sum])
 print(extended_comparison([c_sum], 'condensed', metric='RR', N=N, N_atoms=N_atoms, c_threshold=None, w_factor='fraction'))

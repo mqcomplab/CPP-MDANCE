@@ -127,11 +127,11 @@ void run_tests(std::string filename, int nAtoms){
 }
 
 int main() {
-    run_tests("bit.csv", 1);
-    run_tests("continuous.csv", 2);
-    run_tests("sim.csv", 50);
+    // run_tests("bit.csv", 1);
+    // run_tests("continuous.csv", 2);
+    // run_tests("sim.csv", 50);
     run_tests("small.csv", 3);
     // run_tests("1d.csv", 1);
-    run_tests("mid.csv", 3);
+    // run_tests("mid.csv", 3);
     return 0;
 }
