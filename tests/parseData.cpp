@@ -6,9 +6,43 @@
 #include <chrono>
 #include <Eigen/Dense>
 #include "../src/tools/bts.h"
-using std::chrono::high_resolution_clock, std::chrono::duration;
+using std::chrono::high_resolution_clock, std::chrono::duration, Eigen::ArrayXXf;
 
-Eigen::MatrixXd readCSVtoEigen(const std::string& filename) {
+MatrixXd readCSVtoEigen(const std::string& filename) {
+    std::ifstream file("data/"+filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Could not open file");
+    }
+
+    std::vector<std::vector<double>> data;
+    std::string line;
+
+    while (std::getline(file, line)) {
+        std::stringstream ss(line);
+        std::vector<double> row;
+        std::string value;
+
+        while (std::getline(ss, value, ',')) {
+            row.push_back(std::stod(value));  // Convert string to float
+        }
+
+        data.push_back(row);
+    }
+    file.close();
+
+    // Convert to MatrixXd
+    int rows = data.size();
+    int cols = rows > 0 ? data[0].size() : 0;
+    MatrixXd matrix(rows, cols);
+
+    for (int i = 0; i < rows; ++i)
+        for (int j = 0; j < cols; ++j)
+            matrix(i, j) = data[i][j];
+
+    return matrix;
+}
+
+ArrayXXf readCSVtoEigenArr(const std::string& filename) {
     std::ifstream file("data/"+filename);
     if (!file.is_open()) {
         throw std::runtime_error("Could not open file");
@@ -30,10 +64,10 @@ Eigen::MatrixXd readCSVtoEigen(const std::string& filename) {
     }
     file.close();
 
-    // Convert to Eigen::MatrixXd
+    // Convert to MatrixXd
     int rows = data.size();
     int cols = rows > 0 ? data[0].size() : 0;
-    Eigen::MatrixXd matrix(rows, cols);
+    ArrayXXf matrix(rows, cols);
 
     for (int i = 0; i < rows; ++i)
         for (int j = 0; j < cols; ++j)
@@ -42,17 +76,17 @@ Eigen::MatrixXd readCSVtoEigen(const std::string& filename) {
     return matrix;
 }
 
-void printMatrix(Eigen::MatrixXd& mat){
+void printMatrix(MatrixXd& mat){
     std::cout << "[ ";
     for (int i =0; i < mat.rows(); ++i) {
       for (int j=0; j < mat.row(i).size()-1; ++j) {
-        std::cout << std::setprecision(5) << mat.row(i)[j] << ", ";
+        std::cout << std::setprecision(10) << mat.row(i)[j] << ", ";
       }
       if (i < mat.rows()-1) {
-        std::cout << std::setprecision(5) << mat.row(i)[mat.row(i).size()-1] << "; ";
+        std::cout << std::setprecision(10) << mat.row(i)[mat.row(i).size()-1] << "; ";
       }
       else {
-        std::cout << std::setprecision(5) << mat.row(i)[mat.row(i).size()-1] << " ]" << std::endl;
+        std::cout << std::setprecision(10) << mat.row(i)[mat.row(i).size()-1] << " ]" << std::endl;
       }
     }
 }
@@ -60,9 +94,9 @@ void printMatrix(Eigen::MatrixXd& mat){
 void printVector(VectorXd& vec){
     std::cout << "[ ";
     for (int i =0; i < vec.size()-1; ++i) {
-      std::cout << std::setprecision(5) << vec[i] << ", ";
+      std::cout << std::setprecision(10) << vec[i] << ", ";
     }
-    std::cout << std::setprecision(5) << vec[vec.size()-1] << " ]" << std::endl;
+    std::cout << std::setprecision(10) << vec[vec.size()-1] << " ]" << std::endl;
 }
 
 void printVector(VectorXi& vec){
@@ -76,11 +110,11 @@ void printVector(VectorXi& vec){
 void run_tests(MatrixXd data, int nAtoms){
     // MSD test
     auto start = high_resolution_clock::now();
-    double msd = meanSqDev(data, nAtoms);
+    long double msd = meanSqDev(data, nAtoms);
     auto end = high_resolution_clock::now();
     duration<double> dur = end - start;
-    std::cout << "msd: " << msd << std::endl;
-    std::cerr << "msd: " << dur.count() << std::endl;
+    std::cout << std::setprecision(10) << "msd: " << msd << std::endl;
+    std::cerr << std::setprecision(10) << "msd: " << dur.count() << std::endl;
 
     // Full EC test
     start = high_resolution_clock::now();
@@ -115,15 +149,6 @@ void run_tests(MatrixXd data, int nAtoms){
     std::cout << "esim ec: " << ec << std::endl;
     std::cerr << "esim ec: " << dur.count() << std::endl;
 
-    // compSim test
-    start = high_resolution_clock::now();
-    VectorXd vec = calculateCompSim(data, nAtoms);
-    end = high_resolution_clock::now();
-    dur = end - start;
-    std::cout << "compSim: ";
-    printVector(vec);
-    std::cerr << "compSim: " << dur.count() << std::endl;
-
     // calcMedoid test
     start = high_resolution_clock::now();
     Index idx = calculateMedoid(data, nAtoms);
@@ -139,12 +164,34 @@ void run_tests(MatrixXd data, int nAtoms){
     dur = end - start;
     std::cout << "calcOutlier: " << idx << std::endl;
     std::cerr << "calcOutlier: " << dur.count() << std::endl;
+
+    // trimOutlier test
+    start = high_resolution_clock::now();
+    MatrixXd result = trimOutliers(data, 0.1f, nAtoms);
+    end = high_resolution_clock::now();
+    dur = end - start;
+    std::cout << "trimOutlier: ";
+    printMatrix(result);
+    std::cerr << "trimOutlier: " << dur.count() << std::endl;
+
+    // compSim tests
+    vector<Metric> mts = {Metric::MSD, Metric::BUB, Metric::Fai, Metric::Gle, Metric::Ja, Metric::JT, Metric::RT, Metric::RR, Metric::SM, Metric::SS1, Metric::SS2};
+    vector<std::string> mtNames = {"MSD", "BUB", "Fai", "Gle", "Ja", "JT", "RT", "RR", "SM", "SS1", "SS2"};
+    for (int i = 0; i < mts.size(); ++i){
+        start = high_resolution_clock::now();
+        VectorXd vec = calculateCompSim(data, nAtoms, mts[i]);
+        end = high_resolution_clock::now();
+        dur = end - start;
+        std::cout << mtNames[i] << " compSim: ";
+        printVector(vec);
+        std::cerr << mtNames[i] << " compSim: " << dur.count() << std::endl;
+    }
 }
 
 
 void run_tests(std::string filename, int nAtoms){
     try {
-        Eigen::MatrixXd matrix = readCSVtoEigen(filename);
+        MatrixXd matrix = readCSVtoEigen(filename);
         std::cout << "\n" << filename << "\n----------------------" << std::endl;
         std::cerr << "\n" << filename << "\n----------------------" << std::endl;
         run_tests(matrix, nAtoms);
@@ -160,5 +207,6 @@ int main() {
     run_tests("small.csv", 3);
     // run_tests("1d.csv", 1);
     run_tests("mid.csv", 3);
+    run_tests("large.csv", 3);
     return 0;
 }

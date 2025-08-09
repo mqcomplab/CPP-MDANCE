@@ -1,50 +1,126 @@
 
 bit.csv
 ----------------------
-msd: 2.441e-06
-ec: 1.362e-06
-condensed ec: 1.135e-06
-esim ec: 4.756e-06
-compSim: 3.441e-06
-calcMedoid: 2.263e-06
-calcOutlier: 1.619e-06
+msd: 8.28e-07
+ec: 3.26e-07
+condensed ec: 2.57e-07
+esim ec: 5e-07
+calcMedoid: 1.392e-06
+calcOutlier: 6.43e-07
+trimOutlier: 4.43e-07
+MSD compSim: 5.34e-07
+BUB compSim: 2.224e-06
+Fai compSim: 1.104e-06
+Gle compSim: 9.65e-07
+Ja compSim: 8.65e-07
+JT compSim: 8.67e-07
+RT compSim: 9.22e-07
+RR compSim: 8.71e-07
+SM compSim: 9.09e-07
+SS1 compSim: 8.88e-07
+SS2 compSim: 9.11e-07
 
 continuous.csv
 ----------------------
-msd: 7.49e-07
-ec: 7.47e-07
-condensed ec: 5.67e-07
-esim ec: 5.47e-07
-compSim: 1.775e-06
-calcMedoid: 1.627e-06
-calcOutlier: 1.513e-06
+msd: 2.67e-07
+ec: 2.22e-07
+condensed ec: 1.8e-07
+esim ec: 1.99e-07
+calcMedoid: 6.31e-07
+calcOutlier: 4.02e-07
+trimOutlier: 1.42e-07
+MSD compSim: 3.4e-07
+BUB compSim: 1.005e-06
+Fai compSim: 8.49e-07
+Gle compSim: 8.31e-07
+Ja compSim: 8.17e-07
+JT compSim: 8.02e-07
+RT compSim: 8.24e-07
+RR compSim: 8.12e-07
+SM compSim: 8.11e-07
+SS1 compSim: 8.1e-07
+SS2 compSim: 8.16e-07
 
 sim.csv
 ----------------------
-msd: 0.00170836
-ec: 0.00139396
-condensed ec: 1.635e-06
-esim ec: 1.365e-06
-compSim: 0.0189915
-calcMedoid: 0.0207471
-calcOutlier: 0.0215969
+msd: 0.000992281
+ec: 0.002394033
+condensed ec: 1.599e-06
+esim ec: 1.191e-06
+calcMedoid: 0.019343555
+calcOutlier: 0.01791696
+trimOutlier: 0.012419373
+MSD compSim: 0.01269333
+BUB compSim: 0.008443611
+Fai compSim: 0.010929813
+Gle compSim: 0.010583901
+Ja compSim: 0.007411238
+JT compSim: 0.006731399
+RT compSim: 0.007118797
+RR compSim: 0.009430911
+SM compSim: 0.007662446
+SS1 compSim: 0.006854391
+SS2 compSim: 0.006947631
 
 small.csv
 ----------------------
-msd: 1.881e-06
-ec: 8.4e-07
-condensed ec: 8.83e-07
-esim ec: 9.75e-07
-compSim: 3.633e-06
-calcMedoid: 2.442e-06
-calcOutlier: 2.047e-06
+msd: 1.148e-06
+ec: 6e-07
+condensed ec: 3.02e-07
+esim ec: 5.22e-07
+calcMedoid: 2.853e-06
+calcOutlier: 1.297e-06
+trimOutlier: 5.612e-06
+MSD compSim: 1.241e-06
+BUB compSim: 3.713e-06
+Fai compSim: 2.649e-06
+Gle compSim: 2.645e-06
+Ja compSim: 2.568e-06
+JT compSim: 2.552e-06
+RT compSim: 2.648e-06
+RR compSim: 2.317e-06
+SM compSim: 2.355e-06
+SS1 compSim: 2.373e-06
+SS2 compSim: 2.347e-06
 
 mid.csv
 ----------------------
-msd: 1.035e-05
-ec: 9.585e-06
-condensed ec: 7.19e-07
-esim ec: 1.068e-06
-compSim: 0.000174656
-calcMedoid: 5.152e-05
-calcOutlier: 5.1131e-05
+msd: 0.000601365
+ec: 9.6715e-05
+condensed ec: 2.095e-06
+esim ec: 2.0124e-05
+calcMedoid: 0.001281176
+calcOutlier: 0.001080296
+trimOutlier: 0.00066882
+MSD compSim: 0.00081695
+BUB compSim: 0.001092512
+Fai compSim: 0.000772297
+Gle compSim: 0.000758734
+Ja compSim: 0.000707205
+JT compSim: 0.000736542
+RT compSim: 0.000744508
+RR compSim: 0.000735352
+SM compSim: 0.000727872
+SS1 compSim: 0.000726378
+SS2 compSim: 0.000742042
+
+large.csv
+----------------------
+msd: 0.02464502
+ec: 0.025218506
+condensed ec: 1.92e-06
+esim ec: 4.453e-06
+calcMedoid: 0.352306531
+calcOutlier: 0.351428544
+trimOutlier: 0.217032688
+MSD compSim: 0.392621139
+BUB compSim: 0.244404658
+Fai compSim: 0.236814367
+Gle compSim: 0.238853742
+Ja compSim: 0.237624441
+JT compSim: 0.235837377
+RT compSim: 0.236139389
+RR compSim: 0.235659186
+SM compSim: 0.235229201
+SS1 compSim: 0.242456957
+SS2 compSim: 0.236289576

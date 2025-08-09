@@ -34,12 +34,11 @@ double meanSqDev(MatrixXd& data, int nAtoms){
 double msdCondensed(VectorXd& cSum, VectorXd& sqSum, Index N, int nAtoms){
     if (N == 1)
         return 0;
-    /* The following is a step-by-step explanation of what we are returning. May need to use this instead if we run into overflow issues?
-     * VectorXd meanSqSum = sqSum.array() / N;
-     * VectorXd meanCSum = cSum.array() / N;
-     * double msd = (meanSqSum.array() - meanCSum.array().square()).sum();
-    */
-    return (sqSum.array() * N - cSum.array().square()).sum() * 2.0 / (N * N * nAtoms);
+    // The following is a step-by-step explanation of what we are returning. May need to use this instead if we run into overflow issues?
+    // VectorXd meanSqSum = sqSum.array() / N;
+    // VectorXd meanCSum = cSum.array() / N;
+    // return msd = (meanSqSum.array() - meanCSum.array().square()).sum() * 2.0 / nAtoms;
+    return (double)2.0 * (sqSum.array() * N - cSum.array().square()).sum() / (N * N * nAtoms);
 }
 
 /* O(N) Extended comparison function for n-ary objects.
@@ -103,26 +102,26 @@ double extendedComparison(MatrixXd& data, Index N, int nAtoms, bool isCondensed,
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L190
 */
-VectorXd calculateCompSim(MatrixXd& data, int nAtoms, Metric mt){
+VectorXd calculateCompSim(MatrixXd& data, int nAtoms, Metric mt) {
     Index N = data.rows();
 
     MatrixXd sqData = data.array().square();
     VectorXd cSum = data.colwise().sum();
     VectorXd sqSum = sqData.colwise().sum();
-    MatrixXd compC = ((-data).rowwise()+cSum.transpose()) / (N-1);
-    MatrixXd compSq = ((-sqData).rowwise()+sqSum.transpose()) / (N-1);
 
     VectorXd compSims(N);
 
     if (mt == Metric::MSD){
+        MatrixXd compC = ((-data).rowwise()+cSum.transpose()) / (N-1);
+        MatrixXd compSq = ((-sqData).rowwise()+sqSum.transpose()) / (N-1);
         compSims = (2 * (compSq.array() - compC.array().square())/ nAtoms).rowwise().sum();
     } else {
         for (int i=0; i<N; ++i){
             VectorXd objSq = data.row(i).array().square();
-            MatrixXd compData (2,N);
-            compData.row(0) = cSum.array() - data.row(i).array();
-            compData.row(1) = sqSum.array() - objSq.array();
-            compSims[i] = extendedComparison(compData, N-1, nAtoms, true);
+            MatrixXd compData (2,data.cols());
+            compData.row(0) = cSum.transpose() - data.row(i);
+            compData.row(1) = sqSum - objSq;
+            compSims[i] = extendedComparison(compData, N-1, nAtoms, true, mt);
         }
     }
 
@@ -187,7 +186,7 @@ Index calculateOutlier(VectorXd& data, int nAtoms, Metric mt) {
  * 
  *  Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L301
 */
-MatrixXd trimOutliers(MatrixXd& data, int nTrimmed, int nAtoms = 1, bool isMedoid = false, Metric mt) {
+MatrixXd trimOutliers(MatrixXd& data, int nTrimmed, int nAtoms, bool isMedoid, Metric mt) {
     Index N = data.rows();
     VectorXd cSum;
     VectorXd sqSumTotal;
@@ -242,6 +241,7 @@ MatrixXd trimOutliers(MatrixXd& data, int nTrimmed, int nAtoms = 1, bool isMedoi
 
         if (simVal < compSims[0].first) {
             std::pop_heap(compSims.begin(), compSims.end());
+            compSims.pop_back();
             compSims.emplace_back(pair<double,int>(simVal,i));
             std::push_heap(compSims.begin(), compSims.end());
         }
@@ -259,6 +259,52 @@ MatrixXd trimOutliers(MatrixXd& data, int nTrimmed, int nAtoms = 1, bool isMedoi
     }
     return data(indices, Eigen::all);
 }
-MatrixXd trimOutliers(MatrixXd& data, float nTrimmed, int nAtoms = 1, bool isMedoid = false, Metric mt) {
-    return trimOutliers(data, (int) std::floor(data.rows() * nTrimmed), nAtoms, isMedoid, mt);
+MatrixXd trimOutliers(MatrixXd& data, float nTrimmed, int nAtoms, bool isMedoid, Metric mt) {
+    int num = std::floor(data.rows() * nTrimmed);
+    if (num == 0)
+        return data;
+    return trimOutliers(data, num, nAtoms, isMedoid, mt);
+}
+
+vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int nAtoms, bool isCompSim, startSeed start){
+    if (isCompSim) {
+        vector<Index> seed;
+        switch(start) {
+            case startSeed::Medoid: seed.push_back(calculateMedoid(data, nAtoms, mt)); break;
+            case startSeed::Outlier: seed.push_back(calculateOutlier(data, nAtoms, mt)); break;
+            case startSeed::Random: seed.emplace_back(rand() % data.row(0).size()); break;
+        }
+        return diversitySelection(data, percentage, mt, nAtoms, seed);
+    }
+    int N = data.row(0).size();
+    int nMax = N * percentage / 100;
+    if (nMax > N) {
+        std::cerr << "Percentage is too high for the given matrix size" << std::endl;
+        exit;
+    }
+    vector<Index> indices (nMax);
+    if (nMax == 1)
+        indices[0] = 0;
+    else {
+        double step = (static_cast<double>(N - 1)) / (nMax -1);
+        for (int i = 0; i < nMax; ++i){
+            indices[i] = std::round(i * step);
+        }
+    } 
+    VectorXd compSims = calculateCompSim(data, nAtoms, mt);
+    vector<std::pair<double,int>> compSimArray;
+    compSimArray.reserve(compSims.size());
+    for (int i=0; i<compSims.size(); ++i){
+        compSimArray.emplace_back(compSims[i],i);
+    }
+    std::sort(compSimArray.begin(), compSimArray.end());
+
+    for(int i=0; i<nMax; ++i){
+        indices[i] = compSimArray[indices[i]].second;
+    }
+    return indices;
+
+}
+vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int nAtoms, vector<Index>& indices){
+    
 }

@@ -677,12 +677,86 @@ def calc_comp_sim(data, c_threshold = None, n_ary = 'RR', w_factor = 'fraction',
         total.append((i, sim_index))
     return total
 
+def trim_outliers(matrix, n_trimmed, metric, N_atoms, criterion='comp_sim'):
+    """*O(N)* method of trimming a desired percentage of outliers 
+    (most dissimilar) from a data matrix through complementary similarity.
 
+    Parameters
+    ----------
+    matrix : array-like of shape (n_samples, n_features)
+        A feature array.
+    n_trimmed : float or int
+        The desired fraction of outliers to be removed or the number of outliers to be removed.
+        float : Fraction of outliers to be removed.
+        int : Number of outliers to be removed.
+    metric : str, default='MSD'
+        The metric to when calculating distance between *n* objects in an array. 
+        It must be an options allowed by :func:`mdance.tools.bts.extended_comparison`.
+    N_atoms : int, default=1
+        Number of atoms in the Molecular Dynamics (MD) system. ``N_atom=1`` 
+        for non-MD systems.
+    criterion : {'comp_sim', 'sim_to_medoid'}, default='comp_sim'
+        Criterion to use for data trimming. ``comp_sim`` criterion removes the most 
+        dissimilar objects based on the complement similarity. ``sim_to_medoid`` 
+        criterion removes the most dissimilar objects based on the similarity to 
+        the medoid.
+    
+    Returns
+    -------
+    numpy.ndarray
+        A ndarray with desired fraction of outliers removed.
+    
+    Examples
+    --------
+    >>> from mdance.tools import bts
+    >>> import numpy as np
+    >>> X = np.array([[1, 2], [2, 2], [2, 3], [8, 7], [8, 8], [25, 80]])
+    >>> output = bts.trim_outliers(X, n_trimmed=0.6, metric='MSD', N_atoms=1)
+    >>> output
+    array([[2, 3], [8, 7], [8, 8]])
+    """
+    N = len(matrix)
+    if isinstance(n_trimmed, int):
+        cutoff = n_trimmed
+    elif 0 < n_trimmed < 1:
+        cutoff = int(np.floor(N * float(n_trimmed)))
+    
+    if criterion == 'comp_sim':
+        c_sum = np.sum(matrix, axis = 0)
+        sq_sum_total = np.sum(matrix ** 2, axis=0)
+        comp_sims = []
+        for i, row in enumerate(matrix):
+            c = c_sum - row
+            sq = sq_sum_total - row ** 2
+            value = extended_comparison([c, sq], data_type='condensed', 
+                                        metric=metric, N=N - 1, 
+                                        N_atoms=N_atoms)
+            comp_sims.append((i, value))
+        comp_sims = np.array(comp_sims)
+        print(comp_sims)
+        lowest_indices = np.argsort(comp_sims[:, 1])[:cutoff]
+        print(lowest_indices)
+        matrix = np.delete(matrix, lowest_indices, axis=0)
+    
+    elif criterion == 'sim_to_medoid':
+        medoid_index = bts.calculate_medoid(matrix, metric, N_atoms=N_atoms)
+        medoid = matrix[medoid_index]
+        np.delete(matrix, medoid_index, axis=0)
+        values = []
+        for i, frame in enumerate(matrix):
+            value = extended_comparison(np.array([frame, medoid]), data_type='full', 
+                                        metric=metric, N_atoms=N_atoms)
+            values.append((i, value))
+        values = np.array(values)
+        highest_indices = np.argsort(values[:, 1])[-cutoff:]
+        matrix = np.delete(matrix, highest_indices, axis=0)
+    
+    return matrix
 
-matrix = csv_to_numpy("data/small.csv")
+matrix = csv_to_numpy("data/sim.csv")
 cutoff=3
 metric='MSD'
-N_atoms=2
+N_atoms=50
 N = len(matrix)
 c_sum = np.sum(matrix, axis=0)
-print(extended_comparison([c_sum], 'condensed', metric='RR', N=N, N_atoms=N_atoms, c_threshold=None, w_factor='fraction'))
+print(trim_outliers(matrix, 0.6, 'MSD', N_atoms=N_atoms))

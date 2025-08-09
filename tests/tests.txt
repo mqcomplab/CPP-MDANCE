@@ -1,10 +1,22 @@
-1 5
-bit continuous sim small mid
+2 6
+bit continuous sim small mid large
 bts 7
+compSim 11
 msd
 ec
 condensed EC
 esim EC
-compSim
 calcMedoid
 calcOutlier
+trimOutliers
+msd
+bub
+fai
+gle
+ja
+jt
+rt
+rr
+sm
+ss1
+ss2

@@ -3,7 +3,8 @@
 #include <algorithm>
 #include <vector>
 #include <Eigen/Dense>
-using Eigen::MatrixXd, Eigen::VectorXd, Eigen::VectorXi, Eigen::Index, std::vector, std::pair;
+using Eigen::MatrixXd;
+using Eigen::ArrayXXd, Eigen::VectorXd, Eigen::RowVectorXd, Eigen::VectorXi, Eigen::Index, std::vector, std::pair;
 
 /*
  * Valid values for metric are:
@@ -27,6 +28,8 @@ using Eigen::MatrixXd, Eigen::VectorXd, Eigen::VectorXi, Eigen::Index, std::vect
  *  | ``SS2``: Sokal-Sneath 2.
 */
 enum class Metric {MSD, BUB, Fai, Gle, Ja, JT, RT, RR, SM, SS1, SS2};
+
+enum class startSeed {Medoid, Outlier, Random};
 
 /* Coincidence Threshold
  * type: The way the Threshold is defined.
