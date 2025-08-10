@@ -266,17 +266,34 @@ MatrixXd trimOutliers(MatrixXd& data, float nTrimmed, int nAtoms, bool isMedoid,
     return trimOutliers(data, num, nAtoms, isMedoid, mt);
 }
 
-vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int nAtoms, bool isCompSim, startSeed start){
+/* O(N) method of selecting the most diverse subset of a data matrix using the complementary similarity.
+ *
+ * Parameters:
+ *  - data: A feature array of shape (nSamples, nFeatures).
+ *  - percentage: Indicates the percentage of data to be selected.
+ *  - mt: The metric to use when calculating distance between n objects in an array
+ *  - nAtoms: Number of atoms in the Molecular Dynamics (MD) system. nAtoms=1 for non-MD systems.
+ *  - isCompSim: The method to use for diversity selection.
+ *     --> if (!isCompSim): Uses stratified sampling.
+ *     --> if (isCompSim): Maximizes the MSD between the selected objects and the rest of the data.
+ *  - start: The initial seed for initiating diversity selection.
+ *     --> You can also specify the seed indices as a vector<Index>
+ * 
+ * Returns: A vector of indices of the diversity selected data (in order selected).
+ * 
+ * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L376
+*/
+vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int nAtoms, bool isCompSim, StartSeed start){
     if (isCompSim) {
         vector<Index> seed;
         switch(start) {
-            case startSeed::Medoid: seed.push_back(calculateMedoid(data, nAtoms, mt)); break;
-            case startSeed::Outlier: seed.push_back(calculateOutlier(data, nAtoms, mt)); break;
-            case startSeed::Random: seed.emplace_back(rand() % data.row(0).size()); break;
+            case StartSeed::Medoid: seed.push_back(calculateMedoid(data, nAtoms, mt)); break;
+            case StartSeed::Outlier: seed.push_back(calculateOutlier(data, nAtoms, mt)); break;
+            case StartSeed::Random: seed.emplace_back(rand() % data.row(0).size()); break;
         }
         return diversitySelection(data, percentage, mt, nAtoms, seed);
     }
-    int N = data.row(0).size();
+    Index N = data.rows();
     int nMax = N * percentage / 100;
     if (nMax > N) {
         std::cerr << "Percentage is too high for the given matrix size" << std::endl;
@@ -292,10 +309,10 @@ vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int 
         }
     } 
     VectorXd compSims = calculateCompSim(data, nAtoms, mt);
-    vector<std::pair<double,int>> compSimArray;
+    vector<pair<double,int>> compSimArray;
     compSimArray.reserve(compSims.size());
     for (int i=0; i<compSims.size(); ++i){
-        compSimArray.emplace_back(compSims[i],i);
+        compSimArray.emplace_back(-compSims[i],i);
     }
     std::sort(compSimArray.begin(), compSimArray.end());
 
@@ -306,5 +323,81 @@ vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int 
 
 }
 vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int nAtoms, vector<Index>& indices){
+    MatrixXd selection = data(indices, Eigen::all);
+    MatrixXd selected (mt == Metric::MSD ? 2 : 1, data.row(0).cols());
+    selected.row(0) = selection.colwise().sum();
+    if (mt == Metric::MSD) {
+        selected.row(1) = selection.array().square().colwise().sum();
+    }
     
+    int nTotal = data.rows();
+    int nMax = nTotal * percentage / 100;
+
+    set<Index> selectFromN;
+    set<Index> selectedSet;
+    for (int i=0; i<indices.size(); ++i) {
+        selectedSet.insert(indices[i]);
+    }
+    for (int i=0; i<nTotal; ++i) {
+        if (selectedSet.find(i) == selectedSet.end()){
+            selectFromN.insert(i);
+        }
+    }
+
+    indices.reserve(nMax);
+    while (indices.size() < nMax) {
+        Index newIndexN = getNewIndexN(data, mt, selected, indices.size(), selectFromN, nAtoms);
+
+        selected.row(0) += data.row(newIndexN);
+        if (mt == Metric::MSD)
+            selected.row(1) = selected.row(1).array() + data.row(newIndexN).array().square();
+
+        selectFromN.erase(newIndexN);
+        indices.push_back(newIndexN);
+    }
+
+    return indices;
+}
+
+/* Extract the new index to add to the list of selected indices.
+ *
+ * Parameters:
+ *  - data: A feature array of shape (nSamples, nFeatures).
+ *  - mt: The metric to use when calculating distance between n objects in an array
+ *  - selectedCondensed: A fingerprint feature array that can take on multiple shapes:
+ *     --> if (mt == MSD): a MatrixXd with 2 rows (cSum, sqSum)
+ *     --> else: a MatrixXd with 1 row (cSum)
+ *  - N: number of selected objects
+ *  - selectFromN: Array of indices to select from
+ *  - nAtoms: Number of atoms in the Molecular Dynamics (MD) system. nAtoms=1 for non-MD systems.
+ * 
+ * Returns: index of the new fingerprint to add to the selected indices.
+ * 
+ * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L489
+*/
+Index getNewIndexN(MatrixXd& data, Metric mt, MatrixXd& selectedCondensed, int N, set<Index> selectFromN, int nAtoms) {
+    // Number of fingerprints already selected and the new one to add
+    int nTotal = N + 1;
+
+    double maxVal = -1;
+    Index idx = data.row(0).size();
+
+    MatrixXd temp = selectedCondensed;
+
+    for (auto i=selectFromN.begin(); i!=selectFromN.end(); ++i){
+        temp.row(0) = selectedCondensed.row(0) + data.row(*i);
+        double simIdx;
+        if (mt == Metric::MSD) {
+            temp.row(1) = selectedCondensed.row(1).array() + data.row(*i).array().square();
+            simIdx = extendedComparison(temp, nTotal, nAtoms, true, mt);
+        } else {
+            simIdx = extendedComparison(temp, nTotal, nAtoms, true, mt);
+        }
+
+        if (simIdx > maxVal){
+            maxVal = simIdx;
+            idx = *i;
+        }
+    }
+    return idx;
 }

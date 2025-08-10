@@ -13,5 +13,6 @@ Index calculateOutlier(MatrixXd& data, int nAtoms = 1, Metric mt = Metric::MSD);
 Index calculateOutlier(VectorXd& data, int nAtoms = 1, Metric mt = Metric::MSD);
 MatrixXd trimOutliers(MatrixXd& data, int nTrimmed, int nAtoms = 1, bool isMedoid = false, Metric mt = Metric::MSD);
 MatrixXd trimOutliers(MatrixXd& data, float nTrimmed, int nAtoms = 1, bool isMedoid = false, Metric mt = Metric::MSD);
-vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int nAtoms = 1, bool isCompSim = false, startSeed start = startSeed::Medoid);
-vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int nAtoms, bool isCompSim, vector<Index>& start);
+vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt = Metric::MSD, int nAtoms = 1, bool isCompSim = false, StartSeed start = StartSeed::Medoid);
+vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int nAtoms, vector<Index>& start);
+Index getNewIndexN(MatrixXd& data, Metric mt, MatrixXd& selectedCondensed, int N, set<Index> selectFromN, int nAtoms);

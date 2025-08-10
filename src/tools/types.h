@@ -2,9 +2,12 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
+#include <set>
+#include <map>
+#include <cmath>
 #include <Eigen/Dense>
 using Eigen::MatrixXd;
-using Eigen::ArrayXXd, Eigen::VectorXd, Eigen::RowVectorXd, Eigen::VectorXi, Eigen::Index, std::vector, std::pair;
+using Eigen::ArrayXXd, Eigen::VectorXd, Eigen::RowVectorXd, Eigen::VectorXi, Eigen::Index, std::vector, std::pair, std::set;
 
 /*
  * Valid values for metric are:
@@ -29,7 +32,7 @@ using Eigen::ArrayXXd, Eigen::VectorXd, Eigen::RowVectorXd, Eigen::VectorXi, Eig
 */
 enum class Metric {MSD, BUB, Fai, Gle, Ja, JT, RT, RR, SM, SS1, SS2};
 
-enum class startSeed {Medoid, Outlier, Random};
+enum class StartSeed {Medoid, Outlier, Random};
 
 /* Coincidence Threshold
  * type: The way the Threshold is defined.

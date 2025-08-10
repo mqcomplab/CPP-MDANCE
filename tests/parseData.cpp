@@ -100,11 +100,19 @@ void printVector(VectorXd& vec){
 }
 
 void printVector(VectorXi& vec){
-    std::cout << "[";
+    std::cout << "[ ";
     for (int i =0; i < vec.size()-1; ++i) {
       std::cout << vec[i] << ", ";
     }
-    std::cout << vec[vec.size()-1] << "]" << std::endl;
+    std::cout << vec[vec.size()-1] << " ]" << std::endl;
+}
+
+void printVector(vector<Index>& vec){
+    std::cout << "[ ";
+    for (int i =0; i < vec.size()-1; ++i) {
+      std::cout << vec[i] << ", ";
+    }
+    std::cout << vec[vec.size()-1] << " ]" << std::endl;
 }
 
 void run_tests(MatrixXd data, int nAtoms){
@@ -186,6 +194,39 @@ void run_tests(MatrixXd data, int nAtoms){
         printVector(vec);
         std::cerr << mtNames[i] << " compSim: " << dur.count() << std::endl;
     }
+
+    // diversitySelection tests
+    start = high_resolution_clock::now();
+    vector<Index> veci = diversitySelection(data, 40, Metric::MSD, nAtoms);
+    end = high_resolution_clock::now();
+    dur = end - start;
+    std::cout << "stratified diversitySelection: ";
+    printVector(veci);
+    std::cerr << "stratified diversitySelection: " << dur.count() << std::endl;
+
+    vector<StartSeed> starts = {StartSeed::Medoid, StartSeed::Outlier, StartSeed::Random};
+    vector<std::string> startNames = {"medoid", "outlier", "random"};
+    for (int i=0; i<1; ++i) {
+        for (int j=0; j<2; ++j) {
+            start = high_resolution_clock::now();
+            veci = diversitySelection(data, 40, mts[i], nAtoms, true, starts[j]);
+            end = high_resolution_clock::now();
+            dur = end - start;
+            std::cout << mtNames[i] << " " << startNames[j] << " diversitySelection: ";
+            printVector(veci);
+            std::cerr << mtNames[i] << " " << startNames[j] << " diversitySelection: " << dur.count() << std::endl;
+        }
+    }
+
+    vector<Index> indices = {0, 2};
+
+    start = high_resolution_clock::now();
+    veci = diversitySelection(data, 30, Metric::MSD, nAtoms, indices);
+    end = high_resolution_clock::now();
+    dur = end - start;
+    std::cout << "list diversitySelection: ";
+    printVector(veci);
+    std::cerr << "list diversitySelection: " << dur.count() << std::endl;
 }
 
 
@@ -203,10 +244,10 @@ void run_tests(std::string filename, int nAtoms){
 int main() {
     run_tests("bit.csv", 1);
     run_tests("continuous.csv", 2);
-    run_tests("sim.csv", 50);
     run_tests("small.csv", 3);
-    // run_tests("1d.csv", 1);
     run_tests("mid.csv", 3);
-    run_tests("large.csv", 3);
+    run_tests("sim.csv", 50);
+    // run_tests("1d.csv", 1);
+    // run_tests("large.csv", 3);
     return 0;
 }

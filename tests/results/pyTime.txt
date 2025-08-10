@@ -1,126 +1,125 @@
 
 bit.csv
 ----------------------
-msd: 6.275199939e-05
-ec: 2.684900028e-05
-condensed ec: 1.108400011e-05
-esim ec: 0.0001253359997
-calcMedoid: 5.376399986e-05
-calcOutlier: 3.843600007e-05
-trimOutlier: 0.0001409039996
-MSD compSim: 3.881199973e-05
-BUB compSim: 0.0003609919995
-Fai compSim: 0.0003417000007
-Gle compSim: 0.000346631
-Ja compSim: 0.0003365499997
-JT compSim: 0.0003444680005
-RT compSim: 0.0003375059996
-RR compSim: 0.0003341189995
-SM compSim: 0.0003445089997
-SS1 compSim: 0.000335232
-SS2 compSim: 0.0004477069997
+msd: 7.646999984e-05
+ec: 4.40269996e-05
+condensed ec: 1.808800062e-05
+esim ec: 0.0001685879997
+calcMedoid: 8.25369998e-05
+calcOutlier: 6.288700024e-05
+trimOutlier: 0.0001593679999
+MSD compSim: 5.854099982e-05
+BUB compSim: 0.000399564
+Fai compSim: 0.0004006079998
+Gle compSim: 0.0003924869998
+Ja compSim: 0.0004062970002
+JT compSim: 0.0003880909999
+RT compSim: 0.0004433149998
+RR compSim: 0.0004340149999
+SM compSim: 0.0003995960005
+SS1 compSim: 0.0003903179995
+SS2 compSim: 0.0003888770007
+stratified diversitySelection: 0.0001228589999
+MSD medoid diversitySelection: 0.0001950810001
+MSD outlier diversitySelection: 0.0001709090002
+list diversitySelection: 4.244400043e-05
 
 continuous.csv
 ----------------------
-msd: 4.83369995e-05
-ec: 4.836399967e-05
-condensed ec: 1.460399926e-05
-esim ec: 0.0001390699999
-calcMedoid: 8.444400009e-05
-calcOutlier: 7.736200041e-05
-trimOutlier: 0.0002017430006
-MSD compSim: 7.981300041e-05
-BUB compSim: 0.0006274139996
-Fai compSim: 0.0004238730007
-Gle compSim: 0.0004357799999
-Ja compSim: 0.0004662440006
-JT compSim: 0.0003522759998
-RT compSim: 0.0003486420001
-RR compSim: 0.000393493
-SM compSim: 0.0003476319998
-SS1 compSim: 0.0003539050003
-SS2 compSim: 0.0003472730004
-
-sim.csv
-----------------------
-msd: 0.003457657
-ec: 0.005214475001
-condensed ec: 3.313300022e-05
-esim ec: 0.0001095039997
-calcMedoid: 0.013665702
-calcOutlier: 0.014589716
-trimOutlier: 0.106758555
-MSD compSim: 0.022240939
-BUB compSim: 0.516230128
-Fai compSim: 0.506509157
-Gle compSim: 0.487638867
-Ja compSim: 0.501524684
-JT compSim: 0.465319262
-RT compSim: 0.418842764
-RR compSim: 0.421191218
-SM compSim: 0.411449218
-SS1 compSim: 0.582225832
-SS2 compSim: 0.871395559
+msd: 5.76070006e-05
+ec: 4.407400047e-05
+condensed ec: 1.993099977e-05
+esim ec: 0.0001342590003
+calcMedoid: 7.644200014e-05
+calcOutlier: 6.898599986e-05
+trimOutlier: 0.0001568950001
+MSD compSim: 5.510099982e-05
+BUB compSim: 0.0003987749997
+Fai compSim: 0.0004857880003
+Gle compSim: 0.0004184030004
+Ja compSim: 0.0004365820005
+JT compSim: 0.0004521209994
+RT compSim: 0.0005048060002
+RR compSim: 0.000451766
+SM compSim: 0.0004712909995
+SS1 compSim: 0.0003717449999
+SS2 compSim: 0.000353036
+stratified diversitySelection: 7.572499999e-05
+MSD medoid diversitySelection: 0.0001719339998
+MSD outlier diversitySelection: 0.0001354470005
+list diversitySelection: 2.753099943e-05
 
 small.csv
 ----------------------
-msd: 0.0001051460004
-ec: 4.084299962e-05
-condensed ec: 1.650299964e-05
-esim ec: 0.0001441209997
-calcMedoid: 6.476199997e-05
-calcOutlier: 4.926300062e-05
-trimOutlier: 0.0002764729998
-MSD compSim: 9.615599993e-05
-BUB compSim: 0.001898613001
-Fai compSim: 0.002236027
-Gle compSim: 0.001225751
-Ja compSim: 0.0009615110002
-JT compSim: 0.001144211
-RT compSim: 0.001362081
-RR compSim: 0.001076897001
-SM compSim: 0.001538731
-SS1 compSim: 0.001270752
-SS2 compSim: 0.001869069
+msd: 6.371000018e-05
+ec: 3.365500015e-05
+condensed ec: 1.6039e-05
+esim ec: 0.000120664
+calcMedoid: 4.717000047e-05
+calcOutlier: 3.618800019e-05
+trimOutlier: 0.0002097830002
+MSD compSim: 4.057000024e-05
+BUB compSim: 0.0009559480004
+Fai compSim: 0.0009396380001
+Gle compSim: 0.0009028929999
+Ja compSim: 0.001028708
+JT compSim: 0.0008682560001
+RT compSim: 0.000863751
+RR compSim: 0.000865647
+SM compSim: 0.0008725000007
+SS1 compSim: 0.0008478660002
+SS2 compSim: 0.000852915
+stratified diversitySelection: 7.510500018e-05
+MSD medoid diversitySelection: 0.0004897939998
+MSD outlier diversitySelection: 0.0004902559995
+list diversitySelection: 0.0002468720004
 
 mid.csv
 ----------------------
-msd: 0.0004946239997
-ec: 0.0004285370005
-condensed ec: 3.016399933e-05
-esim ec: 0.0002017749994
-calcMedoid: 0.002282848
-calcOutlier: 0.003386623
-trimOutlier: 0.005563433
-MSD compSim: 0.001610502
-BUB compSim: 0.021697891
-Fai compSim: 0.033907559
-Gle compSim: 0.037835998
-Ja compSim: 0.037879044
-JT compSim: 0.037277758
-RT compSim: 0.036334418
-RR compSim: 0.035941436
-SM compSim: 0.034059086
-SS1 compSim: 0.033441065
-SS2 compSim: 0.034232484
+msd: 0.0002617659993
+ec: 9.60769994e-05
+condensed ec: 1.808600064e-05
+esim ec: 0.0001546290005
+calcMedoid: 0.0009414979995
+calcOutlier: 0.0002922999993
+trimOutlier: 0.003349573
+MSD compSim: 0.0007650890002
+BUB compSim: 0.016951472
+Fai compSim: 0.017197898
+Gle compSim: 0.017158948
+Ja compSim: 0.017421223
+JT compSim: 0.017269749
+RT compSim: 0.017315999
+RR compSim: 0.01709094
+SM compSim: 0.017519363
+SS1 compSim: 0.017659605
+SS2 compSim: 0.017612125
+stratified diversitySelection: 0.0006612660009
+MSD medoid diversitySelection: 0.205198558
+MSD outlier diversitySelection: 0.233737344
+list diversitySelection: 0.168631812
 
-large.csv
+sim.csv
 ----------------------
-msd: 0.076633904
-ec: 0.069088641
-condensed ec: 9.243400018e-05
-esim ec: 0.0001295749998
-calcMedoid: 0.311697963
-calcOutlier: 0.351088106
-trimOutlier: 1.263291017
-MSD compSim: 0.377838919
-BUB compSim: 3.950481181
-Fai compSim: 3.83154101
-Gle compSim: 3.698117373
-Ja compSim: 3.908512693
-JT compSim: 3.98697728
-RT compSim: 4.583182866
-RR compSim: 5.000434837
-SM compSim: 4.948606632
-SS1 compSim: 5.061893031
-SS2 compSim: 4.867877809
+msd: 0.002808038001
+ec: 0.002145006
+condensed ec: 9.324700022e-05
+esim ec: 0.000182189
+calcMedoid: 0.012839603
+calcOutlier: 0.014838289
+trimOutlier: 0.094988355
+MSD compSim: 0.012980178
+BUB compSim: 0.494042384
+Fai compSim: 0.41256403
+Gle compSim: 0.416748908
+Ja compSim: 0.380747405
+JT compSim: 0.374764345
+RT compSim: 0.392743669
+RR compSim: 0.412773843
+SM compSim: 0.37440064
+SS1 compSim: 0.373086597
+SS2 compSim: 0.372047702
+stratified diversitySelection: 0.011585397
+MSD medoid diversitySelection: 141.012338
+MSD outlier diversitySelection: 151.9046403
+list diversitySelection: 120.1658071
