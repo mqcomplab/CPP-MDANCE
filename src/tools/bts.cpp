@@ -1,5 +1,6 @@
 #include "bts.h"
 
+
 /* O(N) Mean square deviation(MSD) calculation for n-ary objects.
  *  
  * Parameters:
@@ -142,9 +143,9 @@ VectorXd calculateCompSim(MatrixXd& data, int nAtoms, Metric mt) {
 */
 Index calculateMedoid(MatrixXd& data, int nAtoms, Metric mt) {
     VectorXd compSims = calculateCompSim(data, nAtoms, mt);
-    return calculateMedoid(compSims, nAtoms, mt);
+    return calculateMedoid(compSims);
 }
-Index calculateMedoid(VectorXd& data, int nAtoms, Metric mt) {
+Index calculateMedoid(VectorXd& data) {
     Index maxIdx;
     data.maxCoeff(&maxIdx);
     return maxIdx;
@@ -164,9 +165,9 @@ Index calculateMedoid(VectorXd& data, int nAtoms, Metric mt) {
 */
 Index calculateOutlier(MatrixXd& data, int nAtoms, Metric mt) {
     VectorXd compSims = calculateCompSim(data, nAtoms, mt);
-    return calculateOutlier(compSims, nAtoms, mt);
+    return calculateOutlier(compSims);
 }
-Index calculateOutlier(VectorXd& data, int nAtoms, Metric mt) {
+Index calculateOutlier(VectorXd& data) {
     Index minIdx;
     data.minCoeff(&minIdx);
     return minIdx;
@@ -375,7 +376,7 @@ vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int 
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L489
 */
-Index getNewIndexN(MatrixXd& data, Metric mt, MatrixXd& selectedCondensed, int N, set<Index> selectFromN, int nAtoms) {
+Index getNewIndexN(MatrixXd& data, Metric mt, MatrixXd& selectedCondensed, int N, set<Index>& selectFromN, int nAtoms) {
     // Number of fingerprints already selected and the new one to add
     int nTotal = N + 1;
 
@@ -400,4 +401,90 @@ Index getNewIndexN(MatrixXd& data, Metric mt, MatrixXd& selectedCondensed, int N
         }
     }
     return idx;
+}
+
+/* Representative sampling according to compSim values: Divides the range of comp_sim values in nbins and then uniformly selects n_samples molecules, consecutively taking one from each bin
+ *
+ * Parameters:
+ *  - data: A feature array of shape (nSamples, nFeatures).
+ *  - mt: The metric to use when calculating distance between n objects in an array
+ *  - nAtoms: Number of atoms in the Molecular Dynamics (MD) system. nAtoms=1 for non-MD systems.
+ *  - nBins: Number of bins to divide the compSim values.
+ *  - nSamples: Number of samples to be selected.
+ *  - hardCap: whether the number of samples will be *exactly* nSamples
+ * 
+ * Returns: List of indices of the sampled objects in the original data
+ * 
+ * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L652
+*/
+VectorXi repSample(MatrixXd& data, Metric mt, int nAtoms, int nBins, double nSamples, bool hardCap) {
+    if (nSamples < 1) {
+        repSample(data, mt, nAtoms, nBins, std::round(nSamples * data.rows()), hardCap);
+    }
+    std::cerr << "Cannot sample more than 100\% of the data" << std::endl;
+    exit;
+}
+VectorXi repSample(MatrixXd& data, Metric mt, int nAtoms, int nBins, int nSamples, bool hardCap) {
+    VectorXd compSims = calculateCompSim(data, nAtoms, mt);
+    vector<pair<double,int>> compSimArray;
+    compSimArray.reserve(compSims.size());
+    for (int i=0; i<compSims.size(); ++i){
+        compSimArray.emplace_back(compSims[i],i);
+    }
+    std::sort(compSimArray.begin(), compSimArray.end());
+    double mi = compSimArray[0].first;
+    double ma = compSimArray[compSims.size()-1].first;
+
+
+    int step = std::floor((ma - mi) / nBins);
+    vector<vector<int>> bins(nBins);
+    int idx=0;
+    for (int i=0; i<compSims.size(); ++i) {
+        if (compSimArray[i].first - mi >= (idx+1)*step) {
+            ++idx;
+        }
+        bins[idx].push_back(compSimArray[i].second);
+    }
+    VectorXi sampledMols(nSamples);
+    int i=0;
+    int cnt=0;
+    while (sampledMols.size() < nSamples) {
+        for (int b=0; b<bins.size(); ++b) {
+            if (bins[b].size() > i) {
+                sampledMols[cnt] = bins[b][i];
+                ++cnt;
+                if (hardCap && cnt >= nSamples)
+                    break;
+            }
+        }
+        ++i;
+    }
+    return sampledMols;
+}
+
+/* Refine a distance matrix by setting the diagonal to zero and symmetrizing the matrix
+ *
+ * Parameters:
+ *  - data: A feature array of shape (nSamples, nFeatures).
+ * 
+ * Returns: A refined 2D matrix.
+ * 
+ * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L720
+*/
+MatrixXd refineDisMatrix(MatrixXd& data) {
+    if (data.rows() == 1 || data.cols() == 1) {
+        std::cerr << "Matrix must be 2D" << std::endl;
+        exit;
+    }
+    if (data.rows() != data.cols()) {
+        std::cerr << "Matrix must be square" << std::endl;
+        exit;
+    }
+
+    MatrixXd distances = (data + data.transpose()).array() / 2;
+    distances = distances.array() - distances.minCoeff();
+    for (int i=0; i<distances.rows(); ++i) {
+        distances.row(i)[i] = 0;
+    }
+    return distances;
 }

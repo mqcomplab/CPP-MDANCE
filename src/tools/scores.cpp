@@ -53,7 +53,7 @@ double calinskiHarabaszScore(MatrixXd data, VectorXi labels) {
  * 
  * Reference: This code does not include any of the parameter checking: https://github.com/scikit-learn/scikit-learn/blob/c5497b7f7eacfaff061cf68e09bcd48aa93d4d6b/sklearn/metrics/cluster/_unsupervised.py#L396
 */
-double calinskiHarabaszScore(MatrixXd data, VectorXi labels) {
+double daviesBouldinScore(MatrixXd data, VectorXi labels) {
     std::map<int, vector<int>> clusters;
 
     for (int i=0; i<labels.size(); ++i) {
