@@ -28,7 +28,7 @@ double fd(double d, int wFactor, int nObjects) {
  * 
  * Returns: Dictionary with the weighted and non-weighted counters.
 */
-Counters calculateCounters(VectorXd& cTotal, int nObjects, Threshold& cThreshold, int wFactor){
+MD::Counters calculateCounters(ArrayXd& cTotal, int nObjects, MD::Threshold& cThreshold, int wFactor){
     int a=0;
     int d=0;
     int dis=0;
@@ -52,7 +52,7 @@ Counters calculateCounters(VectorXd& cTotal, int nObjects, Threshold& cThreshold
         }
     }
 
-    return Counters(a, wa, d, wd, dis, wDis);
+    return MD::Counters(a, wa, d, wd, dis, wDis);
 }
 
 /* Generate a dictionary with the similarity indices.
@@ -73,8 +73,8 @@ Counters calculateCounters(VectorXd& cTotal, int nObjects, Threshold& cThreshold
  * 
  * TODO: implement other indices https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/esim.py#L253
 */
-Indices genSimIdx(VectorXd& cTotal, int nObjects, Threshold& cThreshold, int wt) {
-    Counters cnt = calculateCounters(cTotal, nObjects, cThreshold, wt);
+MD::Indices genSimIdx(ArrayXd& cTotal, int nObjects, MD::Threshold& cThreshold, int wt) {
+    MD::Counters cnt = calculateCounters(cTotal, nObjects, cThreshold, wt);
     double bub = (sqrt(cnt.wa * cnt.wd) + cnt.wa) / (sqrt(cnt.a * cnt.d) + cnt.a + cnt.totalDis);
     double fai = (cnt.wa + 0.5 * cnt.wd) / cnt.p;
     double gle = 2 * cnt.wa / (2 * cnt.a + cnt.totalDis);
@@ -85,5 +85,5 @@ Indices genSimIdx(VectorXd& cTotal, int nObjects, Threshold& cThreshold, int wt)
     double sm = cnt.totalWsim / cnt.p;
     double ss1 = cnt.wa / (cnt.a + 2 * cnt.totalDis);
     double ss2 = 2 * cnt.totalWsim / (cnt.p + cnt.totalSim);
-    return Indices(bub, fai, gle, ja, jt, rt, rr, sm , ss1, ss2);
+    return MD::Indices(bub, fai, gle, ja, jt, rt, rr, sm , ss1, ss2);
 }

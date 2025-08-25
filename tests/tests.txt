@@ -1,8 +1,9 @@
-3 5
+4 5
 bit continuous small mid sim
 bts 7
 compSim 11
 diversitySelection 4
+NANI 1
 msd
 ec
 condensed EC
@@ -25,3 +26,4 @@ stratified
 msd medoid
 msd outlier
 list
+compSim MD

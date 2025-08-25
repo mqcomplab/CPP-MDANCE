@@ -4,7 +4,9 @@ import csv
 import sys
 import time
 import random
+from sklearn.cluster import KMeans
 from mdance.tools import bts
+from mdance.cluster.nani import KmeansNANI
 
 def diversity_selection(matrix, percentage: int, metric, N_atoms=1, 
                         method='strat', start='medoid'):
@@ -324,6 +326,17 @@ def run_tests(matrix, N_atoms):
     t_dif = t_end-t_start
     print("list", "diversitySelection: " + print_vector(var))
     print("list", "diversitySelection: " + str.format('{0:.10g}', t_dif), file=sys.stderr)
+
+    # NANI tests
+    t_start = time.perf_counter()
+    mod = KmeansNANI(matrix, 3, 'MSD', N_atoms=N_atoms, init_type='comp_sim', percentage=100)
+    initiators = mod.initiate_kmeans()
+    kmeans = KMeans(n_clusters=3, init=initiators, n_init=1, random_state=None)
+    kmeans.fit(matrix)
+    t_end = time.perf_counter()
+    t_dif = t_end-t_start
+    print("NANI: " + print_vector(kmeans.labels_))
+    print("NANI: " + str.format('{0:.10g}', t_dif), file=sys.stderr)
 
 
 

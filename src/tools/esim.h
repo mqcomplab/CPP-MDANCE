@@ -2,5 +2,5 @@
 #include "types.h"
 #include <math.h>
 
-Indices genSimIdx(VectorXd& cTotal, int nObjects, Threshold& cThreshold, int wt);
-Counters calculateCounters(VectorXd& cTotal, int nObjects, Threshold& cThreshold, int wFactor = INT_MIN);
+MD::Indices genSimIdx(ArrayXd& cTotal, int nObjects, MD::Threshold& cThreshold, int wt);
+MD::Counters calculateCounters(ArrayXd& cTotal, int nObjects, MD::Threshold& cThreshold, int wFactor = INT_MIN);

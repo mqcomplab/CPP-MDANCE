@@ -11,12 +11,12 @@
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/9a895e72d71fee1d1a4fad1700a806473dff2f71/src/mdance/tools/bts.py#L14
 */ 
-double meanSqDev(MatrixXd& data, int nAtoms){
+double meanSqDev(ArrayXXd& data, int nAtoms){
     Index N = data.rows();
     if (N == 1)
         return 0;
-    VectorXd cSum = data.colwise().sum();
-    VectorXd sqSum = data.array().square().colwise().sum();
+    ArrayXd cSum = data.colwise().sum();
+    ArrayXd sqSum = data.square().colwise().sum();
     return msdCondensed(cSum, sqSum, N, nAtoms);
 }
 
@@ -32,14 +32,14 @@ double meanSqDev(MatrixXd& data, int nAtoms){
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/9a895e72d71fee1d1a4fad1700a806473dff2f71/src/mdance/tools/bts.py#L54
 */
-double msdCondensed(VectorXd& cSum, VectorXd& sqSum, Index N, int nAtoms){
+double msdCondensed(ArrayXd& cSum, ArrayXd& sqSum, Index N, int nAtoms){
     if (N == 1)
         return 0;
     // The following is a step-by-step explanation of what we are returning. May need to use this instead if we run into overflow issues?
-    // VectorXd meanSqSum = sqSum.array() / N;
-    // VectorXd meanCSum = cSum.array() / N;
-    // return msd = (meanSqSum.array() - meanCSum.array().square()).sum() * 2.0 / nAtoms;
-    return (double)2.0 * (sqSum.array() * N - cSum.array().square()).sum() / (N * N * nAtoms);
+    // ArrayXd meanSqSum = sqSum / N;
+    // ArrayXd meanCSum = cSum / N;
+    // return msd = (meanSqSum - meanCSum.square()).sum() * 2.0 / nAtoms;
+    return (double)2.0 * (sqSum * N - cSum.square()).sum() / (N * N * nAtoms);
 }
 
 /* O(N) Extended comparison function for n-ary objects.
@@ -47,8 +47,8 @@ double msdCondensed(VectorXd& cSum, VectorXd& sqSum, Index N, int nAtoms){
  * Parameters:
  * - data: A feature array which can take on multiple formats
  *    --> if (!isCondensed): an array of size (nSamples, nFeatures)
- *    --> if (isCondensed): a MatrixXd with 1 row (cSum)
- *    --> if (isCondensed): a MatrixXd with 2 rows (cSum, sqSum)
+ *    --> if (isCondensed): a ArrayXXd with 1 row (cSum)
+ *    --> if (isCondensed): a ArrayXXd with 2 rows (cSum, sqSum)
  * - isCondensed: Controls type of data (see above)
  * - mt: The metric to use when calculating distance between n objects in an array
  * - N: Number of data points.
@@ -62,9 +62,9 @@ double msdCondensed(VectorXd& cSum, VectorXd& sqSum, Index N, int nAtoms){
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L96
 */
-double extendedComparison(MatrixXd& data, Index N, int nAtoms, bool isCondensed, Metric mt, Threshold cThreshold, int wPower) {
-    // Handle default initialization of Threshold
-    if (cThreshold.type == ThresholdType::None)
+double extendedComparison(ArrayXXd& data, Index N, int nAtoms, bool isCondensed, MD::Metric mt, MD::Threshold cThreshold, int wPower) {
+    // Handle default initialization of MD::Threshold
+    if (cThreshold.type == MD::ThresholdType::None)
         cThreshold.value = N % 2;
     // Data check
     if (isCondensed){
@@ -72,20 +72,20 @@ double extendedComparison(MatrixXd& data, Index N, int nAtoms, bool isCondensed,
             std::cerr << "Data must have at most two rows: either (cSum) or (cSum, sqSum)" << std::endl;
             exit;
         }
-        VectorXd cSum = data.row(0);
-        if (mt == Metric::MSD){
-            VectorXd sqSum = data.row(1);
+        ArrayXd cSum = data.row(0);
+        if (mt == MD::Metric::MSD){
+            ArrayXd sqSum = data.row(1);
             return msdCondensed(cSum, sqSum, N, nAtoms);
         } else {
-            Indices idx = genSimIdx(cSum, N, cThreshold, wPower);
+            MD::Indices idx = genSimIdx(cSum, N, cThreshold, wPower);
             return 1 - idx.getIndex(mt);
         }
     } else {
-        if (mt == Metric::MSD) {
+        if (mt == MD::Metric::MSD) {
             return meanSqDev(data, nAtoms);
         } else {
-            VectorXd cSum = data.colwise().sum();
-            Indices idx = genSimIdx(cSum, N, cThreshold, wPower);
+            ArrayXd cSum = data.colwise().sum();
+            MD::Indices idx = genSimIdx(cSum, N, cThreshold, wPower);
             return 1 - idx.getIndex(mt);
         }
     }
@@ -103,23 +103,23 @@ double extendedComparison(MatrixXd& data, Index N, int nAtoms, bool isCondensed,
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L190
 */
-VectorXd calculateCompSim(MatrixXd& data, int nAtoms, Metric mt) {
+ArrayXd calculateCompSim(ArrayXXd& data, int nAtoms, MD::Metric mt) {
     Index N = data.rows();
 
-    MatrixXd sqData = data.array().square();
-    VectorXd cSum = data.colwise().sum();
-    VectorXd sqSum = sqData.colwise().sum();
+    ArrayXXd sqData = data.square();
+    ArrayXd cSum = data.colwise().sum();
+    ArrayXd sqSum = sqData.colwise().sum();
 
-    VectorXd compSims(N);
+    ArrayXd compSims(N);
 
-    if (mt == Metric::MSD){
-        MatrixXd compC = ((-data).rowwise()+cSum.transpose()) / (N-1);
-        MatrixXd compSq = ((-sqData).rowwise()+sqSum.transpose()) / (N-1);
-        compSims = (2 * (compSq.array() - compC.array().square())/ nAtoms).rowwise().sum();
+    if (mt == MD::Metric::MSD){
+        ArrayXXd compC = ((-data).rowwise()+cSum.transpose()) / (N-1);
+        ArrayXXd compSq = ((-sqData).rowwise()+sqSum.transpose()) / (N-1);
+        compSims = (2 * (compSq - compC.square())/ nAtoms).rowwise().sum();
     } else {
         for (int i=0; i<N; ++i){
-            VectorXd objSq = data.row(i).array().square();
-            MatrixXd compData (2,data.cols());
+            ArrayXd objSq = data.row(i).square();
+            ArrayXXd compData (2,data.cols());
             compData.row(0) = cSum.transpose() - data.row(i);
             compData.row(1) = sqSum - objSq;
             compSims[i] = extendedComparison(compData, N-1, nAtoms, true, mt);
@@ -141,11 +141,11 @@ VectorXd calculateCompSim(MatrixXd& data, int nAtoms, Metric mt) {
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L241
 */
-Index calculateMedoid(MatrixXd& data, int nAtoms, Metric mt) {
-    VectorXd compSims = calculateCompSim(data, nAtoms, mt);
+Index calculateMedoid(ArrayXXd& data, int nAtoms, MD::Metric mt) {
+    ArrayXd compSims = calculateCompSim(data, nAtoms, mt);
     return calculateMedoid(compSims);
 }
-Index calculateMedoid(VectorXd& data) {
+Index calculateMedoid(ArrayXd& data) {
     Index maxIdx;
     data.maxCoeff(&maxIdx);
     return maxIdx;
@@ -163,11 +163,11 @@ Index calculateMedoid(VectorXd& data) {
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L271
 */
-Index calculateOutlier(MatrixXd& data, int nAtoms, Metric mt) {
-    VectorXd compSims = calculateCompSim(data, nAtoms, mt);
+Index calculateOutlier(ArrayXXd& data, int nAtoms, MD::Metric mt) {
+    ArrayXd compSims = calculateCompSim(data, nAtoms, mt);
     return calculateOutlier(compSims);
 }
-Index calculateOutlier(VectorXd& data) {
+Index calculateOutlier(ArrayXd& data) {
     Index minIdx;
     data.minCoeff(&minIdx);
     return minIdx;
@@ -187,17 +187,17 @@ Index calculateOutlier(VectorXd& data) {
  * 
  *  Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L301
 */
-MatrixXd trimOutliers(MatrixXd& data, int nTrimmed, int nAtoms, bool isMedoid, Metric mt) {
+ArrayXXd trimOutliers(ArrayXXd& data, int nTrimmed, int nAtoms, bool isMedoid, MD::Metric mt) {
     Index N = data.rows();
-    VectorXd cSum;
-    VectorXd sqSumTotal;
+    ArrayXd cSum;
+    ArrayXd sqSumTotal;
     Index idx;
     if (isMedoid) {
         idx = calculateMedoid(data, nAtoms, mt);
         cSum = data.row(idx);
     } else {
         cSum = data.colwise().sum();
-        sqSumTotal = data.array().square().colwise().sum();
+        sqSumTotal = data.square().colwise().sum();
     }
 
 
@@ -205,7 +205,7 @@ MatrixXd trimOutliers(MatrixXd& data, int nTrimmed, int nAtoms, bool isMedoid, M
     vector<pair<double, int>> compSims;
     compSims.reserve(nTrimmed);
     for (Index i=0; i<nTrimmed; ++i) {
-        MatrixXd compData (2,data.row(0).size());
+        ArrayXXd compData (2,data.row(0).size());
         if (isMedoid) {
             if (i != idx){
                 compData.row(0) = data.row(i);
@@ -215,8 +215,8 @@ MatrixXd trimOutliers(MatrixXd& data, int nTrimmed, int nAtoms, bool isMedoid, M
                 continue;
             }
         } else {
-            compData.row(0) = cSum.array().transpose() - data.row(i).array();
-            compData.row(1) = sqSumTotal.array().transpose() - data.row(i).array().square();
+            compData.row(0) = cSum.transpose() - data.row(i);
+            compData.row(1) = sqSumTotal.transpose() - data.row(i).square();
 
             compSims.emplace_back(pair<double,int>(extendedComparison(compData, N-1, nAtoms, true, mt), i));
         }
@@ -224,7 +224,7 @@ MatrixXd trimOutliers(MatrixXd& data, int nTrimmed, int nAtoms, bool isMedoid, M
     std::make_heap(compSims.begin(),compSims.end());
     for (Index i=nTrimmed; i<N; ++i) {
         double simVal;
-        MatrixXd compData (2,data.row(0).size());
+        ArrayXXd compData (2,data.row(0).size());
         if (isMedoid) {
             if (i != idx){
                 compData.row(0) = data.row(i);
@@ -234,8 +234,8 @@ MatrixXd trimOutliers(MatrixXd& data, int nTrimmed, int nAtoms, bool isMedoid, M
                 continue;
             }
         } else {
-            compData.row(0) = cSum.array().transpose() - data.row(i).array();
-            compData.row(1) = sqSumTotal.array().transpose() - data.row(i).array().square();
+            compData.row(0) = cSum.transpose() - data.row(i);
+            compData.row(1) = sqSumTotal.transpose() - data.row(i).square();
 
             simVal = extendedComparison(compData, N-1, nAtoms, true, mt);
         }
@@ -260,7 +260,7 @@ MatrixXd trimOutliers(MatrixXd& data, int nTrimmed, int nAtoms, bool isMedoid, M
     }
     return data(indices, Eigen::all);
 }
-MatrixXd trimOutliers(MatrixXd& data, float nTrimmed, int nAtoms, bool isMedoid, Metric mt) {
+ArrayXXd trimOutliers(ArrayXXd& data, float nTrimmed, int nAtoms, bool isMedoid, MD::Metric mt) {
     int num = std::floor(data.rows() * nTrimmed);
     if (num == 0)
         return data;
@@ -284,13 +284,13 @@ MatrixXd trimOutliers(MatrixXd& data, float nTrimmed, int nAtoms, bool isMedoid,
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L376
 */
-vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int nAtoms, bool isCompSim, StartSeed start){
+vector<Index> diversitySelection(ArrayXXd& data, int percentage, MD::Metric mt, int nAtoms, bool isCompSim, MD::StartSeed start){
     if (isCompSim) {
         vector<Index> seed;
         switch(start) {
-            case StartSeed::Medoid: seed.push_back(calculateMedoid(data, nAtoms, mt)); break;
-            case StartSeed::Outlier: seed.push_back(calculateOutlier(data, nAtoms, mt)); break;
-            case StartSeed::Random: seed.emplace_back(rand() % data.row(0).size()); break;
+            case MD::StartSeed::Medoid: seed.push_back(calculateMedoid(data, nAtoms, mt)); break;
+            case MD::StartSeed::Outlier: seed.push_back(calculateOutlier(data, nAtoms, mt)); break;
+            case MD::StartSeed::Random: seed.emplace_back(rand() % data.row(0).size()); break;
         }
         return diversitySelection(data, percentage, mt, nAtoms, seed);
     }
@@ -309,7 +309,7 @@ vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int 
             indices[i] = std::round(i * step);
         }
     } 
-    VectorXd compSims = calculateCompSim(data, nAtoms, mt);
+    ArrayXd compSims = calculateCompSim(data, nAtoms, mt);
     vector<pair<double,int>> compSimArray;
     compSimArray.reserve(compSims.size());
     for (int i=0; i<compSims.size(); ++i){
@@ -323,12 +323,12 @@ vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int 
     return indices;
 
 }
-vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int nAtoms, vector<Index>& indices){
-    MatrixXd selection = data(indices, Eigen::all);
-    MatrixXd selected (mt == Metric::MSD ? 2 : 1, data.row(0).cols());
+vector<Index> diversitySelection(ArrayXXd& data, int percentage, MD::Metric mt, int nAtoms, vector<Index>& indices){
+    ArrayXXd selection = data(indices, Eigen::all);
+    ArrayXXd selected (mt == MD::Metric::MSD ? 2 : 1, data.row(0).cols());
     selected.row(0) = selection.colwise().sum();
-    if (mt == Metric::MSD) {
-        selected.row(1) = selection.array().square().colwise().sum();
+    if (mt == MD::Metric::MSD) {
+        selected.row(1) = selection.square().colwise().sum();
     }
     
     int nTotal = data.rows();
@@ -350,8 +350,8 @@ vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int 
         Index newIndexN = getNewIndexN(data, mt, selected, indices.size(), selectFromN, nAtoms);
 
         selected.row(0) += data.row(newIndexN);
-        if (mt == Metric::MSD)
-            selected.row(1) = selected.row(1).array() + data.row(newIndexN).array().square();
+        if (mt == MD::Metric::MSD)
+            selected.row(1) = selected.row(1) + data.row(newIndexN).square();
 
         selectFromN.erase(newIndexN);
         indices.push_back(newIndexN);
@@ -366,8 +366,8 @@ vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int 
  *  - data: A feature array of shape (nSamples, nFeatures).
  *  - mt: The metric to use when calculating distance between n objects in an array
  *  - selectedCondensed: A fingerprint feature array that can take on multiple shapes:
- *     --> if (mt == MSD): a MatrixXd with 2 rows (cSum, sqSum)
- *     --> else: a MatrixXd with 1 row (cSum)
+ *     --> if (mt == MSD): a ArrayXXd with 2 rows (cSum, sqSum)
+ *     --> else: a ArrayXXd with 1 row (cSum)
  *  - N: number of selected objects
  *  - selectFromN: Array of indices to select from
  *  - nAtoms: Number of atoms in the Molecular Dynamics (MD) system. nAtoms=1 for non-MD systems.
@@ -376,20 +376,20 @@ vector<Index> diversitySelection(MatrixXd& data, int percentage, Metric mt, int 
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L489
 */
-Index getNewIndexN(MatrixXd& data, Metric mt, MatrixXd& selectedCondensed, int N, set<Index>& selectFromN, int nAtoms) {
+Index getNewIndexN(ArrayXXd& data, MD::Metric mt, ArrayXXd& selectedCondensed, int N, set<Index>& selectFromN, int nAtoms) {
     // Number of fingerprints already selected and the new one to add
     int nTotal = N + 1;
 
     double maxVal = -1;
     Index idx = data.row(0).size();
 
-    MatrixXd temp = selectedCondensed;
+    ArrayXXd temp = selectedCondensed;
 
     for (auto i=selectFromN.begin(); i!=selectFromN.end(); ++i){
         temp.row(0) = selectedCondensed.row(0) + data.row(*i);
         double simIdx;
-        if (mt == Metric::MSD) {
-            temp.row(1) = selectedCondensed.row(1).array() + data.row(*i).array().square();
+        if (mt == MD::Metric::MSD) {
+            temp.row(1) = selectedCondensed.row(1) + data.row(*i).square();
             simIdx = extendedComparison(temp, nTotal, nAtoms, true, mt);
         } else {
             simIdx = extendedComparison(temp, nTotal, nAtoms, true, mt);
@@ -417,15 +417,15 @@ Index getNewIndexN(MatrixXd& data, Metric mt, MatrixXd& selectedCondensed, int N
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L652
 */
-VectorXi repSample(MatrixXd& data, Metric mt, int nAtoms, int nBins, double nSamples, bool hardCap) {
+ArrayXi repSample(ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, double nSamples, bool hardCap) {
     if (nSamples < 1) {
-        repSample(data, mt, nAtoms, nBins, std::round(nSamples * data.rows()), hardCap);
+        return repSample(data, mt, nAtoms, nBins, std::round(nSamples * data.rows()), hardCap);
     }
     std::cerr << "Cannot sample more than 100\% of the data" << std::endl;
-    exit;
+    return ArrayXi();
 }
-VectorXi repSample(MatrixXd& data, Metric mt, int nAtoms, int nBins, int nSamples, bool hardCap) {
-    VectorXd compSims = calculateCompSim(data, nAtoms, mt);
+ArrayXi repSample(ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, int nSamples, bool hardCap) {
+    ArrayXd compSims = calculateCompSim(data, nAtoms, mt);
     vector<pair<double,int>> compSimArray;
     compSimArray.reserve(compSims.size());
     for (int i=0; i<compSims.size(); ++i){
@@ -471,7 +471,7 @@ VectorXi repSample(MatrixXd& data, Metric mt, int nAtoms, int nBins, int nSample
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L720
 */
-MatrixXd refineDisMatrix(MatrixXd& data) {
+ArrayXXd refineDisMatrix(ArrayXXd& data) {
     if (data.rows() == 1 || data.cols() == 1) {
         std::cerr << "Matrix must be 2D" << std::endl;
         exit;
@@ -481,8 +481,8 @@ MatrixXd refineDisMatrix(MatrixXd& data) {
         exit;
     }
 
-    MatrixXd distances = (data + data.transpose()).array() / 2;
-    distances = distances.array() - distances.minCoeff();
+    ArrayXXd distances = (data + data.transpose()) / 2;
+    distances = distances - distances.minCoeff();
     for (int i=0; i<distances.rows(); ++i) {
         distances.row(i)[i] = 0;
     }
