@@ -1,5 +1,22 @@
-4 5
-bit continuous small mid sim
+1 1
+tau
+NANI 1
+test
+
+###
+Here is how the tests.txt file is formatted:
+> #ofDataSamples    #ofTestCategories
+> List of the names of all the data samples
+> Repeat the following for each test category:
+> TestCategoryName #numberOfTests
+> Finally list out all the tessts in order:
+> testName
+
+The configuration above tests only NANI. Replace it with the configuration below and uncommment the lines in parseData.py and parseData.cpp if you want comprehensive tests of BTS. 
+###
+
+4 4
+bit, small, mid, sim
 bts 7
 compSim 11
 diversitySelection 4

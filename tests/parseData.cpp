@@ -95,7 +95,7 @@ void printMatrix(ArrayXXd& mat){
 void printVector(ArrayXd& vec){
     std::cout << "[ ";
     for (int i =0; i < vec.size()-1; ++i) {
-      std::cout << std::setprecision(10) << vec[i] << ", ";
+      std::cout << std::setprecision(10) << vec[i] << ",\n ";
     }
     std::cout << std::setprecision(10) << vec[vec.size()-1] << " ]" << std::endl;
 }
@@ -103,7 +103,7 @@ void printVector(ArrayXd& vec){
 void printVector(ArrayXi& vec){
     std::cout << "[ ";
     for (int i =0; i < vec.size()-1; ++i) {
-      std::cout << vec[i] << ", ";
+      std::cout << vec[i] << ",\n ";
     }
     std::cout << vec[vec.size()-1] << " ]" << std::endl;
 }
@@ -117,123 +117,123 @@ void printVector(vector<Index>& vec){
 }
 
 void run_tests(ArrayXXd data, int nAtoms){
-    // MSD test
-    auto start = high_resolution_clock::now();
-    long double msd = meanSqDev(data, nAtoms);
-    auto end = high_resolution_clock::now();
-    duration<double> dur = end - start;
-    std::cout << std::setprecision(10) << "msd: " << msd << std::endl;
-    std::cerr << std::setprecision(10) << "msd: " << dur.count() << std::endl;
+    // // MSD test
+    // auto start = high_resolution_clock::now();
+    // long double msd = meanSqDev(data, nAtoms);
+    // auto end = high_resolution_clock::now();
+    // duration<double> dur = end - start;
+    // std::cout << std::setprecision(10) << "msd: " << msd << std::endl;
+    // std::cerr << std::setprecision(10) << "msd: " << dur.count() << std::endl;
 
-    // Full EC test
-    start = high_resolution_clock::now();
-    double ec = extendedComparison(data, data.rows(), nAtoms);
-    end = high_resolution_clock::now();
-    dur = end - start;
-    std::cout << "ec: " << ec << std::endl;
-    std::cerr << "ec: " << dur.count() << std::endl;
+    // // Full EC test
+    // start = high_resolution_clock::now();
+    // double ec = extendedComparison(data, data.rows(), nAtoms);
+    // end = high_resolution_clock::now();
+    // dur = end - start;
+    // std::cout << "ec: " << ec << std::endl;
+    // std::cerr << "ec: " << dur.count() << std::endl;
 
-    // Condensed EC test
-    ArrayXd cSum = data.colwise().sum();
-    ArrayXd sqSum = data.array().square().colwise().sum();
-    ArrayXXd condensedData (2,data.cols());
-    condensedData.row(0) = cSum;
-    condensedData.row(1) = sqSum;
+    // // Condensed EC test
+    // ArrayXd cSum = data.colwise().sum();
+    // ArrayXd sqSum = data.array().square().colwise().sum();
+    // ArrayXXd condensedData (2,data.cols());
+    // condensedData.row(0) = cSum;
+    // condensedData.row(1) = sqSum;
 
-    start = high_resolution_clock::now();
-    ec = extendedComparison(condensedData, data.rows(), nAtoms, true);
-    end = high_resolution_clock::now();
-    dur = end - start;
-    std::cout << "condensed ec: " << ec << std::endl;
-    std::cerr << "condensed ec: " << dur.count() << std::endl;
+    // start = high_resolution_clock::now();
+    // ec = extendedComparison(condensedData, data.rows(), nAtoms, true);
+    // end = high_resolution_clock::now();
+    // dur = end - start;
+    // std::cout << "condensed ec: " << ec << std::endl;
+    // std::cerr << "condensed ec: " << dur.count() << std::endl;
 
-    // Esim EC test
-    ArrayXXd smallerData (1,data.cols());
-    smallerData.row(0) = cSum;
+    // // Esim EC test
+    // ArrayXXd smallerData (1,data.cols());
+    // smallerData.row(0) = cSum;
 
-    start = high_resolution_clock::now();
-    ec = extendedComparison(smallerData, data.rows(), nAtoms, true, MD::Metric::RR);
-    end = high_resolution_clock::now();
-    dur = end - start;
-    std::cout << "esim ec: " << ec << std::endl;
-    std::cerr << "esim ec: " << dur.count() << std::endl;
+    // start = high_resolution_clock::now();
+    // ec = extendedComparison(smallerData, data.rows(), nAtoms, true, MD::Metric::RR);
+    // end = high_resolution_clock::now();
+    // dur = end - start;
+    // std::cout << "esim ec: " << ec << std::endl;
+    // std::cerr << "esim ec: " << dur.count() << std::endl;
 
-    // calcMedoid test
-    start = high_resolution_clock::now();
-    Index idx = calculateMedoid(data, nAtoms);
-    end = high_resolution_clock::now();
-    dur = end - start;
-    std::cout << "calcMedoid: " << idx << std::endl;
-    std::cerr << "calcMedoid: " << dur.count() << std::endl;
+    // // calcMedoid test
+    // start = high_resolution_clock::now();
+    // Index idx = calculateMedoid(data, nAtoms);
+    // end = high_resolution_clock::now();
+    // dur = end - start;
+    // std::cout << "calcMedoid: " << idx << std::endl;
+    // std::cerr << "calcMedoid: " << dur.count() << std::endl;
 
-    // calcOutlier test
-    start = high_resolution_clock::now();
-    idx = calculateOutlier(data, nAtoms);
-    end = high_resolution_clock::now();
-    dur = end - start;
-    std::cout << "calcOutlier: " << idx << std::endl;
-    std::cerr << "calcOutlier: " << dur.count() << std::endl;
+    // // calcOutlier test
+    // start = high_resolution_clock::now();
+    // idx = calculateOutlier(data, nAtoms);
+    // end = high_resolution_clock::now();
+    // dur = end - start;
+    // std::cout << "calcOutlier: " << idx << std::endl;
+    // std::cerr << "calcOutlier: " << dur.count() << std::endl;
 
-    // trimOutlier test
-    start = high_resolution_clock::now();
-    ArrayXXd result = trimOutliers(data, 0.1f, nAtoms);
-    end = high_resolution_clock::now();
-    dur = end - start;
-    std::cout << "trimOutlier: ";
-    printMatrix(result);
-    std::cerr << "trimOutlier: " << dur.count() << std::endl;
+    // // trimOutlier test
+    // start = high_resolution_clock::now();
+    // ArrayXXd result = trimOutliers(data, 0.1f, nAtoms);
+    // end = high_resolution_clock::now();
+    // dur = end - start;
+    // std::cout << "trimOutlier: ";
+    // printMatrix(result);
+    // std::cerr << "trimOutlier: " << dur.count() << std::endl;
 
-    // compSim tests
-    vector<MD::Metric> mts = {MD::Metric::MSD, MD::Metric::BUB, MD::Metric::Fai, MD::Metric::Gle, MD::Metric::Ja, MD::Metric::JT, MD::Metric::RT, MD::Metric::RR, MD::Metric::SM, MD::Metric::SS1, MD::Metric::SS2};
-    vector<std::string> mtNames = {"MSD", "BUB", "Fai", "Gle", "Ja", "JT", "RT", "RR", "SM", "SS1", "SS2"};
-    for (int i = 0; i < mts.size(); ++i){
-        start = high_resolution_clock::now();
-        ArrayXd vec = calculateCompSim(data, nAtoms, mts[i]);
-        end = high_resolution_clock::now();
-        dur = end - start;
-        std::cout << mtNames[i] << " compSim: ";
-        printVector(vec);
-        std::cerr << mtNames[i] << " compSim: " << dur.count() << std::endl;
-    }
+    // // compSim tests
+    // vector<MD::Metric> mts = {MD::Metric::MSD, MD::Metric::BUB, MD::Metric::Fai, MD::Metric::Gle, MD::Metric::Ja, MD::Metric::JT, MD::Metric::RT, MD::Metric::RR, MD::Metric::SM, MD::Metric::SS1, MD::Metric::SS2};
+    // vector<std::string> mtNames = {"MSD", "BUB", "Fai", "Gle", "Ja", "JT", "RT", "RR", "SM", "SS1", "SS2"};
+    // for (int i = 0; i < mts.size(); ++i){
+    //     start = high_resolution_clock::now();
+    //     ArrayXd vec = calculateCompSim(data, nAtoms, mts[i]);
+    //     end = high_resolution_clock::now();
+    //     dur = end - start;
+    //     std::cout << mtNames[i] << " compSim: ";
+    //     printVector(vec);
+    //     std::cerr << mtNames[i] << " compSim: " << dur.count() << std::endl;
+    // }
 
-    // diversitySelection tests
-    start = high_resolution_clock::now();
-    vector<Index> veci = diversitySelection(data, 40, MD::Metric::MSD, nAtoms);
-    end = high_resolution_clock::now();
-    dur = end - start;
-    std::cout << "stratified diversitySelection: ";
-    printVector(veci);
-    std::cerr << "stratified diversitySelection: " << dur.count() << std::endl;
+    // // diversitySelection tests
+    // start = high_resolution_clock::now();
+    // vector<Index> veci = diversitySelection(data, 40, MD::Metric::MSD, nAtoms);
+    // end = high_resolution_clock::now();
+    // dur = end - start;
+    // std::cout << "stratified diversitySelection: ";
+    // printVector(veci);
+    // std::cerr << "stratified diversitySelection: " << dur.count() << std::endl;
 
-    vector<MD::StartSeed> starts = {MD::StartSeed::Medoid, MD::StartSeed::Outlier, MD::StartSeed::Random};
-    vector<std::string> startNames = {"medoid", "outlier", "random"};
-    for (int i=0; i<1; ++i) {
-        for (int j=0; j<2; ++j) {
-            start = high_resolution_clock::now();
-            veci = diversitySelection(data, 40, mts[i], nAtoms, true, starts[j]);
-            end = high_resolution_clock::now();
-            dur = end - start;
-            std::cout << mtNames[i] << " " << startNames[j] << " diversitySelection: ";
-            printVector(veci);
-            std::cerr << mtNames[i] << " " << startNames[j] << " diversitySelection: " << dur.count() << std::endl;
-        }
-    }
+    // vector<MD::StartSeed> starts = {MD::StartSeed::Medoid, MD::StartSeed::Outlier, MD::StartSeed::Random};
+    // vector<std::string> startNames = {"medoid", "outlier", "random"};
+    // for (int i=0; i<1; ++i) {
+    //     for (int j=0; j<2; ++j) {
+    //         start = high_resolution_clock::now();
+    //         veci = diversitySelection(data, 40, mts[i], nAtoms, true, starts[j]);
+    //         end = high_resolution_clock::now();
+    //         dur = end - start;
+    //         std::cout << mtNames[i] << " " << startNames[j] << " diversitySelection: ";
+    //         printVector(veci);
+    //         std::cerr << mtNames[i] << " " << startNames[j] << " diversitySelection: " << dur.count() << std::endl;
+    //     }
+    // }
 
-    vector<Index> indices = {0, 2};
+    // vector<Index> indices = {0, 2};
 
-    start = high_resolution_clock::now();
-    veci = diversitySelection(data, 30, MD::Metric::MSD, nAtoms, indices);
-    end = high_resolution_clock::now();
-    dur = end - start;
-    std::cout << "list diversitySelection: ";
-    printVector(veci);
-    std::cerr << "list diversitySelection: " << dur.count() << std::endl;
+    // start = high_resolution_clock::now();
+    // veci = diversitySelection(data, 30, MD::Metric::MSD, nAtoms, indices);
+    // end = high_resolution_clock::now();
+    // dur = end - start;
+    // std::cout << "list diversitySelection: ";
+    // printVector(veci);
+    // std::cerr << "list diversitySelection: " << dur.count() << std::endl;
 
     // NANI test
-    start = high_resolution_clock::now();
-    KmeansNANI test(data, 3, MD::Metric::MSD, nAtoms, MD::KinitType::CompSim, 100);
-    end = high_resolution_clock::now();
-    dur = end - start;
+    auto start = high_resolution_clock::now();
+    KmeansNANI test(data, 10, MD::Metric::MSD, MD::KinitType::CompSim, nAtoms, 10);
+    auto end = high_resolution_clock::now();
+    duration<double> dur = end - start;
     ArrayXi labels = test.getLabels();
     std::cout << "NANI: ";
     printVector(labels);
@@ -253,11 +253,11 @@ void run_tests(std::string filename, int nAtoms){
 }
 
 int main() {
-    run_tests("bit.csv", 1);
-    run_tests("continuous.csv", 2);
-    run_tests("small.csv", 3);
-    run_tests("mid.csv", 3);
-    run_tests("sim.csv", 50);
+    // run_tests("bit.csv", 1);
+    // run_tests("continuous.csv", 2);
+    // run_tests("small.csv", 3);
+    // run_tests("mid.csv", 3);
+    run_tests("tau.csv", 50);
     // run_tests("1d.csv", 1);
     // run_tests("large.csv", 3);
     return 0;

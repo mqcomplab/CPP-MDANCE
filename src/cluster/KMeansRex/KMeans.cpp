@@ -239,6 +239,7 @@ class KmeansNANI{
     void run_lloyd(int Niter )  {
         double prevDist,totalDist = 0;
 
+        // TODO: store the labels at each frame
         for (int iter=0; iter<Niter; iter++) {
             totalDist = assignClosest();
             calc_Mu();
@@ -251,7 +252,7 @@ class KmeansNANI{
 
 
 public: 
-    KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, int nAtoms = 1, MD::KinitType kinit = MD::KinitType::StratAll, int percentage = 10) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(kinit), seed(seed), percentage(percentage) {
+    KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitType kinit = MD::KinitType::StratAll, int nAtoms = 1, int percentage = 10) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(kinit), seed(seed), percentage(percentage) {
         centers = Mat::Zero(kClusters, data.cols());
         dist = Mat::Zero(data.rows(), kClusters);
         labels = Veci::Zero(data.rows());
@@ -259,7 +260,7 @@ public:
         init_Mu();
         run_lloyd(300);
     }
-    KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, int nAtoms = 1, Mat centers, int percentage = 10) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(kinit), seed(seed), percentage(percentage), centers(centers) {
+    KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, Mat centers, int nAtoms = 1, int percentage = 10) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(kinit), seed(seed), percentage(percentage), centers(centers) {
         dist = Mat::Zero(data.rows(), kClusters);
         labels = Veci::Zero(data.rows());
         set_seed();

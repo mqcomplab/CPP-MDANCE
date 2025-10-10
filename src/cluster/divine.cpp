@@ -68,7 +68,7 @@ class Divine{
         }
         Mat subdata = data(clusters[clusterToSplit], Eigen::all);
         if (anchorType == MD::DivineAnchors::NANI) {
-            KmeansNANI kmeans(subdata, 2, mt, nAtoms, kinit, percentage);
+            KmeansNANI kmeans(subdata, 2, mt, kinit, nAtoms, percentage);
             ArrayXi sublabels = kmeans.getLabels();
             vector<Index> cluster1, cluster2;
             for (Index i = 0; i < sublabels.size(); ++i) {
@@ -116,7 +116,7 @@ class Divine{
                 Mat initiators = Mat::Zero(2, data.row(0).size());
                 initiators.row(0) = groupA.row(medoidA);
                 initiators.row(1) = groupB.row(medoidB);
-                KmeansNANI kmeans(subdata, 2, mt, nAtoms, initiators);
+                KmeansNANI kmeans(subdata, 2, mt, initiators, nAtoms);
                 Veci sublabels = kmeans.getLabels();
                 vector<Index> cluster1, cluster2;
                 for (Index i = 0; i < sublabels.size(); ++i) {
@@ -174,7 +174,7 @@ class Divine{
                 Mat initiators = Mat::Zero(2, data.row(0).size());
                 initiators.row(0) = groupA.row(medoidA);
                 initiators.row(1) = groupB.row(medoidB);
-                KmeansNANI kmeans(subdata, 2, mt, nAtoms, initiators);
+                KmeansNANI kmeans(subdata, 2, mt, initiators, nAtoms);
                 Veci sublabels = kmeans.getLabels();
                 vector<Index> cluster1, cluster2;
                 for (Index i = 0; i < sublabels.size(); ++i) {
