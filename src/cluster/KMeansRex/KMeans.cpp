@@ -187,6 +187,10 @@ class KmeansNANI{
             centers = data(idx,Eigen::all);
             break;
         }
+        // only take first kClusters centers
+        if (centers.rows() > kClusters){
+            centers = centers(Eigen::seq(0, kClusters-1), Eigen::all).eval();
+        }
     }
 
     // ======================================================= Update Assignments Z
