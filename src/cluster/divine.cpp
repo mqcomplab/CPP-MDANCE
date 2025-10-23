@@ -9,7 +9,7 @@ class Divine{
     MD::DivineSplit splitType;
     MD::DivineAnchors anchorType;
     MD::KinitType kinit;
-    int end;
+    int end;    //0 for 'k', 1 for 'points'
     int kClusters;
     bool refine;
     int nAtoms;
@@ -18,9 +18,20 @@ class Divine{
 
     vector<vector<Index>> clusters;
 
+    //finish translating
     void divisiveAlgorithm() {
         int minFrames = std::max(1, (int)round(threshold * data.rows()));
         while (true) {
+            if(end==0){
+                if(clusters.size() >= kClusters)    break;
+            }
+            else if(end==1){
+                bool flag=false;
+                for(Index i=0; i<clusters.size(); i++){
+                    if(clusters[i].size()!=1)   flag=true;
+                }
+                if(!flag)   break;
+            }
             vector<bool> failedSplits(clusters.size(), false);
             bool didSplit = false;
             while (!didSplit) {
@@ -32,6 +43,9 @@ class Divine{
                 didSplit = splitCluster(clusterToSplit, minFrames);
                 failedSplits[clusterToSplit] = !didSplit;
             }
+
+            //update label array
+            //compute MSD
         }
     };
     Index selectClusterToSplit(vector<bool>& failedSplits) {
@@ -42,7 +56,7 @@ class Divine{
             if (failedSplits[i] || clusters[i].size() < 2) continue;
 
             double score = -1;
-            Mat subdata = data(clusters[i], Eigen::all);
+            Mat subdata = data(clusters[i], Eigen::placeholders::all);
             if (splitType == MD::DivineSplit::MSD) {
                 score = extendedComparison(subdata, 0, nAtoms, false, mt);
             } else if (splitType == MD::DivineSplit::Radius) {
@@ -66,7 +80,7 @@ class Divine{
             std::cerr << "There are not enough poitns to split the cluster further." << std::endl;
             return false;
         }
-        Mat subdata = data(clusters[clusterToSplit], Eigen::all);
+        Mat subdata = data(clusters[clusterToSplit], Eigen::placeholders::all);
         if (anchorType == MD::DivineAnchors::NANI) {
             KmeansNANI kmeans(subdata, 2, mt, kinit, nAtoms, percentage);
             ArrayXi sublabels = kmeans.getLabels();
@@ -92,7 +106,7 @@ class Divine{
             dists.maxCoeff(&idxFurthest);
             Vec anchorB = subdata.row(idxFurthest);
 
-            Mat dataC = data(clusters[clusterToSplit], Eigen::all);
+            Mat dataC = data(clusters[clusterToSplit], Eigen::placeholders::all);
             Vec dA = (dataC.rowwise() - anchorA.transpose()).square().rowwise().sum() / nAtoms;
             Vec dB = (dataC.rowwise() - anchorB.transpose()).square().rowwise().sum() / nAtoms;
 
@@ -109,8 +123,8 @@ class Divine{
             }
 
             if (refine) {
-                Mat groupA = subdata(initialMask, Eigen::all);
-                Mat groupB = subdata(notInitialMask, Eigen::all);
+                Mat groupA = subdata(initialMask, Eigen::placeholders::all);
+                Mat groupB = subdata(notInitialMask, Eigen::placeholders::all);
                 Index medoidA = groupA.size() <= 2 ? 0 : calculateMedoid(groupA, nAtoms, mt);
                 Index medoidB = groupB.size() <= 2 ? 0 : calculateMedoid(groupB, nAtoms, mt);
                 Mat initiators = Mat::Zero(2, data.row(0).size());
@@ -167,8 +181,8 @@ class Divine{
                 }
             }
             if (refine) {
-                Mat groupA = subdata(mainGroup, Eigen::all);
-                Mat groupB = subdata(splinterGroup, Eigen::all);
+                Mat groupA = subdata(mainGroup, Eigen::placeholders::all);
+                Mat groupB = subdata(splinterGroup, Eigen::placeholders::all);
                 Index medoidA = splinterGroup.size() <= 2 ? 0 : calculateMedoid(groupA, nAtoms, mt);
                 Index medoidB = groupB.size() <= 2 ? 0 : calculateMedoid(groupB, nAtoms, mt);
                 Mat initiators = Mat::Zero(2, data.row(0).size());
