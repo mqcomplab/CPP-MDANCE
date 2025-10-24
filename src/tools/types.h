@@ -6,6 +6,7 @@
 #include <map>
 #include <cmath>
 #include <Eigen/Dense>
+#include <utility>
 using Eigen::ArrayXXd, Eigen::ArrayXd, Eigen::ArrayXi, Eigen::VectorXi, Eigen::Index, std::vector, std::pair, std::set, std::map;
 
 typedef ArrayXXd Mat;
@@ -131,3 +132,4 @@ namespace MD {
         Counters(int a, double wa, int d, double wd, int totalDis, double totalWdis): a(a), wa(wa), d(d), wd(wd), totalSim(a+d), totalWsim(wa+wd), totalDis(totalDis), totalWdis(totalWdis), p(a+d+totalDis), wp(wa+wd+totalWdis) {};
     };
 }
+

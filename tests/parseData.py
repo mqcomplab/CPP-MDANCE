@@ -358,6 +358,6 @@ def run_tests(matrix, N_atoms):
 # matrix = generate_matrix(50000, 500, "large.csv")
 # # matrix = csv_to_numpy("large.csv")
 # run_tests(matrix, 3)
-matrix = csv_to_numpy("tau.csv")
+matrix = csv_to_numpy("sim.csv")
 run_tests(matrix, 3)
 

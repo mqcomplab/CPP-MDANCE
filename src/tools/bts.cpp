@@ -258,7 +258,7 @@ ArrayXXd trimOutliers(ArrayXXd& data, int nTrimmed, int nAtoms, bool isMedoid, M
             indices.push_back(i);
         }
     }
-    return data(indices, Eigen::all);
+    return data(indices, Eigen::placeholders::all);
 }
 ArrayXXd trimOutliers(ArrayXXd& data, float nTrimmed, int nAtoms, bool isMedoid, MD::Metric mt) {
     int num = std::floor(data.rows() * nTrimmed);
@@ -324,7 +324,7 @@ vector<Index> diversitySelection(ArrayXXd& data, int percentage, MD::Metric mt, 
 
 }
 vector<Index> diversitySelection(ArrayXXd& data, int percentage, MD::Metric mt, int nAtoms, vector<Index>& indices){
-    ArrayXXd selection = data(indices, Eigen::all);
+    ArrayXXd selection = data(indices, Eigen::placeholders::all);
     ArrayXXd selected (mt == MD::Metric::MSD ? 2 : 1, data.row(0).cols());
     selected.row(0) = selection.colwise().sum();
     if (mt == MD::Metric::MSD) {

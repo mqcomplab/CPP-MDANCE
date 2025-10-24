@@ -152,9 +152,9 @@ class KmeansNANI{
         for (int i=nTotal - nMax; i<nTotal; ++i){
             topIndices.push_back(compSimArray[i].second);
         }
-        Mat topCCdata = data(topIndices, Eigen::all);
+        Mat topCCdata = data(topIndices, Eigen::placeholders::all);
         vector<Index> idx = diversitySelection(topCCdata, 100, mt, nAtoms, isComp);
-        centers = topCCdata(idx,Eigen::all);
+        centers = topCCdata(idx,Eigen::placeholders::all);
     }
 
     void init_Mu() {
@@ -179,17 +179,17 @@ class KmeansNANI{
 
         case MD::KinitType::StratAll:
             idx = diversitySelection(data, percentage, mt, nAtoms);
-            centers = data(idx,Eigen::all);
+            centers = data(idx,Eigen::placeholders::all);
             break;
 
         case MD::KinitType::DivSelect:
             idx = diversitySelection(data, percentage, mt, nAtoms, true);
-            centers = data(idx,Eigen::all);
+            centers = data(idx,Eigen::placeholders::all);
             break;
         }
         // only take first kClusters centers
         if (centers.rows() > kClusters){
-            centers = centers(Eigen::seq(0, kClusters-1), Eigen::all).eval();
+            centers = centers(Eigen::seq(0, kClusters-1), Eigen::placeholders::all).eval();
         }
     }
 

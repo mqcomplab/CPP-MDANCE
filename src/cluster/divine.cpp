@@ -18,7 +18,7 @@ class Divine{
 
     vector<vector<Index>> clusters;
 
-    //finish translating
+    //ready for testing
     void divisiveAlgorithm() {
         int minFrames = std::max(1, (int)round(threshold * data.rows()));
         while (true) {
@@ -43,9 +43,6 @@ class Divine{
                 didSplit = splitCluster(clusterToSplit, minFrames);
                 failedSplits[clusterToSplit] = !didSplit;
             }
-
-            //update label array
-            //compute MSD
         }
     };
     Index selectClusterToSplit(vector<bool>& failedSplits) {
