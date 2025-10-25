@@ -54,6 +54,10 @@ namespace MD {
 
     enum class StartSeed {Medoid, Outlier, Random};
 
+    enum class AlignMethod {Kron, Uni};
+
+    enum class MergeScheme {intra, inter, half};
+
     /* Coincidence Threshold
     * type: The way the Threshold is defined.
     * value: The threshold value.

@@ -1,8 +1,9 @@
 #include "../tools/types.h"
 #include "../tools/bts.h"
+#include "../tools/cluster.h"
 
 class Helm{
-    map<int, Mat> clusterMap;
+    map<int, vector<Cluster>> clusterMap;
     MD::Metric mt;
     int nAtoms;
     int nClusters;
@@ -12,11 +13,20 @@ class Helm{
     int trimK;
     float minSamples;
     int trimIncoming;
+    MD::AlignMethod alignMeth;
+    MD::MergeScheme mergeScheme;
 
     void run(){
 
     };
+    Mat makeDataByRow(Vec a, Vec b){
+        //a and b need to be same length
+        Mat data(2, a.size());
+        data.row(0) = a;
+        data.row(1) = b;
 
+        return data;
+    }
     //i know there are bugs, i will fix them later
     void trimClusters(){
         vector<pair<double, int>> clusterMsds;
@@ -32,10 +42,9 @@ class Helm{
             }
 
             Mat data(2, cSum.size());
-            data.col(0) = cSum;
-            data.col(1) = sqSum;
-            double sim = extendedComparison(data, Nik, nAtoms, true, mt);
-            clusterMsds.emplace_back(make_pair(sim, i));
+            data.row(0) = cSum;
+            data.row(1) = sqSum;
+            clusterMsds.emplace_back(pair<double, int>(extendedComparison(data, Nik, nAtoms, true, mt), i));
             i++;
         }
 
@@ -47,12 +56,63 @@ class Helm{
             trimIncoming = clusterMsds.size()-trimK;
             if (trimK >= clusterMsds.size()-1){
                 std::cerr<<"trimK is too large!"<<std::endl;
-                //reeturn something
+                return;
             }
             else if(trimK = clusterMsds.size()/2){
                 //change this to warning
                 std::cerr<<"trimK is more than 50/% of the clusters. This may lead to poor clustering"<<std::endl;
             }
         } 
+    }
+    float calc(vector<Cluster> previousClusters, int i, int j){
+        /*
+            Calculates the similarity between two clusters
+
+            Parameters
+            ------------
+            previousClusters: contains info about clusters in kth iteration
+            i: index of first cluster
+            j: index of second cluster
+        */
+
+        Vec cSumA = previousClusters[i].getCsum();
+        Vec cSumB = previousClusters[j].getCsum();
+        Vec sqSumA = previousClusters[i].getSQsum();
+        Vec sqSumB = previousClusters[j].getSQsum();
+        int nA = previousClusters[i].getN();
+        int nB = previousClusters[j].getN();
+
+        Mat dataA = makeDataByRow(cSumA, sqSumA);
+        double simA = extendedComparison(dataA, nA, nAtoms, true, mt);
+        Mat dataB = makeDataByRow(cSumB, sqSumB);
+        double simB = extendedComparison(dataB, nB, nAtoms, true, mt);
+
+        Vec cSum;
+        Vec sqSum;
+        if(alignMeth == MD::AlignMethod::Kron){
+            //when alignMeth is not None, previousCluster[i][3]=input_clusters
+
+        } else{
+            cSum = cSumA + cSumB;
+            sqSum = sqSumA + sqSumB;
+        }
+
+        int n = previousClusters[i].getN() + nB;
+        Mat data = makeDataByRow(cSum, sqSum);
+        double sim = extendedComparison(data, n, nAtoms, true, mt);
+
+        //Different merging schemes for determining which clusters to merge
+        float helmSim;
+        if (mergeScheme == MD::MergeScheme::intra){
+            helmSim = sim;
+        }
+        else if(mergeScheme == MD::MergeScheme::inter){
+            helmSim = ((sim*pow(n,2)) - (simA*pow(nA,2)) - (simB*pow(nB,2)))/(nA*nB);
+        }
+        else if(mergeScheme == MD::MergeScheme::half){
+            helmSim = sim - ((simA + simB)/2);
+        }
+
+        return helmSim;
     }
 };
