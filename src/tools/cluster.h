@@ -11,13 +11,15 @@ class Cluster{
         |   n: number of elements in cluster
 
         */
-        vector<int> indices;
+        Veci indices;
         Vec cSum; 
         Vec sqSum;
         int n;
+        
     public:
         Cluster();
-        vector<int> getIndices();
+        Cluster(Veci indices, Vec cSum, Vec sqSum, int n);
+        Veci getIndices();
         Vec getCsum();
         Vec getSQsum();
         int getN();

@@ -54,7 +54,7 @@ namespace MD {
 
     enum class StartSeed {Medoid, Outlier, Random};
 
-    enum class AlignMethod {Kron, Uni};
+    enum class AlignMethod {Kron, Uni, None};
 
     enum class MergeScheme {intra, inter, half};
 

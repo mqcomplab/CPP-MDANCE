@@ -74,12 +74,6 @@ class Helm{
             ------------
             previous_clusters: contains info about clusters in kth iteration
         */
-        int c1 = previousClusters.size() + 1;
-        int c2 = c1;
-        int mergeDist = 10000000;
-        float cSumik = -1;
-        float sqSumk = -1;
-        int Nik = -1;
 
         if(clusterDists.rows()==0 && clusterDists.cols()==0){
             genClusterDists(previousClusters);
@@ -87,17 +81,59 @@ class Helm{
         else{
             Vec distsToNewCluster(previousClusters.size()-1);
             for(int i=0; i<previousClusters.size()-1; i++){
-                float helmSim = calc(previousClusters, i, -1);
+                float helmSim = calc(previousClusters, i, previousClusters.size()-1);
                 distsToNewCluster[i] = helmSim;
             }
 
             //Add new cluster to distance matrix
             //clusterDists = 
+            //clussterDists =
         }   
 
+        //Find the two most similar clusters
+        Index minRow, minCol;
+        float mergeDist = clusterDists.minCoeff(&minRow, &minCol);
+
+        //Merge the two most similar clusters
+        Vec cSum, sqSum;
+        if(alignMeth == MD::AlignMethod::Kron){
+            //add stuff
+        }
+        else{
+            cSum = previousClusters[minRow].getCsum() + previousClusters[minCol].getCsum();
+            sqSum = previousClusters[minRow].getSQsum() + previousClusters[minCol].getSQsum();
+        }
+
+        Vec cSumik = cSum;
+        Vec sqSumik = sqSum;
+        int Nik = previousClusters[minRow].getN() + previousClusters[minCol].getN();
+        if(alignMeth != MD::AlignMethod::None){
+            //aligned combine clusters
+        }
+
+        //Save the new clusters after mergin
+        vector<Cluster> newClusters;
+        for(int i=0; i<previousClusters.size(); i++){
+            if(i==minRow || i==minCol)  continue;
+            else{
+                newClusters.push_back(previousClusters[i]);
+            }
+        }
+        Veci indicesik = previousClusters[minRow].getIndices() + previousClusters[minCol].getIndices();
+
+        //Two different ways of saving the new cluster
+        if(alignMeth != MD::AlignMethod::None){
+            //newClusters.push_back(Cluster(indicesik, cSumik, sqSumik, Nik, aligned));
+        }
+        else{
+            newClusters.push_back(Cluster(indicesik, cSumik, sqSumik, Nik));
+        }
+
+        //Remove distances of merged clusters
+        
     }
 
-    float calc(vector<Cluster> previousClusters, int i, int j){
+    float calc(vector<Cluster>& previousClusters, int i, int j){
         /*
             Calculates the similarity between two clusters
 
@@ -150,7 +186,24 @@ class Helm{
         return helmSim;
     }
 
-    void genClusterDists(vector<Cluster>& previousClusters){
+    Mat genClusterDists(vector<Cluster>& previousClusters){
+        /*
+            Generates pairwise similairty matrix for initial clusters
 
+            Parameters
+            -------------
+            previousClusters: contains info about clusters in kth iteration
+
+        */
+
+        clusterDists(previousClusters.size(), previousClusters.size());
+        for(int i=0; i<previousClusters.size(); i++){
+            for(int j=0; j<previousClusters.size(); j++){
+                float helmSim = calc(previousClusters, i, j);
+                clusterDists(i, j) = helmSim;
+            }
+        }
     }
+
+
 };
