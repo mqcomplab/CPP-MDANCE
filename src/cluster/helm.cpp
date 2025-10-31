@@ -7,7 +7,7 @@ class Helm{
     MD::Metric mt;
     int nAtoms;
     int nClusters;
-    float eps;
+    float eps;          //if None, then eps=-1
     bool trimStart;
     float trimVal;
     int trimK;
@@ -66,7 +66,7 @@ class Helm{
         } 
     }
 
-    void genNewClusters(vector<Cluster>& previousClusters){
+    vector<Cluster> genNewClusters(vector<Cluster>& previousClusters){
         /*
             Generates new cluster by merging two most similar clusters.
 
@@ -91,7 +91,7 @@ class Helm{
         }   
 
         //Find the two most similar clusters
-        Index minRow, minCol;
+        Index minRow, minCol;       //minRow and minCol indicate two different clusters
         float mergeDist = clusterDists.minCoeff(&minRow, &minCol);
 
         //Merge the two most similar clusters
@@ -130,7 +130,20 @@ class Helm{
         }
 
         //Remove distances of merged clusters
-        
+        vector<int> clustersToKeep;
+        for(int i=0; i<clusterDists.size(); i++){
+            if(i!= minRow && i!=minCol){
+                clustersToKeep.push_back(i);
+            }
+        }
+        Veci clustersToKeepVec = Veci(clustersToKeep.data(), clustersToKeep.size());
+        clusterDists = clusterDists(Eigen::placeholders::all, clustersToKeepVec);
+        clusterDists = clusterDists(clustersToKeepVec, Eigen::placeholders::all);
+
+        if(eps==-1 || mergeDist < eps){
+            return newClusters;
+        }
+        return vector<Cluster>();
     }
 
     float calc(vector<Cluster>& previousClusters, int i, int j){
