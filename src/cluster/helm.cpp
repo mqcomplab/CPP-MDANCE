@@ -16,6 +16,7 @@ class Helm{
     MD::AlignMethod alignMeth;
     MD::MergeScheme mergeScheme;
     Mat clusterDists;
+    int totalIncoming;
 
     void run(){
 
@@ -29,7 +30,7 @@ class Helm{
         return data;
     }
     //i know there are bugs, i will fix them later
-    void trimClusters(){
+    map<int, vector<Cluster>> trimClusters(){
         vector<pair<double, int>> clusterMsds;
         int i=0;
         for(auto it=clusterMap.begin(); it!=clusterMap.end(); it++){
@@ -52,7 +53,7 @@ class Helm{
         sort(clusterMsds.begin(), clusterMsds.end());
 
         //trim the clusters based on the trim_k or trim_val
-        map<int, int> newClusterMap;
+        map<int, vector<Cluster>> newClusterMap;
         if(trimK){
             trimIncoming = clusterMsds.size()-trimK;
             if (trimK >= clusterMsds.size()-1){
@@ -64,6 +65,23 @@ class Helm{
                 std::cerr<<"trimK is more than 50/% of the clusters. This may lead to poor clustering"<<std::endl;
             }
         } 
+        else if(trimVal){
+            int trimIncomin = 0;
+            for(auto i:clusterMsds){
+                if(i.first < trimVal){
+                    trimIncomin++;
+                }
+            }
+
+            newClusterMap.emplace(trimIncomin, vector<Cluster>());
+            for(auto i:clusterMsds){
+                if(i.first < trimVal){
+                    newClusterMap[trimIncomin].push_back(clusterMap[totalIncoming][i.second]);
+                }
+            }
+        }
+
+        return newClusterMap;
     }
 
     vector<Cluster> genNewClusters(vector<Cluster>& previousClusters){
@@ -218,5 +236,19 @@ class Helm{
         }
     }
 
+    Mat initialPairwiseMatrix(vector<Cluster>& previousClusters){
+        /*
+            Generates pairwise similarity matrix for the initial clusters
+            
+            Parameters
+            -------------
+            previousClusters: contains the info about clusters in kth iteration
+        */
+
+        //Optimally trim the initial clusters step
+        if(trimStart){
+            clusterMap = trimClusters();
+        }
+    }
 
 };
