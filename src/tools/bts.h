@@ -17,3 +17,4 @@ vector<Index> diversitySelection(ArrayXXd& data, int percentage, MD::Metric mt =
 vector<Index> diversitySelection(ArrayXXd& data, int percentage, MD::Metric mt, int nAtoms, vector<Index>& start);
 Index getNewIndexN(ArrayXXd& data, MD::Metric mt, ArrayXXd& selectedCondensed, int N, set<Index>& selectFromN, int nAtoms);
 ArrayXi repSample(ArrayXXd& data, MD::Metric mt = MD::Metric::MSD, int nAtoms = 1, int nBins = 10, int nSamples = 100, bool hardCap = false);
+ArrayXXd refineDisMatrix(ArrayXXd& data);

@@ -16,6 +16,7 @@ class Helm{
     MD::AlignMethod alignMeth;
     MD::MergeScheme mergeScheme;
     Mat clusterDists;
+    Mat linkMatrix;
     int totalIncoming;
 
     void run(){
@@ -29,17 +30,16 @@ class Helm{
 
         return data;
     }
-    //i know there are bugs, i will fix them later
+    //finished
     map<int, vector<Cluster>> trimClusters(){
         vector<pair<double, int>> clusterMsds;
         int i=0;
-        for(auto it=clusterMap.begin(); it!=clusterMap.end(); it++){
-            Vec cSum = it->second;  //place holder 
-            Vec sqSum = it->second;
-            int Nik = it->second;
+        for(int i=0; i<clusterMap[totalIncoming].size(); i++){
+            Vec cSum = clusterMap[totalIncoming].at(i).getCsum();
+            Vec sqSum = clusterMap[totalIncoming].at(i).getSQsum();
+            int Nik = clusterMap[totalIncoming].at(i).getN();
 
             if(Nik < minSamples){
-                i++;
                 continue;
             }
 
@@ -47,7 +47,6 @@ class Helm{
             data.row(0) = cSum;
             data.row(1) = sqSum;
             clusterMsds.emplace_back(pair<double, int>(extendedComparison(data, Nik, nAtoms, true, mt), i));
-            i++;
         }
 
         sort(clusterMsds.begin(), clusterMsds.end());
@@ -56,27 +55,31 @@ class Helm{
         map<int, vector<Cluster>> newClusterMap;
         if(trimK){
             trimIncoming = clusterMsds.size()-trimK;
+            newClusterMap[trimIncoming] = vector<Cluster>();
             if (trimK >= clusterMsds.size()-1){
                 std::cerr<<"trimK is too large!"<<std::endl;
                 return;
             }
             else if(trimK = clusterMsds.size()/2){
                 //change this to warning
-                std::cerr<<"trimK is more than 50/% of the clusters. This may lead to poor clustering"<<std::endl;
+                std::cerr<<"trimK is more than 50% of the clusters. This may lead to poor clustering"<<std::endl;
+            }
+            for(int i=0; i<clusterMsds.size()-trimK; i++){
+                newClusterMap[trimIncoming].emplace_back(clusterMap[totalIncoming][i]);
             }
         } 
         else if(trimVal){
-            int trimIncomin = 0;
+            int trimIncoming = 0;
             for(auto i:clusterMsds){
                 if(i.first < trimVal){
-                    trimIncomin++;
+                    trimIncoming++;
                 }
             }
 
-            newClusterMap.emplace(trimIncomin, vector<Cluster>());
+            newClusterMap.emplace(trimIncoming, vector<Cluster>());
             for(auto i:clusterMsds){
                 if(i.first < trimVal){
-                    newClusterMap[trimIncomin].push_back(clusterMap[totalIncoming][i.second]);
+                    newClusterMap[trimIncoming].emplace_back(clusterMap[totalIncoming][i.second]);
                 }
             }
         }
@@ -217,7 +220,8 @@ class Helm{
         return helmSim;
     }
 
-    Mat genClusterDists(vector<Cluster>& previousClusters){
+    //finished
+    void genClusterDists(vector<Cluster>& previousClusters){
         /*
             Generates pairwise similairty matrix for initial clusters
 
@@ -225,17 +229,21 @@ class Helm{
             -------------
             previousClusters: contains info about clusters in kth iteration
 
+            Returns
+            -------------
+            pairwise similarity matrix (void)
         */
 
         clusterDists(previousClusters.size(), previousClusters.size());
         for(int i=0; i<previousClusters.size(); i++){
-            for(int j=0; j<previousClusters.size(); j++){
+            for(int j=i+1; j<previousClusters.size(); j++){
                 float helmSim = calc(previousClusters, i, j);
                 clusterDists(i, j) = helmSim;
             }
         }
     }
 
+    //finished
     Mat initialPairwiseMatrix(vector<Cluster>& previousClusters){
         /*
             Generates pairwise similarity matrix for the initial clusters
@@ -243,12 +251,93 @@ class Helm{
             Parameters
             -------------
             previousClusters: contains the info about clusters in kth iteration
+
+            Results
+            --------------
+            returns pairwise similarity matrix
         */
 
         //Optimally trim the initial clusters step
         if(trimStart){
             clusterMap = trimClusters();
         }
+
+        //extracting all keys of clusterMap
+        vector<int> keys;
+        for(auto pair:clusterMap){
+            keys.emplace_back(pair.first);
+        }
+        sort(keys.begin(), keys.end());
+        int n = keys[0];
+
+        previousClusters = clusterMap[n];
+
+        Mat distances(n,n);
+        for(int i=0; i<n; i++){
+            for(int j=0; j<n; j++){
+                if(i==j){
+                    distances(i,j) = 0;
+                }
+                else{
+                    float helmSim = calc(previousClusters, i, j);
+                    distances(i,j) = helmSim;
+                }
+            }
+        }
+
+        distances = refineDisMatrix(distances);
+        return distances;
     }
+
+    //gen_link_matrix()
+    //i will assume that a link matrix is ArrayXXd (or eq. Mat)
+
+    //can rewrite vectors into Arrays if need be
+    void linkMatrixToClusterMap(){
+        vector<int> naniSizes;
+        for(auto it=clusterMap.begin(); it!=clusterMap.end(); it++){
+            for(auto clust:it->second){
+                naniSizes.emplace_back(clust.getN());
+            }
+        }
+
+        //cluster IDs
+        int k = linkMatrix.size() + 1;
+        vector<vector<int>> vecCluster;
+        for(int i=0; i<k; i++){
+            vecCluster.emplace_back(vector<int>{i});
+        }
+
+        map<int, vector<vector<int>>> clusterInds;
+        vector<vector<int>> copyVecCluster = vecCluster;
+        clusterInds[k] = copyVecCluster;
+
+        for(int i=0; i<linkMatrix.size(); i++){
+            vector<vector<int>> levelClusters;
+
+            auto row=linkMatrix.row(i);            
+            int c1 = row[0];
+            int c2 = row[1];
+
+            vector<int> newVec(vecCluster[c1]);
+            for(int i:vecCluster[c2]){
+                newVec.emplace_back(i);
+            }
+            vecCluster.emplace_back(newVec);
+            int newK = k-i-1;
+
+            for(auto clust:clusterInds[k-i]){
+                //clust here is vector<int>
+
+                if(clust == vecCluster[c1]){;}
+                else if(clust == vecCluster[c2]){;}
+                else{
+                    levelClusters.emplace_back(clust);
+                } 
+            }
+            levelClusters.emplace_back(vecCluster.back());
+        }
+    }
+
 
 };
