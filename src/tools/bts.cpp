@@ -488,3 +488,36 @@ ArrayXXd refineDisMatrix(ArrayXXd& data) {
     }
     return distances;
 }
+
+
+//not finished
+ArrayXXd alignTraj(ArrayXXd& data, int nAtoms, MD::AlignMethod alignMeth = MD::AlignMethod::None){
+    /*
+        Aligns trajectory using uniforms or kronecker alignment
+
+        Parameters
+        --------------
+        data: dimensions: nSamples x nFeatures
+        nAtoms: number of atoms in the system
+        alignMethod: {Uni, Kron}, default = None
+
+        Returns
+        --------------
+        matrix of aligned data
+
+        References
+        --------------
+        Klem, H., Hocky, G. M., and McCullagh M., `"Size-and-Shape Space Gaussian 
+        Mixture Models for Structural Clustering of Molecular Dynamics Trajectories"`_.
+        *Journal of Chemical Theory and Computation* **2022** 18 (5), 3218-3230
+
+        .. _"Size-and-Shape Space Gaussian Mixture Models for Structural Clustering of Molecular Dynamics Trajectories":
+        https://pubs.acs.org/doi/abs/10.1021/acs.jctc.1c01290
+    */
+
+    if(alignMeth == MD::AlignMethod::None){
+        return data;
+    }
+
+    return data;
+}

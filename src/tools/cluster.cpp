@@ -12,6 +12,13 @@ Cluster::Cluster(Veci indices, Vec cSum, Vec sqSum, int n){
     this->sqSum = sqSum;
     this->n = n;
 }
+Cluster::Cluster(Veci indices, Vec cSum, Vec sqSum, int n, Mat cluster){
+    this->indices = indices;
+    this->cSum = cSum;
+    this->sqSum = sqSum;
+    this->n = n;
+    this->cluster = cluster;
+}
 
 //getter functions
 Veci Cluster::getIndices(){
@@ -25,4 +32,7 @@ Vec Cluster::getSQsum(){
 }
 int Cluster::getN(){
     return n;
+}
+Mat Cluster::getCluster(){
+    return cluster;
 }

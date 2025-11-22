@@ -15,13 +15,15 @@ class Cluster{
         Vec cSum; 
         Vec sqSum;
         int n;
+        Mat cluster;
         
     public:
         Cluster();
         Cluster(Veci indices, Vec cSum, Vec sqSum, int n);
+        Cluster(Veci indices, Vec cSum, Vec sqSum, int n, Mat cluster);
         Veci getIndices();
         Vec getCsum();
         Vec getSQsum();
         int getN();
-        
+        Mat getCluster();
 };

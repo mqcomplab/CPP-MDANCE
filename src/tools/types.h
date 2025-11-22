@@ -7,7 +7,8 @@
 #include <cmath>
 #include <Eigen/Dense>
 #include <utility>
-using Eigen::ArrayXXd, Eigen::ArrayXd, Eigen::ArrayXi, Eigen::VectorXi, Eigen::Index, std::vector, std::pair, std::set, std::map;
+#include <string>
+using Eigen::ArrayXXd, Eigen::ArrayXd, Eigen::ArrayXi, Eigen::VectorXi, Eigen::Index, std::vector, std::pair, std::set, std::map, std::string;
 
 typedef ArrayXXd Mat;
 typedef ArrayXd Vec;
@@ -56,7 +57,9 @@ namespace MD {
 
     enum class AlignMethod {Kron, Uni, None};
 
-    enum class MergeScheme {intra, inter, half};
+    enum class MergeScheme {Intra, Inter, Half};
+
+    enum class Link {Ward, None};
 
     /* Coincidence Threshold
     * type: The way the Threshold is defined.

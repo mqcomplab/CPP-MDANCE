@@ -4,24 +4,69 @@
 
 class Helm{
     map<int, vector<Cluster>> clusterMap;
-    MD::Metric mt;
     int nAtoms;
     int nClusters;
     float eps;          //if None, then eps=-1
     bool trimStart;
     float trimVal;
-    int trimK;
+    float trimK;
     float minSamples;
     int trimIncoming;
+    MD::Metric mt;
     MD::AlignMethod alignMeth;
     MD::MergeScheme mergeScheme;
+    MD::Link link;
     Mat clusterDists;
     Mat linkMatrix;
     int totalIncoming;
+    bool savePairwiseSum;
+    string inputTop;
+    string inputTraj;
+    int totalSum;
 
-    void run(){
+    //finished
+    map<int, vector<Cluster>> run(){
+        /*
+            Performs HELM clustering of initial clusters
 
+            Returns
+            -----------
+            map of clusters ( map<int, vector<vector<Cluster>>>)
+        */
+
+        if(nClusters == 0){
+            nClusters = 1;
+        }
+        if(link == MD::Link::Ward){
+            //gen_link_matrix();
+            //return linkMatrixToClusterMap();
+        }
+        if(trimStart){
+            clusterMap = trimClusters();
+        }
+
+        //perform clustering
+        vector<int> keys;
+        for(auto pair:clusterMap){
+            keys.emplace_back(pair.first);
+        }
+        sort(keys.begin(), keys.end());
+        int n = keys[0];
+
+        while(n>1){
+            vector<Cluster> previousClusters = clusterMap[n];
+            vector<Cluster> newClusters = genNewClusters(previousClusters);
+            clusterMap[n-1] = newClusters;
+
+            //termination conditions
+            if(n==(nClusters+1) || newClusters.empty()){
+                break;
+            }
+            n-=1;
+        }
+        return clusterMap;
     };
+
     Mat makeDataByRow(Vec a, Vec b){
         //a and b need to be same length
         Mat data(2, a.size());
@@ -30,8 +75,15 @@ class Helm{
 
         return data;
     }
-    //finished
+
     map<int, vector<Cluster>> trimClusters(){
+        /*
+            Trims the intial clusters based on the trimVal or trimK
+
+            returns
+            ------------
+            map of clusters
+        */
         vector<pair<double, int>> clusterMsds;
         int i=0;
         for(int i=0; i<clusterMap[totalIncoming].size(); i++){
@@ -60,7 +112,7 @@ class Helm{
                 std::cerr<<"trimK is too large!"<<std::endl;
                 return;
             }
-            else if(trimK = clusterMsds.size()/2){
+            else if(trimK >= clusterMsds.size()/2){
                 //change this to warning
                 std::cerr<<"trimK is more than 50% of the clusters. This may lead to poor clustering"<<std::endl;
             }
@@ -100,25 +152,33 @@ class Helm{
             genClusterDists(previousClusters);
         }
         else{
-            Vec distsToNewCluster(previousClusters.size()-1);
+            Vec distsToNewCluster = Vec::Constant(previousClusters.size()-1, INFINITY);
             for(int i=0; i<previousClusters.size()-1; i++){
                 float helmSim = calc(previousClusters, i, previousClusters.size()-1);
                 distsToNewCluster[i] = helmSim;
             }
 
             //Add new cluster to distance matrix
-            //clusterDists = 
-            //clussterDists =
+            //np hstack 
+            Mat temp1(clusterDists.rows(), clusterDists.cols() + 1);
+            temp1<<clusterDists, distsToNewCluster;
+            
+            //np vstack
+            Mat temp2(temp1.rows() + 1, temp1.cols());
+            temp2<<temp1, Vec::Constant(previousClusters.size(), INFINITY);
+
+            clusterDists = temp2;
         }   
 
         //Find the two most similar clusters
-        Index minRow, minCol;       //minRow and minCol indicate two different clusters
+        Index minRow, minCol;       //minRow and minCol refer to two different clusters
         float mergeDist = clusterDists.minCoeff(&minRow, &minCol);
 
         //Merge the two most similar clusters
         Vec cSum, sqSum;
         if(alignMeth == MD::AlignMethod::Kron){
-            //add stuff
+            //will add later
+            ;
         }
         else{
             cSum = previousClusters[minRow].getCsum() + previousClusters[minCol].getCsum();
@@ -130,14 +190,16 @@ class Helm{
         int Nik = previousClusters[minRow].getN() + previousClusters[minCol].getN();
         if(alignMeth != MD::AlignMethod::None){
             //aligned combine clusters
+            //continuation of kron
         }
 
         //Save the new clusters after mergin
         vector<Cluster> newClusters;
+        newClusters.reserve(previousClusters.size()+1);
         for(int i=0; i<previousClusters.size(); i++){
-            if(i==minRow || i==minCol)  continue;
+            if(i==minRow || i==minCol){;}
             else{
-                newClusters.push_back(previousClusters[i]);
+                newClusters.emplace_back(previousClusters[i]);
             }
         }
         Veci indicesik = previousClusters[minRow].getIndices() + previousClusters[minCol].getIndices();
@@ -145,21 +207,24 @@ class Helm{
         //Two different ways of saving the new cluster
         if(alignMeth != MD::AlignMethod::None){
             //newClusters.push_back(Cluster(indicesik, cSumik, sqSumik, Nik, aligned));
+            //kron
+            ;
         }
         else{
-            newClusters.push_back(Cluster(indicesik, cSumik, sqSumik, Nik));
+            newClusters.emplace_back(Cluster(indicesik, cSumik, sqSumik, Nik));
         }
 
         //Remove distances of merged clusters
-        vector<int> clustersToKeep;
+        Veci clustersToKeep(clusterDists.size()-2);
+        int ind=0;
         for(int i=0; i<clusterDists.size(); i++){
             if(i!= minRow && i!=minCol){
-                clustersToKeep.push_back(i);
+                clustersToKeep[ind] = i;
             }
+            ind++;
         }
-        Veci clustersToKeepVec = Veci(clustersToKeep.data(), clustersToKeep.size());
-        clusterDists = clusterDists(Eigen::placeholders::all, clustersToKeepVec);
-        clusterDists = clusterDists(clustersToKeepVec, Eigen::placeholders::all);
+        clusterDists = clusterDists(Eigen::placeholders::all, clustersToKeep);
+        clusterDists = clusterDists(clustersToKeep, Eigen::placeholders::all);
 
         if(eps==-1 || mergeDist < eps){
             return newClusters;
@@ -194,7 +259,7 @@ class Helm{
         Vec sqSum;
         if(alignMeth == MD::AlignMethod::Kron){
             //when alignMeth is not None, previousCluster[i][3]=input_clusters
-
+            ;
 
         } else{
             cSum = cSumA + cSumB;
@@ -207,13 +272,13 @@ class Helm{
 
         //Different merging schemes for determining which clusters to merge
         float helmSim;
-        if (mergeScheme == MD::MergeScheme::intra){
+        if (mergeScheme == MD::MergeScheme::Intra){
             helmSim = sim;
         }
-        else if(mergeScheme == MD::MergeScheme::inter){
+        else if(mergeScheme == MD::MergeScheme::Inter){
             helmSim = ((sim*pow(n,2)) - (simA*pow(nA,2)) - (simB*pow(nB,2)))/(nA*nB);
         }
-        else if(mergeScheme == MD::MergeScheme::half){
+        else if(mergeScheme == MD::MergeScheme::Half){
             helmSim = sim - ((simA + simB)/2);
         }
 
@@ -234,7 +299,7 @@ class Helm{
             pairwise similarity matrix (void)
         */
 
-        clusterDists(previousClusters.size(), previousClusters.size());
+        clusterDists = Mat::Zero(previousClusters.size(), previousClusters.size());
         for(int i=0; i<previousClusters.size(); i++){
             for(int j=i+1; j<previousClusters.size(); j++){
                 float helmSim = calc(previousClusters, i, j);
@@ -292,8 +357,8 @@ class Helm{
     //gen_link_matrix()
     //i will assume that a link matrix is ArrayXXd (or eq. Mat)
 
-    //can rewrite vectors into Arrays if need be
-    void linkMatrixToClusterMap(){
+    //finished
+    map<int, vector<Cluster>> linkMatrixToClusterMap(){
         vector<int> naniSizes;
         for(auto it=clusterMap.begin(); it!=clusterMap.end(); it++){
             for(auto clust:it->second){
@@ -336,8 +401,96 @@ class Helm{
                 } 
             }
             levelClusters.emplace_back(vecCluster.back());
+            clusterInds[newK] = levelClusters;
         }
+
+        map<int, vector<Cluster>> clusters;
+        for(auto it=clusterInds.begin(); it!=clusterInds.end(); it++){
+            clusters[it->first] = vector<Cluster>();
+            for(auto clust:it->second){
+                int n_mols=0;
+                for(int i:clust){
+                    n_mols+=naniSizes[i];
+                }
+
+                //convert clust to Veci type
+                Veci clust_eigen(clust.size());
+                for(int i=0; i<clust.size(); i++){
+                    clust_eigen(i) = clust[i];
+                }
+                clusters[it->first].emplace_back(Cluster(clust_eigen, Vec::Zero(clust.size()),Vec::Zero(clust.size()), n_mols));
+            }
+        }
+        return clusters;
     }
 
+    void zMatrix(map<int, vector<vector<Cluster>>>& clusterMap){
+        /*
+            Converts the cluster dictionary to a linkage matrix for plotting dendogram
+        */
+    }
 
+    public:
+        Helm(map<int, vector<Cluster>> clusterMap, MD::Metric mt = MD::Metric::MSD, int nAtoms,
+                MD::MergeScheme mergeScheme = MD::MergeScheme::Inter, int nClusters = 0, float eps = -1, 
+                bool trimStart = false, MD::AlignMethod alignMeth = MD::AlignMethod::None, 
+                float minSamples = 0.01, MD::Link link = MD::Link::None,
+                float trimVal=0, float trimK=0, int trimIncoming,
+                bool savePairwiseSum = false,
+                string inputTop ="", string inputTraj =""){
+            
+            this->clusterMap = clusterMap;
+            this->mt = mt;
+            this->nAtoms = nAtoms;
+            this->mergeScheme = mergeScheme;
+            this->nClusters = nClusters;
+            this->eps = eps;
+            this->trimStart = trimStart;
+            this->alignMeth = alignMeth;
+            this->minSamples = minSamples;
+            this->link = link;
+            this->trimVal = trimVal;
+            this->trimK = trimK;
+            this->trimIncoming = trimIncoming;
+            this->savePairwiseSum = savePairwiseSum;
+            this->inputTop = inputTop;
+            this->inputTraj = inputTraj;
+
+            vector<int> keys;
+            for(auto pair:clusterMap){
+                keys.emplace_back(pair.first);
+            }
+            sort(keys.begin(), keys.end());
+            this->totalIncoming = keys[0];
+            
+            for(auto clust:clusterMap[totalIncoming]){
+                this->totalSum += clust.getN();
+            }
+
+            //check end conditions
+            if((this->nClusters==0 && this->eps==-1) || 
+                (this->nClusters > 0 && this->eps!=-1)){
+                    std::cerr<<"You must provide either nClusters or eps, but not both"<<std::endl;
+                }
+
+            if(this->trimStart && !(this->trimVal || this->trimK)){
+                std::cerr<<"If trimStart is true, then either trimVal or trimK must be provided"<<std::endl;
+            }
+            if(this->trimVal && this->trimK){
+                std::cerr<<"You can only provided either trimVal or trimK, but not both"<<std::endl;
+            }
+
+            if(this->minSamples < 0){
+                std::cerr<<"minSamples must be greater than 0."<<std::endl;
+            }
+            else if(0 < this->minSamples && this->minSamples < 1){
+                this->minSamples = int(this->minSamples * this->totalSum);
+            }
+            else if(this->minSamples >= 1){
+                this->minSamples = int(this->minSamples);
+            }
+
+            run();
+        }
 };
+

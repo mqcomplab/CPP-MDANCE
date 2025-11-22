@@ -18,3 +18,4 @@ vector<Index> diversitySelection(ArrayXXd& data, int percentage, MD::Metric mt, 
 Index getNewIndexN(ArrayXXd& data, MD::Metric mt, ArrayXXd& selectedCondensed, int N, set<Index>& selectFromN, int nAtoms);
 ArrayXi repSample(ArrayXXd& data, MD::Metric mt = MD::Metric::MSD, int nAtoms = 1, int nBins = 10, int nSamples = 100, bool hardCap = false);
 ArrayXXd refineDisMatrix(ArrayXXd& data);
+ArrayXXd alignTraj(ArrayXXd& data, int nAtoms, MD::AlignMethod = MD::AlignMethod::None);
