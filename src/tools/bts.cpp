@@ -491,7 +491,7 @@ ArrayXXd refineDisMatrix(ArrayXXd& data) {
 
 
 //not finished
-ArrayXXd alignTraj(ArrayXXd& data, int nAtoms, MD::AlignMethod alignMeth = MD::AlignMethod::None){
+ArrayXXd alignTraj(ArrayXXd& data, int nAtoms, MD::AlignMethod alignMeth){
     /*
         Aligns trajectory using uniforms or kronecker alignment
 
