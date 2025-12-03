@@ -106,7 +106,7 @@ class Helm{
         //trim the clusters based on the trim_k or trim_val
         map<int, vector<Cluster>> newClusterMap;
         if(trimK){
-            trimIncoming = clusterMsds.size()-trimK;
+            this->trimIncoming = clusterMsds.size()-trimK;
             newClusterMap[trimIncoming] = vector<Cluster>();
             if (trimK >= clusterMsds.size()-1){
                 std::cerr<<"trimK is too large!"<<std::endl;
@@ -121,7 +121,7 @@ class Helm{
             }
         } 
         else if(trimVal){
-            int trimIncoming = 0;
+            this->trimIncoming = 0;
             for(auto i:clusterMsds){
                 if(i.first < trimVal){
                     trimIncoming++;
@@ -435,7 +435,7 @@ class Helm{
                 MD::MergeScheme mergeScheme = MD::MergeScheme::Inter, int nClusters = 0, float eps = -1, 
                 bool trimStart = false, MD::AlignMethod alignMeth = MD::AlignMethod::None, 
                 float minSamples = 0.01, MD::Link link = MD::Link::None,
-                float trimVal=0, float trimK=0, int trimIncoming,
+                float trimVal=0, float trimK=0,
                 bool savePairwiseSum = false,
                 string inputTop ="", string inputTraj =""){
             
@@ -451,7 +451,6 @@ class Helm{
             this->link = link;
             this->trimVal = trimVal;
             this->trimK = trimK;
-            this->trimIncoming = trimIncoming;
             this->savePairwiseSum = savePairwiseSum;
             this->inputTop = inputTop;
             this->inputTraj = inputTraj;
