@@ -431,7 +431,7 @@ class Helm{
     }
 
     public:
-        Helm(map<int, vector<Cluster>> clusterMap, MD::Metric mt = MD::Metric::MSD, int nAtoms,
+        Helm(map<int, vector<Cluster>> clusterMap, int nAtoms, MD::Metric mt = MD::Metric::MSD, 
                 MD::MergeScheme mergeScheme = MD::MergeScheme::Inter, int nClusters = 0, float eps = -1, 
                 bool trimStart = false, MD::AlignMethod alignMeth = MD::AlignMethod::None, 
                 float minSamples = 0.01, MD::Link link = MD::Link::None,
