@@ -1,3 +1,5 @@
+#include <stdexcept>
+
 #include "../tools/types.h"
 #include "../tools/bts.h"
 #include "../tools/cluster.h"
@@ -109,8 +111,7 @@ class Helm{
             this->trimIncoming = clusterMsds.size()-trimK;
             newClusterMap[trimIncoming] = vector<Cluster>();
             if (trimK >= clusterMsds.size()-1){
-                std::cerr<<"trimK is too large!"<<std::endl;
-                return;
+                throw std::runtime_error("trimK is too large!");
             }
             else if(trimK >= clusterMsds.size()/2){
                 //change this to warning
