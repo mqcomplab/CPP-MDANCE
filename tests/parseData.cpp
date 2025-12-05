@@ -24,9 +24,19 @@ ArrayXXd readCSVtoEigen(const std::string& filename) {
         std::string value;
 
         while (std::getline(ss, value, ',')) {
-            row.push_back(std::stod(value));  // Convert string to float
+            // Convert string to double with error checking
+            try {
+                double val = std::stod(value);
+                if (!std::isfinite(val)) throw std::runtime_error("Non-finite value");
+                row.push_back(val);
+            }  catch (const std::exception& e) {
+                throw std::runtime_error("Invalid numeric value: " + value + " (" + e.what() + ") at row " + std::to_string(data.size()+1));
+            } 
         }
-
+        // Check for consistent number of columns
+        if (!data.empty() && row.size() != data[0].size()) {
+            throw std::runtime_error("Inconsistent number of columns at row " + std::to_string(data.size() + 1));
+        }
         data.push_back(row);
     }
     file.close();
@@ -64,7 +74,7 @@ ArrayXXf readCSVtoEigenArr(const std::string& filename) {
         data.push_back(row);
     }
     file.close();
-
+ 
     // Convert to ArrayXXd
     int rows = data.size();
     int cols = rows > 0 ? data[0].size() : 0;
