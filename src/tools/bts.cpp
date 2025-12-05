@@ -39,6 +39,12 @@ double msdCondensed(ArrayXd& cSum, ArrayXd& sqSum, Index N, int nAtoms){
     // ArrayXd meanSqSum = sqSum / N;
     // ArrayXd meanCSum = cSum / N;
     // return msd = (meanSqSum - meanCSum.square()).sum() * 2.0 / nAtoms;
+    if (N <= 0) {
+        throw std::invalid_argument("N must be positive and non-zero.");
+    }
+    if (nAtoms <= 0) {
+        throw std::invalid_argument("nAtoms must be positive and non-zero.");
+    }
     return (double)2.0 * (sqSum * N - cSum.square()).sum() / (N * N * nAtoms);
 }
 
