@@ -28,7 +28,7 @@ double fd(double d, int wFactor, int nObjects) {
  * 
  * Returns: Dictionary with the weighted and non-weighted counters.
 */
-MD::Counters calculateCounters(ArrayXd& cTotal, int nObjects, MD::Threshold& cThreshold, int wFactor){
+MD::Counters calculateCounters(const ArrayXd& cTotal, int nObjects, MD::Threshold& cThreshold, int wFactor){
     int a=0;
     int d=0;
     int dis=0;
@@ -73,7 +73,7 @@ MD::Counters calculateCounters(ArrayXd& cTotal, int nObjects, MD::Threshold& cTh
  * 
  * TODO: implement other indices https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/esim.py#L253
 */
-MD::Indices genSimIdx(ArrayXd& cTotal, int nObjects, MD::Threshold& cThreshold, int wt) {
+MD::Indices genSimIdx(const ArrayXd& cTotal, int nObjects, MD::Threshold& cThreshold, int wt) {
     MD::Counters cnt = calculateCounters(cTotal, nObjects, cThreshold, wt);
     double bub = (sqrt(cnt.wa * cnt.wd) + cnt.wa) / (sqrt(cnt.a * cnt.d) + cnt.a + cnt.totalDis);
     double fai = (cnt.wa + 0.5 * cnt.wd) / cnt.p;
