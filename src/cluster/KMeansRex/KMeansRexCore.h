@@ -2,8 +2,10 @@
    Provides header file function declarations for Matlab MEX compilation.
 */
 
-#include "Eigen/Dense"
 #include <iostream>
+
+#include "Eigen/Dense"
+
 using namespace Eigen;
 using namespace std;
 

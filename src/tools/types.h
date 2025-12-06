@@ -1,13 +1,16 @@
 #pragma once
-#include <iostream>
+
 #include <algorithm>
-#include <vector>
-#include <set>
-#include <map>
 #include <cmath>
-#include <Eigen/Dense>
-#include <utility>
+#include <iostream>
+#include <map>
+#include <set>
 #include <string>
+#include <utility>
+#include <vector>
+
+#include <Eigen/Dense>
+
 using Eigen::ArrayXXd, Eigen::ArrayXd, Eigen::ArrayXi, Eigen::VectorXi, Eigen::Index, std::vector, std::pair, std::set, std::map, std::string;
 
 typedef ArrayXXd Mat;
