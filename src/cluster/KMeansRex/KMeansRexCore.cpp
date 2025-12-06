@@ -142,13 +142,15 @@ void init_Mu( ExtMat &X, ExtMat &Mu, const char* initname ) {
 
 // ======================================================= Update Assignments Z
 void pairwise_distance( ExtMat &X, ExtMat &Mu, Mat &Dist ) {
+    constexpr int VECTORIZATION_THRESHOLD = 16;
+
     int N = X.rows();
     int D = X.cols();
     int K = Mu.rows();
 
     // For small dims D, for loop is noticeably faster than fully vectorized.
     // Odd but true.  So we do fastest thing 
-    if ( D <= 16 ) {
+    if ( D <= VECTORIZATION_THRESHOLD ) {
         for (int kk=0; kk<K; kk++) {
             Dist.col(kk) = (X.rowwise() - Mu.row(kk)).square().rowwise().sum();
         }    
@@ -174,13 +176,15 @@ double assignClosest( ExtMat &X, ExtMat &Mu, ExtMat &Z, Mat &Dist) {
 // ======================================================= Update Locations Mu
 void calc_Mu( ExtMat &X, ExtMat &Mu, ExtMat &Z) {
     //Mu = Mat::Zero(Mu.rows(), Mu.cols());
+    constexpr double EPSILON_DIV = 1e-100;
+
     Mu.fill(0);
     Vec NperCluster = Vec::Zero(Mu.rows());
     for (int nn=0; nn<X.rows(); nn++) {
         Mu.row((int) Z(nn,0)) += X.row(nn);
         NperCluster[(int) Z(nn,0)] += 1;
     }  
-    NperCluster += 1e-100; // avoid division-by-zero
+    NperCluster += EPSILON_DIV; // avoid division-by-zero
     for (int k=0; k < Mu.rows(); k++) {
        Mu.row(k) /= NperCluster(k);
     }
