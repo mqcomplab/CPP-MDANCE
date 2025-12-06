@@ -479,12 +479,10 @@ ArrayXi repSample(ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, int nSam
 */
 ArrayXXd refineDisMatrix(ArrayXXd& data) {
     if (data.rows() == 1 || data.cols() == 1) {
-        std::cerr << "Matrix must be 2D" << std::endl;
-        exit;
+        throw std::invalid_argument("Matrix must be 2D.");
     }
     if (data.rows() != data.cols()) {
-        std::cerr << "Matrix must be square" << std::endl;
-        exit;
+        throw std::invalid_argument("Matrix must be square.");
     }
 
     ArrayXXd distances = (data + data.transpose()) / 2;
