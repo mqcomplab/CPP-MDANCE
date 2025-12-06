@@ -1,5 +1,6 @@
 //this cluster h file is to help define clusterDict object in helm.cpp
 #pragma once
+
 #include "types.h"
 
 class Cluster{

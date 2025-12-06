@@ -1,8 +1,8 @@
-#include <iostream>
-#include <fstream>
-#include <vector>
-#include <string>
 #include <algorithm>
+#include <fstream>
+#include <iostream>
+#include <string>
+#include <vector>
 
 using std::ifstream, std::vector, std::string, std::max, std::printf, std::cout;
 

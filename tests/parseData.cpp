@@ -1,12 +1,15 @@
-#include <iostream>
-#include <iomanip>
-#include <fstream>
-#include <vector>
-#include <sstream>
 #include <chrono>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <vector>
+
 #include <Eigen/Dense>
+
 #include "../src/tools/bts.h"
 #include "../src/cluster/KMeansRex/KMeans.cpp"
+
 using std::chrono::high_resolution_clock, std::chrono::duration, Eigen::ArrayXXf;
 
 ArrayXXd readCSVtoEigen(const std::string& filename) {

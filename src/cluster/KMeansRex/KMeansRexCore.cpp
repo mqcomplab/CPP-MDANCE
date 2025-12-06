@@ -29,9 +29,11 @@ Date:   2 April 2013
 */
 
 #include <iostream>
+
+#include "Eigen/Dense"
+
 #include "KMeansRexCore.h"
 #include "mersenneTwister2002.c"
-#include "Eigen/Dense"
 
 using namespace Eigen;
 using namespace std;
