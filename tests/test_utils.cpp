@@ -7,6 +7,7 @@
 #include <Eigen/Dense>
 #include "../src/tools/bts.h"
 #include "../src/cluster/KMeansRex/KMeans.cpp"
+#include "test_utils.h"
 using std::chrono::high_resolution_clock, std::chrono::duration, Eigen::ArrayXXf;
 
 ArrayXXd readCSVtoEigen(const std::string& filename) {
@@ -245,6 +246,12 @@ void run_tests(ArrayXXd data, int nAtoms){
     auto end = high_resolution_clock::now();
     duration<double> dur = end - start;
     ArrayXi labels = test.getLabels();
+    labels[3] = -1;
+    for (int i = 0; i < labels.size(); ++i){
+        if (labels[i] < 0 || labels[i] >= 10){
+            std::cerr << "Error: Label out of bounds: " << labels[i] << std::endl;
+        }
+    }
     std::cout << "NANI: ";
     printVector(labels);
     std::cerr << "NANI: " << dur.count() << std::endl;
