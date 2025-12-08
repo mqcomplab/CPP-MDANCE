@@ -32,6 +32,7 @@ Date:   2 April 2013
 #include "KMeansRexCore.h"
 #include "mersenneTwister2002.c"
 #include "Eigen/Dense"
+#include "../tools/types.h"
 
 using namespace Eigen;
 using namespace std;
@@ -142,13 +143,14 @@ void init_Mu( ExtMat &X, ExtMat &Mu, const char* initname ) {
 
 // ======================================================= Update Assignments Z
 void pairwise_distance( ExtMat &X, ExtMat &Mu, Mat &Dist ) {
+
     int N = X.rows();
     int D = X.cols();
     int K = Mu.rows();
 
     // For small dims D, for loop is noticeably faster than fully vectorized.
     // Odd but true.  So we do fastest thing 
-    if ( D <= 16 ) {
+    if ( D <= MD::VECTORIZATION_THRESHOLD ) {
         for (int kk=0; kk<K; kk++) {
             Dist.col(kk) = (X.rowwise() - Mu.row(kk)).square().rowwise().sum();
         }    
@@ -180,7 +182,7 @@ void calc_Mu( ExtMat &X, ExtMat &Mu, ExtMat &Z) {
         Mu.row((int) Z(nn,0)) += X.row(nn);
         NperCluster[(int) Z(nn,0)] += 1;
     }  
-    NperCluster += 1e-100; // avoid division-by-zero
+    NperCluster += MD::EPSILON_DIV; // avoid division-by-zero
     for (int k=0; k < Mu.rows(); k++) {
        Mu.row(k) /= NperCluster(k);
     }
