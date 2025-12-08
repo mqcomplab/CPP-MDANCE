@@ -1,9 +1,15 @@
 cmake_minimum_required(VERSION 3.15)
 
-add_executable(mdance_tests 
-    parseData.cpp)
+find_package(GTest REQUIRED)
 
-target_link_libraries(mdance_tests PRIVATE mdance)
-
-add_executable(parser 
-    parseTests.cpp)
+add_executable(test test_utils.cpp 
+                    test_main.cpp
+                    test_kmeans.cpp
+)
+target_link_libraries(test PRIVATE 
+                    GTest::GTest
+                    GTest::Main
+                    mdance)
+                    
+enable_testing()
+add_test(NAME mdance_tests COMMAND test)
