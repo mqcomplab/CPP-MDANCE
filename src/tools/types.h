@@ -138,5 +138,9 @@ namespace MD {
 
         Counters(int a, double wa, int d, double wd, int totalDis, double totalWdis): a(a), wa(wa), d(d), wd(wd), totalSim(a+d), totalWsim(wa+wd), totalDis(totalDis), totalWdis(totalWdis), p(a+d+totalDis), wp(wa+wd+totalWdis) {};
     };
+
+    constexpr double EPSILON_DIV = 1e-100;
+    constexpr int VECTORIZATION_THRESHOLD = 16;
+
 }
 
