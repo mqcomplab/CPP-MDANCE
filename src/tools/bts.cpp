@@ -129,10 +129,9 @@ ArrayXd calculateCompSim(ArrayXXd& data, int nAtoms, MD::Metric mt) {
         compSims = (2 * (compSq - compC.square())/ nAtoms).rowwise().sum();
     } else {
         for (int i=0; i<N; ++i){
-            ArrayXd objSq = data.row(i).square();
             ArrayXXd compData (2,data.cols());
             compData.row(0) = cSum.transpose() - data.row(i);
-            compData.row(1) = sqSum - objSq;
+            compData.row(1) = sqSum - sqData.row(i);
             compSims[i] = extendedComparison(compData, N-1, nAtoms, true, mt);
         }
     }
