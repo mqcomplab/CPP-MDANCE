@@ -1,5 +1,6 @@
-#include <gtest/gtest.h>
 #include <filesystem>
+
+#include <gtest/gtest.h>
 
 #include "test_utils.h"
 #include "../src/cluster/KMeansRex/KMeans.cpp"
