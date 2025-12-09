@@ -1,14 +1,9 @@
-#include <iostream>
-#include <iomanip>
 #include <fstream>
-#include <vector>
-#include <sstream>
-#include <chrono>
 #include <filesystem>
-#include <Eigen/Dense>
-#include "../src/tools/bts.h"
+
 #include "test_utils.h"
-using std::chrono::high_resolution_clock, std::chrono::duration, Eigen::ArrayXXf;
+
+using Eigen::ArrayXXf;
 
 ArrayXXd readCSVtoEigen(const std::string& filename) {
     std::filesystem::path filePath = std::filesystem::canonical(filename);
