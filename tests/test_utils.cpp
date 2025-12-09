@@ -1,20 +1,22 @@
-#include <iostream>
-#include <iomanip>
 #include <fstream>
-#include <vector>
-#include <sstream>
-#include <chrono>
-#include <Eigen/Dense>
-#include "../src/tools/bts.h"
+#include <filesystem>
+
 #include "test_utils.h"
-using std::chrono::high_resolution_clock, std::chrono::duration, Eigen::ArrayXXf;
+
+using Eigen::ArrayXXf;
 
 ArrayXXd readCSVtoEigen(const std::string& filename) {
-    // the path is modified to point to the tests/data/ directory. 
-    // we assume that the test executable is run from the build/tests/ directory
-    std::ifstream file("../../tests/data/"+filename);
+    std::filesystem::path filePath = std::filesystem::canonical(filename);
+    std::filesystem::path buildTestPath = std::filesystem::current_path();
+    std::filesystem::path projectRoot = buildTestPath.parent_path().parent_path();
+    std::filesystem::path dataPath = projectRoot / "tests" / "data";
+    // this utility function is only intended to read files from the data directory for testing purposes
+    if (filePath.string().rfind(dataPath.string(), 0) != 0){
+        throw std::runtime_error("File path " + filename + " is not inside the data directory: " + dataPath.string());
+    }
+    std::ifstream file(filePath);
     if (!file.is_open()) {
-        throw std::runtime_error("Could not open file: " + filename);
+        throw std::runtime_error("Could not open file: " + filePath.string());
     }
 
     std::vector<std::vector<double>> data;
@@ -56,9 +58,17 @@ ArrayXXd readCSVtoEigen(const std::string& filename) {
 }
 
 ArrayXXf readCSVtoEigenArr(const std::string& filename) {
-    std::ifstream file("data/"+filename);
+    std::filesystem::path filePath = std::filesystem::canonical(filename);
+    std::filesystem::path buildTestPath = std::filesystem::current_path();
+    std::filesystem::path projectRoot = buildTestPath.parent_path().parent_path();
+    std::filesystem::path dataPath = projectRoot / "tests" / "data";
+    // this utility function is only intended to read files from the data directory for testing purposes
+    if (filePath.string().rfind(dataPath.string(), 0) != 0){
+        throw std::runtime_error("File path " + filename + " is not inside the data directory: " + dataPath.string());
+    }
+    std::ifstream file(filePath);
     if (!file.is_open()) {
-        throw std::runtime_error("Could not open file");
+        throw std::runtime_error("Could not open file: " + filePath.string());
     }
 
     std::vector<std::vector<float>> data;
