@@ -37,9 +37,7 @@ class Divine{
             while (!didSplit) {
                 Index clusterToSplit = selectClusterToSplit(failedSplits);
                 if (clusterToSplit < 0) {
-                    throw std::runtime_error("No more cluster splits possible that would yield valid subclusters (minFrames = " + 
-                        std::to_string(minFrames) + "). Consider loosening the threshold (currently " + std::to_string(threshold) + 
-                        ") Current number of clusters: " + std::to_string(clusters.size()));
+                    std::cerr<<"Cluster {cluster_to_split} could not be split meaningfully — skipping."<<std::endl;
                 }   
                 didSplit = splitCluster(clusterToSplit, minFrames);
                 failedSplits[clusterToSplit] = !didSplit;

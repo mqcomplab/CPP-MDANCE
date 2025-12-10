@@ -75,8 +75,7 @@ double extendedComparison(ArrayXXd& data, Index N, int nAtoms, bool isCondensed,
     // Data check
     if (isCondensed){
         if (data.rows() > 2){
-            std::cerr << "Data must have at most two rows: either (cSum) or (cSum, sqSum)" << std::endl;
-            exit;
+            throw std::runtime_error("Data must have at most two rows: either (cSum) or (cSum, sqSum)");
         }
         ArrayXd cSum = data.row(0);
         if (mt == MD::Metric::MSD){
@@ -303,8 +302,7 @@ vector<Index> diversitySelection(ArrayXXd& data, int percentage, MD::Metric mt, 
     Index N = data.rows();
     int nMax = N * percentage / 100;
     if (nMax > N) {
-        std::cerr << "Percentage is too high for the given matrix size" << std::endl;
-        exit;
+        std::runtime_error("Percentage is too high for the given matrix size");
     }
     vector<Index> indices (nMax);
     if (nMax == 1)
