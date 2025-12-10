@@ -4,7 +4,11 @@
 
 #include <iostream>
 
+<<<<<<< HEAD
 #include <Eigen/Dense>
+=======
+#include "Eigen/Dense"
+>>>>>>> 2151caa5b10347499496d6bf8b039362915af720
 
 using namespace Eigen;
 using namespace std;

@@ -45,7 +45,12 @@ double msdCondensed(ArrayXd& cSum, ArrayXd& sqSum, Index N, int nAtoms){
     if (nAtoms <= 0) {
         throw std::invalid_argument("nAtoms must be positive and non-zero.");
     }
-    return (double)2.0 * (sqSum * N - cSum.square()).sum() / (N * N * nAtoms);
+    if (N > 46340){
+        return (double)2.0 * (sqSum * N - cSum.square()).sum() / ((double)N * N * nAtoms);
+    }
+    else{
+        return (double)2.0 * (sqSum * N - cSum.square()).sum() / (N * N * nAtoms);
+    }
 }
 
 /* O(N) Extended comparison function for n-ary objects.
