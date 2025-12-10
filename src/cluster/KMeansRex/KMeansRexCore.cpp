@@ -28,6 +28,7 @@ Author: Mike Hughes (www.michaelchughes.com)
 Date:   2 April 2013
 */
 
+#include <functional>
 #include <iostream>
 #include "KMeansRexCore.h"
 #include "mersenneTwister2002.c"
@@ -133,10 +134,12 @@ void sampleRowsPlusPlus( ExtMat &X, ExtMat &Mu ) {
     }       
 }
 
-void init_Mu( ExtMat &X, ExtMat &Mu, const char* initname ) {		  
-    if (string(initname) == "random") {
+void init_Mu( ExtMat &X, ExtMat &Mu, const char* initname ) {
+    std::hash<std::string> hasher;
+
+    if (hasher(string(initname)) == hasher("random")) {
         sampleRowsRandom( X, Mu );
-    } else if (string(initname) == "plusplus") {
+    } else if (hasher(string(initname)) == hasher("plusplus")) {
         sampleRowsPlusPlus( X, Mu );
     }
 }
