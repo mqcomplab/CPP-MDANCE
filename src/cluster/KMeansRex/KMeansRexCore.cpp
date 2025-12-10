@@ -30,7 +30,7 @@ Date:   2 April 2013
 
 #include <iostream>
 
-#include "Eigen/Dense"
+#include <Eigen/Dense>
 
 #include "KMeansRexCore.h"
 #include "mersenneTwister2002.c"
