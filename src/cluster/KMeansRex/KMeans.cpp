@@ -36,7 +36,6 @@ Date:   2 April 2013
 #include "../../tools/bts.h"
 #include "../../tools/types.h"
 #include "../../tools/scores.h"
-#include "mersenneTwister2002.c"
 
 class KmeansNANI{
     Mat data;
