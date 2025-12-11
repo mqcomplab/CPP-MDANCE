@@ -1,5 +1,5 @@
-#include "../tools/types.h"
 #include "../tools/bts.h"
+#include "../tools/types.h"
 #include "KMeansRex/KMeans.cpp"
 
 class Divine{
