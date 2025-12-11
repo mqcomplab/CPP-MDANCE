@@ -167,7 +167,8 @@ class Helm{
             
             //np vstack
             Mat temp2(temp1.rows() + 1, temp1.cols());
-            temp2<<temp1, Vec::Constant(previousClusters.size(), INFINITY);
+            temp2.block(0, 0, temp1.rows(), temp1.cols()) = temp1;
+            temp2.row(temp1.rows()) = Vec::Constant(temp1.cols(), INFINITY);
 
             clusterDists = temp2;
         }   
@@ -206,7 +207,8 @@ class Helm{
                 newClusters.emplace_back(previousClusters[i]);
             }
         }
-        Veci indicesik = previousClusters[minRow].getIndices() + previousClusters[minCol].getIndices();
+        Veci indicesik(previousClusters[minRow].getIndices().size() + previousClusters[minCol].getIndices().size());
+        indicesik = previousClusters[minRow].getIndices(), previousClusters[minCol].getIndices();
 
         //Two different ways of saving the new cluster
         if(alignMeth != MD::AlignMethod::None){
@@ -220,13 +222,14 @@ class Helm{
         }
 
         //Remove distances of merged clusters
-        Veci clustersToKeep(clusterDists.size()-2);
+        Veci clustersToKeep(clusterDists.rows()-2);
         int ind=0;
-        for(int i=0; i<clusterDists.size(); i++){
+        for(int i=0; i<clusterDists.rows(); i++){
             if(i!= minRow && i!=minCol){
                 clustersToKeep[ind] = i;
+                ind++;
             }
-            ind++;
+            
         }
         clusterDists = clusterDists(Eigen::placeholders::all, clustersToKeep);
         clusterDists = clusterDists(clustersToKeep, Eigen::placeholders::all);
