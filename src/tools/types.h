@@ -140,7 +140,6 @@ namespace MD {
     };
 
     constexpr double EPSILON_DIV = 1e-100;
-    constexpr int VECTORIZATION_THRESHOLD = 16;
 
 }
 
