@@ -29,11 +29,13 @@ Date:   2 April 2013
 */
 
 #include <iostream>
+#include <limits>
+
+#include "mersenneTwister2002.c"
 
 #include "../../tools/bts.h"
 #include "../../tools/types.h"
 #include "../../tools/scores.h"
-#include "mersenneTwister2002.c"
 
 class KmeansNANI{
     Mat data;
@@ -46,11 +48,23 @@ class KmeansNANI{
     MD::Metric mt;
     int nAtoms;
     int percentage;
+    int vectorizationThreshold;
 
 
     // ====================================================== Utility Functions
     void set_seed() {
     init_genrand( seed );
+    }
+
+    void set_vectorization_threshold(int threshold){
+        // set vectorization threshold for distance matrix computation
+        if (threshold < 1){
+            throw std::invalid_argument("Threshold must be at least 1");
+        }
+        if (threshold == std::numeric_limits<int>::infinity()) {
+            throw std::invalid_argument("Threshold must be finite");
+        }
+        threshold = threshold;
     }
 
     /*
@@ -201,7 +215,7 @@ class KmeansNANI{
 
         // For small dims D, for loop is noticeably faster than fully vectorized.
         // Odd but true.  So we do fastest thing 
-        if ( D <= MD::VECTORIZATION_THRESHOLD ){
+        if ( D <= vectorizationThreshold ) {
             for (int kk=0; kk<K; kk++) {
                 Dist.col(kk) = (data.rowwise() - centers.row(kk)).square().rowwise().sum();
             }    
@@ -256,17 +270,19 @@ class KmeansNANI{
 
 
 public: 
-    KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitType kinit = MD::KinitType::StratAll, int nAtoms = 1, int percentage = 10) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(kinit), seed(seed), percentage(percentage) {
+    KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitType kinit = MD::KinitType::StratAll, int nAtoms = 1, int percentage = 10, int vectThreshold=16) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(kinit), seed(seed), percentage(percentage) {
         centers = Mat::Zero(kClusters, data.cols());
         dist = Mat::Zero(data.rows(), kClusters);
         labels = Veci::Zero(data.rows());
+        set_vectorization_threshold(vectThreshold);
         set_seed();
         init_Mu();
         run_lloyd(300);
     }
-    KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, Mat centers, int nAtoms = 1, int percentage = 10) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(kinit), seed(seed), percentage(percentage), centers(centers) {
+    KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, Mat centers, int nAtoms = 1, int percentage = 10, int vectThreshold=16) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(kinit), seed(seed), percentage(percentage), centers(centers) {
         dist = Mat::Zero(data.rows(), kClusters);
         labels = Veci::Zero(data.rows());
+        set_vectorization_threshold(vectThreshold);
         set_seed();
         run_lloyd(300);
     }
