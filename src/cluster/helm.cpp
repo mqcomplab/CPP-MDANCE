@@ -40,6 +40,7 @@ class Helm{
             nClusters = 1;
         }
         if(link == MD::Link::Ward){
+            // todo add ward linkage
             //gen_link_matrix();
             //return linkMatrixToClusterMap();
         }
@@ -179,6 +180,7 @@ class Helm{
         Vec cSum, sqSum;
         if(alignMeth == MD::AlignMethod::Kron){
             //will add later
+            // todo add kron alignment
             ;
         }
         else{
@@ -190,6 +192,7 @@ class Helm{
         Vec sqSumik = sqSum;
         int Nik = previousClusters[minRow].getN() + previousClusters[minCol].getN();
         if(alignMeth != MD::AlignMethod::None){
+            // todo add kron alignment
             //aligned combine clusters
             //continuation of kron
         }
@@ -207,6 +210,7 @@ class Helm{
 
         //Two different ways of saving the new cluster
         if(alignMeth != MD::AlignMethod::None){
+            // todo add kron alignment
             //newClusters.push_back(Cluster(indicesik, cSumik, sqSumik, Nik, aligned));
             //kron
             ;
@@ -259,6 +263,7 @@ class Helm{
         Vec cSum;
         Vec sqSum;
         if(alignMeth == MD::AlignMethod::Kron){
+            // todo add kron alignment
             //when alignMeth is not None, previousCluster[i][3]=input_clusters
             ;
 
@@ -355,7 +360,7 @@ class Helm{
         return distances;
     }
 
-    //gen_link_matrix()
+    //todo gen_link_matrix()
     //i will assume that a link matrix is ArrayXXd (or eq. Mat)
 
     //finished
