@@ -45,7 +45,12 @@ double msdCondensed(ArrayXd& cSum, ArrayXd& sqSum, Index N, int nAtoms){
     if (nAtoms <= 0) {
         throw std::invalid_argument("nAtoms must be positive and non-zero.");
     }
-    return (double)2.0 * (sqSum * N - cSum.square()).sum() / (N * N * nAtoms);
+    if (N > 46340){
+        return (double)2.0 * (sqSum * N - cSum.square()).sum() / ((double)N * N * nAtoms);
+    }
+    else{
+        return (double)2.0 * (sqSum * N - cSum.square()).sum() / (N * N * nAtoms);
+    }
 }
 
 /* O(N) Extended comparison function for n-ary objects.
@@ -123,10 +128,9 @@ ArrayXd calculateCompSim(ArrayXXd& data, int nAtoms, MD::Metric mt) {
         compSims = (2 * (compSq - compC.square())/ nAtoms).rowwise().sum();
     } else {
         for (int i=0; i<N; ++i){
-            ArrayXd objSq = data.row(i).square();
             ArrayXXd compData (2,data.cols());
             compData.row(0) = cSum.transpose() - data.row(i);
-            compData.row(1) = sqSum - objSq;
+            compData.row(1) = sqSum - sqData.row(i);
             compSims[i] = extendedComparison(compData, N-1, nAtoms, true, mt);
         }
     }

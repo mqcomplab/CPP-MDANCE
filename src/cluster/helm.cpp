@@ -1,8 +1,8 @@
 #include <stdexcept>
 
-#include "../tools/types.h"
 #include "../tools/bts.h"
 #include "../tools/cluster.h"
+#include "../tools/types.h"
 
 class Helm{
     map<int, vector<Cluster>> clusterMap;

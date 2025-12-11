@@ -30,11 +30,11 @@ Date:   2 April 2013
 
 #include <iostream>
 #include <stdexcept>
-#include "mersenneTwister2002.c"
 
-#include "../../tools/types.h"
 #include "../../tools/bts.h"
+#include "../../tools/types.h"
 #include "../../tools/scores.h"
+#include "mersenneTwister2002.c"
 
 class KmeansNANI{
     Mat data;
@@ -201,7 +201,7 @@ class KmeansNANI{
 
         // For small dims D, for loop is noticeably faster than fully vectorized.
         // Odd but true.  So we do fastest thing 
-        if ( D <= 16 ) {
+        if ( D <= MD::VECTORIZATION_THRESHOLD ){
             for (int kk=0; kk<K; kk++) {
                 Dist.col(kk) = (data.rowwise() - centers.row(kk)).square().rowwise().sum();
             }    
@@ -233,7 +233,7 @@ class KmeansNANI{
             centers.row((int) labels(nn,0)) += data.row(nn);
             NperCluster[(int) labels(nn,0)] += 1;
         }  
-        NperCluster += 1e-100; // avoid division-by-zero
+        NperCluster += MD::EPSILON_DIV; // avoid division-by-zero
         for (int k=0; k < centers.rows(); k++) {
         centers.row(k) /= NperCluster(k);
         }
