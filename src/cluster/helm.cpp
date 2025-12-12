@@ -26,50 +26,6 @@ class Helm{
     string inputTraj;
     int totalSum;
 
-    //finished
-    map<int, vector<Cluster>> run(){
-        /*
-            Performs HELM clustering of initial clusters
-
-            Returns
-            -----------
-            map of clusters ( map<int, vector<vector<Cluster>>>)
-        */
-
-        if(nClusters == 0){
-            nClusters = 1;
-        }
-        if(link == MD::Link::Ward){
-            // todo add ward linkage
-            //gen_link_matrix();
-            //return linkMatrixToClusterMap();
-        }
-        if(trimStart){
-            clusterMap = trimClusters();
-        }
-
-        //perform clustering
-        vector<int> keys;
-        for(auto pair:clusterMap){
-            keys.emplace_back(pair.first);
-        }
-        sort(keys.begin(), keys.end());
-        int n = keys[0];
-
-        while(n>1){
-            vector<Cluster> previousClusters = clusterMap[n];
-            vector<Cluster> newClusters = genNewClusters(previousClusters);
-            clusterMap[n-1] = newClusters;
-
-            //termination conditions
-            if(n==(nClusters+1) || newClusters.empty()){
-                break;
-            }
-            n-=1;
-        }
-        return clusterMap;
-    };
-
     Mat makeDataByRow(Vec a, Vec b){
         //a and b need to be same length
         Mat data(2, a.size());
@@ -498,7 +454,51 @@ class Helm{
                 this->minSamples = int(this->minSamples);
             }
 
-            run();
         }
+        //finished
+        map<int, vector<Cluster>> run(){
+            /*
+                Performs HELM clustering of initial clusters
+
+                Returns
+                -----------
+                map of clusters ( map<int, vector<vector<Cluster>>>)
+            */
+
+            if(nClusters == 0){
+                nClusters = 1;
+            }
+            if(link == MD::Link::Ward){
+                // todo add ward linkage
+                //gen_link_matrix();
+                //return linkMatrixToClusterMap();
+            }
+            if(trimStart){
+                clusterMap = trimClusters();
+            }
+
+            //perform clustering
+            vector<int> keys;
+            for(auto pair:clusterMap){
+                keys.emplace_back(pair.first);
+            }
+            sort(keys.begin(), keys.end());
+            int n = keys[0];
+
+            while(n>1){
+                vector<Cluster> previousClusters = clusterMap[n];
+                vector<Cluster> newClusters = genNewClusters(previousClusters);
+                clusterMap[n-1] = newClusters;
+
+                //termination conditions
+                if(n==(nClusters+1) || newClusters.empty()){
+                    break;
+                }
+                n-=1;
+            }
+            return clusterMap;
+        };
+
+
 };
 
