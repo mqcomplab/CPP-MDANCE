@@ -267,7 +267,7 @@ class Helm{
             pairwise similarity matrix (void)
         */
 
-        clusterDists = Mat::Zero(previousClusters.size(), previousClusters.size());
+        clusterDists = Mat::Zero(previousClusters.size(), previousClusters.size()) + INFINITY;
         for(int i=0; i<previousClusters.size(); i++){
             for(int j=i+1; j<previousClusters.size(); j++){
                 float helmSim = calc(previousClusters, i, j);
