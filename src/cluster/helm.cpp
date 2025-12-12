@@ -119,12 +119,14 @@ class Helm{
             //Add new cluster to distance matrix
             //np hstack 
             Mat temp1(clusterDists.rows(), clusterDists.cols() + 1);
-            temp1<<clusterDists, distsToNewCluster;
+            temp1.leftCols(clusterDists.cols()) = clusterDists;
+            temp1.col(clusterDists.cols()) = distsToNewCluster;
             
             //np vstack
             Mat temp2(temp1.rows() + 1, temp1.cols());
-            temp2.block(0, 0, temp1.rows(), temp1.cols()) = temp1;
-            temp2.row(temp1.rows()) = Vec::Constant(temp1.cols(), INFINITY);
+            temp2.topRows(temp1.rows()) = temp1;
+            temp2.row(temp1.rows()).setConstant(INFINITY);
+            clusterDists = temp2;
 
             clusterDists = temp2;
         }   
@@ -190,8 +192,9 @@ class Helm{
             }
             
         }
-        clusterDists = clusterDists(Eigen::placeholders::all, clustersToKeep);
-        clusterDists = clusterDists(clustersToKeep, Eigen::placeholders::all);
+        Mat clusterDists_temp1 = clusterDists(Eigen::placeholders::all, clustersToKeep);
+        Mat clusterDists_temp2 = clusterDists_temp1(clustersToKeep, Eigen::placeholders::all);
+        clusterDists = clusterDists_temp2;
 
         if(eps==-1 || mergeDist < eps){
             return newClusters;
