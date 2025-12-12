@@ -132,7 +132,10 @@ class Helm{
         //Find the two most similar clusters
         Index minRow, minCol;       //minRow and minCol refer to two different clusters
         float mergeDist = clusterDists.minCoeff(&minRow, &minCol);
-
+        // add check for minRow and minCol being same. This can cause UB or crash. 
+        if (minRow == minCol){
+            throw std::runtime_error("Got same cluster idx for the two most similar clusters.");
+        }
         //Merge the two most similar clusters
         Vec cSum, sqSum;
         if(alignMeth == MD::AlignMethod::Kron){
