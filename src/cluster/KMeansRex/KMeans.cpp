@@ -29,6 +29,7 @@ Date:   2 April 2013
 */
 
 #include <iostream>
+#include <stdexcept>
 #include <limits>
 
 #include "mersenneTwister2002.c"
@@ -88,8 +89,7 @@ class KmeansNANI{
             cursum += p[newk];
         }
         if ( newk < 0 || newk >= K ) {
-            std::cerr << "Badness. Chose illegal discrete value." << std::endl;
-            return -1;
+            throw std::runtime_error("Badness. Chose illegal discrete value.");
         }
         return newk;
     }

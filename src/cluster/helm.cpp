@@ -114,7 +114,6 @@ class Helm{
                 throw std::runtime_error("trimK is too large!");
             }
             else if(trimK >= clusterMsds.size()/2){
-                //change this to warning
                 std::cerr<<"trimK is more than 50% of the clusters. This may lead to poor clustering"<<std::endl;
             }
             for(int i=0; i<clusterMsds.size()-trimK; i++){
@@ -470,18 +469,18 @@ class Helm{
             //check end conditions
             if((this->nClusters==0 && this->eps==-1) || 
                 (this->nClusters > 0 && this->eps!=-1)){
-                    std::cerr<<"You must provide either nClusters or eps, but not both"<<std::endl;
+                    throw std::invalid_argument("You must provide either nClusters or eps, but not both.");
                 }
 
             if(this->trimStart && !(this->trimVal || this->trimK)){
-                std::cerr<<"If trimStart is true, then either trimVal or trimK must be provided"<<std::endl;
+                throw std::invalid_argument("If trimStart is true, then either trimVal or trimK must be provided.");
             }
             if(this->trimVal && this->trimK){
-                std::cerr<<"You can only provided either trimVal or trimK, but not both"<<std::endl;
+                throw std::invalid_argument("You can only provided either trimVal or trimK, but not both.");
             }
 
             if(this->minSamples < 0){
-                std::cerr<<"minSamples must be greater than 0."<<std::endl;
+                throw std::invalid_argument("minSamples must be greater than 0.");
             }
             else if(0 < this->minSamples && this->minSamples < 1){
                 this->minSamples = int(this->minSamples * this->totalSum);

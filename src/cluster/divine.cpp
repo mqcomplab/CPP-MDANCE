@@ -37,8 +37,7 @@ class Divine{
             while (!didSplit) {
                 Index clusterToSplit = selectClusterToSplit(failedSplits);
                 if (clusterToSplit < 0) {
-                    std::cerr << "No more cluster splits possible that would yield valid subclusters (minFrames = " << minFrames << "). Consider loosening the threshold (currently " << threshold << ") Current number of clusters: " << clusters.size() << std::endl;
-                    break;
+                    std::cerr<<"Cluster {cluster_to_split} could not be split meaningfully — skipping."<<std::endl;
                 }   
                 didSplit = splitCluster(clusterToSplit, minFrames);
                 failedSplits[clusterToSplit] = !didSplit;
@@ -74,8 +73,7 @@ class Divine{
     };
     bool splitCluster(Index clusterToSplit, int minFrames) {
         if (clusters[clusterToSplit].size() < 2 * minFrames) {
-            std::cerr << "There are not enough poitns to split the cluster further." << std::endl;
-            return false;
+            throw std::runtime_error("There are not enough points to split the cluster further.");
         }
         Mat subdata = data(clusters[clusterToSplit], Eigen::placeholders::all);
         if (anchorType == MD::DivineAnchors::NANI) {
@@ -90,8 +88,7 @@ class Divine{
                 }
             }
             if (cluster1.size() < minFrames || cluster2.size() < minFrames) {
-                std::cerr << "One of the clusters after the split is smaller than the minimum frame requirement." << std::endl;
-                return false;
+                throw std::runtime_error("One of the clusters after the split is smaller than the minimum frame requirements.");
             }
             clusters[clusterToSplit] = cluster1;
             clusters.push_back(cluster2);
@@ -138,16 +135,14 @@ class Divine{
                     }
                 }
                 if (cluster1.size() < minFrames || cluster2.size() < minFrames) {
-                    std::cerr << "One of the clusters after the split is smaller than the minimum frame requirement." << std::endl;
-                    return false;
+                    throw std::runtime_error("One of the clusters after the split is smaller than the minimum frame requirement.");
                 }
                 clusters[clusterToSplit] = cluster1;
                 clusters.push_back(cluster2);
 
             } else {
                 if (initialMask.size() < minFrames || notInitialMask.size() < minFrames) {
-                    std::cerr << "One of the clusters after the split is smaller than the minimum frame requirement." << std::endl;
-                    return false;
+                    throw std::runtime_error("One of the clusters after the split is smaller than the minimum frame requirement.");
                 }
                 clusters[clusterToSplit] = initialMask;
                 clusters.push_back(notInitialMask);
@@ -196,16 +191,14 @@ class Divine{
                     }
                 }
                 if (cluster1.size() < minFrames || cluster2.size() < minFrames) {
-                    std::cerr << "One of the clusters after the split is smaller than the minimum frame requirement." << std::endl;
-                    return false;
+                    throw std::runtime_error("One of the clusters after the split is smaller than the minimum frame requirement.");
                 }
                 clusters[clusterToSplit] = cluster1;
                 clusters.push_back(cluster2);
 
             } else {
                 if (mainGroup.size() < minFrames || splinterGroup.size() < minFrames) {
-                    std::cerr << "One of the clusters after the split is smaller than the minimum frame requirement." << std::endl;
-                    return false;
+                    throw std::runtime_error("One of the clusters after the split is smaller than the minimum frame requirement.");
                 }
                 clusters[clusterToSplit] = mainGroup;
                 clusters.push_back(splinterGroup);
