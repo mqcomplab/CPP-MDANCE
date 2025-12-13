@@ -155,7 +155,7 @@ void pairwise_distance( ExtMat &X, ExtMat &Mu, Mat &Dist ) {
 
     // For small dims D, for loop is noticeably faster than fully vectorized.
     // Odd but true.  So we do fastest thing 
-    if ( D <= MD::VECTORIZATION_THRESHOLD ) {
+    if ( D <= 16 ) {
         for (int kk=0; kk<K; kk++) {
             Dist.col(kk) = (X.rowwise() - Mu.row(kk)).square().rowwise().sum();
         }    
