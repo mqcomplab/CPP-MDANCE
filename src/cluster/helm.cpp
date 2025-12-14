@@ -28,6 +28,7 @@ class Helm{
 
     Mat makeDataByRow(Vec a, Vec b){
         //a and b need to be same length
+        //a will be csum, and b will be sqsum
         Mat data(2, a.size());
         data.row(0) = a;
         data.row(1) = b;
@@ -126,8 +127,6 @@ class Helm{
             Mat temp2(temp1.rows() + 1, temp1.cols());
             temp2.topRows(temp1.rows()) = temp1;
             temp2.row(temp1.rows()).setConstant(INFINITY);
-            clusterDists = temp2;
-
             clusterDists = temp2;
         }   
 
