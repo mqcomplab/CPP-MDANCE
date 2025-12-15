@@ -30,13 +30,12 @@ void TestHelm::inputCluster(){
     std::vector<Cluster> clusters;
     int N0 = unique_labels.size();
     for ( int i = 0; i < N0; i++) {
-        std::vector<int> indices;
-        Vec cSumi(data.cols()); 
-        Vec sqSumi(data.cols());
+        std::vector<int> indices = {i};
+        Vec cSumi = Vec::Zero(data.cols()); 
+        Vec sqSumi = Vec::Zero(data.cols());
         int ni = 0;
         for (int j = 0; j < labels.size(); j++) {
             if (labels(j) == i) {
-                indices.push_back(j);
                 ni++;
                 cSumi += data.row(j);
                 sqSumi += data.row(j).square();
