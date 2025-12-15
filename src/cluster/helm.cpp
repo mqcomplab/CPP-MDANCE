@@ -168,8 +168,11 @@ class Helm{
                 newClusters.emplace_back(previousClusters[i]);
             }
         }
-        Veci indicesik(previousClusters[minRow].getIndices().size() + previousClusters[minCol].getIndices().size());
-        indicesik = previousClusters[minRow].getIndices(), previousClusters[minCol].getIndices();
+        int nIndMinRow = previousClusters[minRow].getIndices().size();
+        int nIndMinCol = previousClusters[minCol].getIndices().size();
+        Veci indicesik(nIndMinRow + nIndMinCol);
+        indicesik(Eigen::seq(0, nIndMinRow-1)) = previousClusters[minRow].getIndices();
+        indicesik(Eigen::seq(nIndMinRow, indicesik.size()-1)) = previousClusters[minCol].getIndices();
 
         //Two different ways of saving the new cluster
         if(alignMeth != MD::AlignMethod::None){
