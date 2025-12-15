@@ -1,7 +1,9 @@
 #pragma once
-#include "types.h"
-#include "esim.h"
+
 #include <cstdlib>
+
+#include "esim.h"
+#include "types.h"
 
 double meanSqDev(const ArrayXXd& data, int nAtoms = 1);
 double msdCondensed(const ArrayXd& cSum, const ArrayXd& sqSum, Index N, int nAtoms = 1);

@@ -45,7 +45,12 @@ double msdCondensed(const ArrayXd& cSum, const ArrayXd& sqSum, Index N, int nAto
     if (nAtoms <= 0) {
         throw std::invalid_argument("nAtoms must be positive and non-zero.");
     }
-    return (double)2.0 * (sqSum * N - cSum.square()).sum() / (N * N * nAtoms);
+    if (N > 46340){
+        return (double)2.0 * (sqSum * N - cSum.square()).sum() / ((double)N * N * nAtoms);
+    }
+    else{
+        return (double)2.0 * (sqSum * N - cSum.square()).sum() / (N * N * nAtoms);
+    }
 }
 
 /* O(N) Extended comparison function for n-ary objects.
@@ -75,8 +80,7 @@ double extendedComparison(const ArrayXXd& data, Index N, int nAtoms, bool isCond
     // Data check
     if (isCondensed){
         if (data.rows() > 2){
-            std::cerr << "Data must have at most two rows: either (cSum) or (cSum, sqSum)" << std::endl;
-            exit;
+            throw std::runtime_error("Data must have at most two rows: either (cSum) or (cSum, sqSum)");
         }
         ArrayXd cSum = data.row(0);
         if (mt == MD::Metric::MSD){
@@ -124,10 +128,9 @@ ArrayXd calculateCompSim(const ArrayXXd& data, int nAtoms, MD::Metric mt) {
         compSims = (2 * (compSq - compC.square())/ nAtoms).rowwise().sum();
     } else {
         for (int i=0; i<N; ++i){
-            ArrayXd objSq = data.row(i).square();
             ArrayXXd compData (2,data.cols());
             compData.row(0) = cSum.transpose() - data.row(i);
-            compData.row(1) = sqSum - objSq;
+            compData.row(1) = sqSum - sqData.row(i);
             compSims[i] = extendedComparison(compData, N-1, nAtoms, true, mt);
         }
     }
@@ -303,8 +306,7 @@ vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metri
     Index N = data.rows();
     int nMax = N * percentage / 100;
     if (nMax > N) {
-        std::cerr << "Percentage is too high for the given matrix size" << std::endl;
-        exit;
+        std::runtime_error("Percentage is too high for the given matrix size");
     }
     vector<Index> indices (nMax);
     if (nMax == 1)
@@ -479,12 +481,10 @@ ArrayXi repSample(const ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, in
 */
 ArrayXXd refineDisMatrix(const ArrayXXd& data) {
     if (data.rows() == 1 || data.cols() == 1) {
-        std::cerr << "Matrix must be 2D" << std::endl;
-        exit;
+        throw std::invalid_argument("Matrix must be 2D.");
     }
     if (data.rows() != data.cols()) {
-        std::cerr << "Matrix must be square" << std::endl;
-        exit;
+        throw std::invalid_argument("Matrix must be square.");
     }
 
     ArrayXXd distances = (data + data.transpose()) / 2;

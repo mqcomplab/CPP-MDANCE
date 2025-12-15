@@ -8,17 +8,17 @@ Before you begin, make sure you have **Eigen** installed.
 ### Step 1: get source code
 
 To build MDance from  source, first clone the GitHub repository:
-```
+```shell
 git clone https://github.com/mqcomplab/CPP-MDANCE.git
 ```
 Then navigate into the directory:
-```
+```shell
 cd CPP-MDANCE
 ```
 ### Step 2: Configure with CMake
 
 Run CMake to generate the build configuration files:
-```
+```shell
 cmake -S . -B build
 ```
 (Optional) You can choose from three different build types:
@@ -26,33 +26,31 @@ cmake -S . -B build
 2. **Debug**
 3. **RelWithDebInfo**
 To specify a different build type:
-```
+```shell
 cmake -S . -B build -DCMAKE_BUILD_TYPE=<BuildType>
 ```
 ### Step 3: Build MDance
 Compile MDance by running:
-```
+```shell
 cmake --build build
 ```
 ### Step 4: Run Tests
-Navigate to the test folder:
+Navigate to `build/tests/` folder:
+```shell
+cd build/tests/
 ```
-cd tests
+Use `ctest` to execute the tests:
+```shell
+ctest
 ```
-Use the shell script `runTests.sh` to execute the tests:
-```
-./runTests.sh
-```
-The expected output is:
-```
-Coppying test executable from build directory...
-Calculating Python results...
-Calculating C++ results...
-Comparing results...
+An example output is:
+```shell
+    Start 1: mdance_tests
+1/1 Test #1: mdance_tests .....................   Passed    2.71 sec
 
-NANI
--------------------------------------------
-test [1/1]
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   2.71 sec
 ```
 
 <span style="color:red">TODO:</span> add instructions for installation and figure out how to make CPP-MDANCE easily portable.
