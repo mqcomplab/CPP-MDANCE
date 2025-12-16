@@ -18,4 +18,8 @@ TEST_F(DivineTest, TestThreshold){
                         MD::KinitType::CompSim, 0, 3, true, 1, 0.2);
     labels = model.getLabels();
     clusters = model.getClusters();
+
+    for(auto c:clusters){
+        ASSERT_GE(c.size(), 30);
+    }
 }
