@@ -21,7 +21,7 @@ class Divine{
     vector<vector<Index>> clusters;
 
     //ready for testing
-    pair<vector<vector<Index>>, Veci> divisiveAlgorithm() {
+    void divisiveAlgorithm() {
         int minFrames = std::max(1, (int)round(threshold * data.rows()));
         while (true) {
             if(end==0){
@@ -45,8 +45,6 @@ class Divine{
                 failedSplits[clusterToSplit] = !didSplit;
             }
         }
-
-        return std::make_pair(clusters, labels);
     };
     Index selectClusterToSplit(vector<bool>& failedSplits) {
         Index topCluster = -1;
@@ -226,4 +224,11 @@ public:
         }
         divisiveAlgorithm();
     };
+
+    Veci getLabels(){
+        return labels;
+    }
+    vector<vector<Index>> getClusters(){
+        return clusters;
+    }
 };
