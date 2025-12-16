@@ -5,10 +5,12 @@
 class Divine{
     Mat data;
     Veci labels;
+
     MD::Metric mt;
     MD::DivineSplit splitType;
     MD::DivineAnchors anchorType;
     MD::KinitType kinit;
+
     int end;    //0 for 'k', 1 for 'points'
     int kClusters;
     bool refine;
@@ -19,7 +21,7 @@ class Divine{
     vector<vector<Index>> clusters;
 
     //ready for testing
-    void divisiveAlgorithm() {
+    pair<vector<vector<Index>>, Veci> divisiveAlgorithm() {
         int minFrames = std::max(1, (int)round(threshold * data.rows()));
         while (true) {
             if(end==0){
@@ -43,6 +45,8 @@ class Divine{
                 failedSplits[clusterToSplit] = !didSplit;
             }
         }
+
+        return std::make_pair(clusters, labels);
     };
     Index selectClusterToSplit(vector<bool>& failedSplits) {
         Index topCluster = -1;
@@ -209,7 +213,12 @@ class Divine{
         return true;
     };
 public:
-    Divine(Mat data, MD::DivineSplit splitType = MD::DivineSplit::WeightedMSD, MD::DivineAnchors anchorType = MD::DivineAnchors::NANI, MD::KinitType kinit = MD::KinitType::StratAll, int k = 0, bool refine = true, int nAtoms = 1, double threshold = 0, int percenntage = 10) : data(data), splitType(splitType), anchorType(anchorType), kinit(kinit), refine(refine), nAtoms(nAtoms), threshold(threshold), percentage(percenntage), mt(MD::Metric::MSD) {
+    Divine(Mat data, MD::DivineSplit splitType = MD::DivineSplit::WeightedMSD, 
+        MD::DivineAnchors anchorType = MD::DivineAnchors::NANI, MD::KinitType kinit = MD::KinitType::StratAll, 
+        int end = 0, int k = 0, bool refine = true, int nAtoms = 1, double threshold = 0, int percenntage = 10) : 
+        data(data), splitType(splitType), anchorType(anchorType), kinit(kinit), 
+        refine(refine), nAtoms(nAtoms), threshold(threshold), percentage(percenntage), 
+        mt(MD::Metric::MSD), end(end) {
         if (k == 0) {
             kClusters = data.rows();
         } else {
