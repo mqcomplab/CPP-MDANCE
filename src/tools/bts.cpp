@@ -11,7 +11,7 @@
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/9a895e72d71fee1d1a4fad1700a806473dff2f71/src/mdance/tools/bts.py#L14
 */ 
-double meanSqDev(ArrayXXd& data, int nAtoms){
+double meanSqDev(const ArrayXXd& data, int nAtoms){
     Index N = data.rows();
     if (N == 1)
         return 0;
@@ -32,7 +32,7 @@ double meanSqDev(ArrayXXd& data, int nAtoms){
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/9a895e72d71fee1d1a4fad1700a806473dff2f71/src/mdance/tools/bts.py#L54
 */
-double msdCondensed(ArrayXd& cSum, ArrayXd& sqSum, Index N, int nAtoms){
+double msdCondensed(const ArrayXd& cSum, const ArrayXd& sqSum, Index N, int nAtoms){
     if (N == 1)
         return 0;
     // The following is a step-by-step explanation of what we are returning. May need to use this instead if we run into overflow issues?
@@ -73,7 +73,7 @@ double msdCondensed(ArrayXd& cSum, ArrayXd& sqSum, Index N, int nAtoms){
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L96
 */
-double extendedComparison(ArrayXXd& data, Index N, int nAtoms, bool isCondensed, MD::Metric mt, MD::Threshold cThreshold, int wPower) {
+double extendedComparison(const ArrayXXd& data, Index N, int nAtoms, bool isCondensed, MD::Metric mt, MD::Threshold cThreshold, int wPower) {
     // Handle default initialization of MD::Threshold
     if (cThreshold.type == MD::ThresholdType::None)
         cThreshold.value = N % 2;
@@ -113,7 +113,7 @@ double extendedComparison(ArrayXXd& data, Index N, int nAtoms, bool isCondensed,
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L190
 */
-ArrayXd calculateCompSim(ArrayXXd& data, int nAtoms, MD::Metric mt) {
+ArrayXd calculateCompSim(const ArrayXXd& data, int nAtoms, MD::Metric mt) {
     Index N = data.rows();
 
     ArrayXXd sqData = data.square();
@@ -150,11 +150,11 @@ ArrayXd calculateCompSim(ArrayXXd& data, int nAtoms, MD::Metric mt) {
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L241
 */
-Index calculateMedoid(ArrayXXd& data, int nAtoms, MD::Metric mt) {
+Index calculateMedoid(const ArrayXXd& data, int nAtoms, MD::Metric mt) {
     ArrayXd compSims = calculateCompSim(data, nAtoms, mt);
     return calculateMedoid(compSims);
 }
-Index calculateMedoid(ArrayXd& data) {
+Index calculateMedoid(const ArrayXd& data) {
     Index maxIdx;
     data.maxCoeff(&maxIdx);
     return maxIdx;
@@ -172,11 +172,11 @@ Index calculateMedoid(ArrayXd& data) {
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L271
 */
-Index calculateOutlier(ArrayXXd& data, int nAtoms, MD::Metric mt) {
+Index calculateOutlier(const ArrayXXd& data, int nAtoms, MD::Metric mt) {
     ArrayXd compSims = calculateCompSim(data, nAtoms, mt);
     return calculateOutlier(compSims);
 }
-Index calculateOutlier(ArrayXd& data) {
+Index calculateOutlier(const ArrayXd& data) {
     Index minIdx;
     data.minCoeff(&minIdx);
     return minIdx;
@@ -196,7 +196,7 @@ Index calculateOutlier(ArrayXd& data) {
  * 
  *  Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L301
 */
-ArrayXXd trimOutliers(ArrayXXd& data, int nTrimmed, int nAtoms, bool isMedoid, MD::Metric mt) {
+ArrayXXd trimOutliers(const ArrayXXd& data, int nTrimmed, int nAtoms, bool isMedoid, MD::Metric mt) {
     Index N = data.rows();
     ArrayXd cSum;
     ArrayXd sqSumTotal;
@@ -269,7 +269,7 @@ ArrayXXd trimOutliers(ArrayXXd& data, int nTrimmed, int nAtoms, bool isMedoid, M
     }
     return data(indices, Eigen::placeholders::all);
 }
-ArrayXXd trimOutliers(ArrayXXd& data, float nTrimmed, int nAtoms, bool isMedoid, MD::Metric mt) {
+ArrayXXd trimOutliers(const ArrayXXd& data, float nTrimmed, int nAtoms, bool isMedoid, MD::Metric mt) {
     int num = std::floor(data.rows() * nTrimmed);
     if (num == 0)
         return data;
@@ -293,7 +293,7 @@ ArrayXXd trimOutliers(ArrayXXd& data, float nTrimmed, int nAtoms, bool isMedoid,
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L376
 */
-vector<Index> diversitySelection(ArrayXXd& data, int percentage, MD::Metric mt, int nAtoms, bool isCompSim, MD::StartSeed start){
+vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metric mt, int nAtoms, bool isCompSim, MD::StartSeed start){
     if (isCompSim) {
         vector<Index> seed;
         switch(start) {
@@ -331,7 +331,7 @@ vector<Index> diversitySelection(ArrayXXd& data, int percentage, MD::Metric mt, 
     return indices;
 
 }
-vector<Index> diversitySelection(ArrayXXd& data, int percentage, MD::Metric mt, int nAtoms, vector<Index>& indices){
+vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metric mt, int nAtoms, vector<Index>& indices){
     ArrayXXd selection = data(indices, Eigen::placeholders::all);
     ArrayXXd selected (mt == MD::Metric::MSD ? 2 : 1, data.row(0).cols());
     selected.row(0) = selection.colwise().sum();
@@ -384,7 +384,7 @@ vector<Index> diversitySelection(ArrayXXd& data, int percentage, MD::Metric mt, 
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L489
 */
-Index getNewIndexN(ArrayXXd& data, MD::Metric mt, ArrayXXd& selectedCondensed, int N, set<Index>& selectFromN, int nAtoms) {
+Index getNewIndexN(const ArrayXXd& data, MD::Metric mt, ArrayXXd& selectedCondensed, int N, set<Index>& selectFromN, int nAtoms) {
     // Number of fingerprints already selected and the new one to add
     int nTotal = N + 1;
 
@@ -425,14 +425,14 @@ Index getNewIndexN(ArrayXXd& data, MD::Metric mt, ArrayXXd& selectedCondensed, i
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L652
 */
-ArrayXi repSample(ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, double nSamples, bool hardCap) {
+ArrayXi repSample(const ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, double nSamples, bool hardCap) {
     if (nSamples < 1) {
         return repSample(data, mt, nAtoms, nBins, std::round(nSamples * data.rows()), hardCap);
     }
     std::cerr << "Cannot sample more than 100\% of the data" << std::endl;
     return ArrayXi();
 }
-ArrayXi repSample(ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, int nSamples, bool hardCap) {
+ArrayXi repSample(const ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, int nSamples, bool hardCap) {
     ArrayXd compSims = calculateCompSim(data, nAtoms, mt);
     vector<pair<double,int>> compSimArray;
     compSimArray.reserve(compSims.size());
@@ -479,7 +479,7 @@ ArrayXi repSample(ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, int nSam
  * 
  * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L720
 */
-ArrayXXd refineDisMatrix(ArrayXXd& data) {
+ArrayXXd refineDisMatrix(const ArrayXXd& data) {
     if (data.rows() == 1 || data.cols() == 1) {
         throw std::invalid_argument("Matrix must be 2D.");
     }
@@ -497,7 +497,7 @@ ArrayXXd refineDisMatrix(ArrayXXd& data) {
 
 
 //not finished
-ArrayXXd alignTraj(ArrayXXd& data, int nAtoms, MD::AlignMethod alignMeth){
+ArrayXXd alignTraj(const ArrayXXd& data, int nAtoms, MD::AlignMethod alignMeth){
     /*
         Aligns trajectory using uniforms or kronecker alignment
 

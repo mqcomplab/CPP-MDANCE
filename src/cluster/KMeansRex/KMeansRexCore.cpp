@@ -180,7 +180,7 @@ double assignClosest( ExtMat &X, ExtMat &Mu, ExtMat &Z, Mat &Dist) {
 
 // ======================================================= Update Locations Mu
 void calc_Mu( ExtMat &X, ExtMat &Mu, ExtMat &Z) {
-    //Mu = Mat::Zero(Mu.rows(), Mu.cols());
+    //Mu = Mat::Zero(Mu.rows(), Mu.cols());    
     Mu.fill(0);
     Vec NperCluster = Vec::Zero(Mu.rows());
     for (int nn=0; nn<X.rows(); nn++) {
