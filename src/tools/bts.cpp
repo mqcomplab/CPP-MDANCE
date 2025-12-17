@@ -213,8 +213,9 @@ ArrayXXd trimOutliers(const ArrayXXd& data, int nTrimmed, int nAtoms, bool isMed
     // We will find our outliers by performing a heapSort using a maxHeap of size nTrimmed
     vector<pair<double, int>> compSims;
     compSims.reserve(nTrimmed);
+    ArrayXXd compData (2,data.row(0).size());
+
     for (Index i=0; i<nTrimmed; ++i) {
-        ArrayXXd compData (2,data.row(0).size());
         if (isMedoid) {
             if (i != idx){
                 compData.row(0) = data.row(i);
@@ -233,7 +234,6 @@ ArrayXXd trimOutliers(const ArrayXXd& data, int nTrimmed, int nAtoms, bool isMed
     std::make_heap(compSims.begin(),compSims.end());
     for (Index i=nTrimmed; i<N; ++i) {
         double simVal;
-        ArrayXXd compData (2,data.row(0).size());
         if (isMedoid) {
             if (i != idx){
                 compData.row(0) = data.row(i);
