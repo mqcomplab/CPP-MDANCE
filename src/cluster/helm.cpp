@@ -2,6 +2,7 @@
 
 #include "../tools/bts.h"
 #include "../tools/cluster.h"
+#include "../tools/scores.h"
 #include "../tools/types.h"
 
 class Helm{
@@ -401,6 +402,43 @@ class Helm{
         /*
             Converts the cluster dictionary to a linkage matrix for plotting dendogram
         */
+    }
+
+    pair<double, double> computeScores(vector<Cluster> clusters, Mat data){
+        /*
+            Computes Calinksi-Harabasz and Davies-Bouldin scores of clusters
+            using random labeling
+
+            Returns
+            -------------
+            pair: first element is Calinkski, second element Davies-Bouldin
+        */
+
+        //vector<Veci> clusterIndices;
+        vector<int> label;
+        int count=0;
+
+        for(auto c:clusters){
+            //clusterIndices.emplace_back(c.getIndices());
+            int Nik=c.getN();
+            label.insert(label.end(), Nik, count);
+            count++;
+        }
+        
+        set<int> temp;
+        for(int i:label){
+            temp.insert(i);
+        }
+        if(temp.size()==1){
+            return pair<double, double>{-1,-1};
+        }
+        else{
+            Veci labels = Eigen::Map<Veci>(label.data(), label.size());
+            double chScore = calinskiHarabaszScore(data, labels);
+            double dbScore = daviesBouldinScore(data, labels);
+
+            return pair<double, double>{chScore, dbScore};
+        }
     }
 
     public:
