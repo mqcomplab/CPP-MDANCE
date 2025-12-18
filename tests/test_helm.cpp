@@ -22,7 +22,7 @@ TestHelm::TestHelm() {
     inputCluster();
 }
 
-void TestHelm::inputCluster(){
+ vector<Cluster> TestHelm::inputCluster(){
     for (int i = 0; i < labels.size(); i++) {
         uniqueLabels.insert(labels(i));
     }
@@ -47,6 +47,8 @@ void TestHelm::inputCluster(){
         throw std::runtime_error("Error in inputCluster: number of unique labels does not match number of clusters.");
     }
     clusters_map[N0] = clusters;
+
+    return clusters;
 }
 
 TEST_F(TestHelm, TestPops){
@@ -93,5 +95,12 @@ TEST_F(TestHelm, TestPops){
 }
 
 TEST_F(TestHelm, TestClus){
+    int N0 = uniqueLabels.size();
+    vector<Cluster> clusters = inputCluster();
+    int nAtoms = 50; 
+    int nClusters = 37;
+    Helm helm = Helm(clusters_map, nAtoms, MD::Metric::MSD, MD::MergeScheme::Inter, nClusters);
+    map<int, vector<Cluster>> res = helm.run();
 
+    
 }
