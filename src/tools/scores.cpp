@@ -33,7 +33,7 @@ double calinskiHarabaszScore(ArrayXXd data, VectorXi labels) {
         extraDisp += cluster.rows() * (clusterMean - mean).square().sum();
 
         for (int i=0; i<cluster.rows(); ++i) {
-            intraDisp += (cluster.row(i) - clusterMean).square().sum();
+            intraDisp += (cluster.row(i) - clusterMean.transpose()).square().sum();
         }
     }
 
