@@ -23,12 +23,11 @@ TestHelm::TestHelm() {
 }
 
 void TestHelm::inputCluster(){
-    std::set<int> unique_labels;
     for (int i = 0; i < labels.size(); i++) {
-        unique_labels.insert(labels(i));
+        uniqueLabels.insert(labels(i));
     }
     std::vector<Cluster> clusters;
-    int N0 = unique_labels.size();
+    int N0 = uniqueLabels.size();
     for ( int i = 0; i < N0; i++) {
         std::vector<int> indices = {i};
         Vec cSumi = Vec::Zero(data.cols()); 
@@ -91,4 +90,8 @@ TEST_F(TestHelm, TestPops){
             EXPECT_EQ(merged_clusts[i][j], expected_merged_clusters[i][j]);
         }
     }
+}
+
+TEST_F(TestHelm, TestClus){
+
 }

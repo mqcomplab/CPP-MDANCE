@@ -10,5 +10,6 @@ protected:
     void inputCluster();
     ArrayXXd data;
     ArrayXi labels; // labels of frames
+    set<int> uniqueLabels;
     std::map<int, std::vector<Cluster>> clusters_map;
 };
