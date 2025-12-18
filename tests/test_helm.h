@@ -7,7 +7,7 @@
 class TestHelm : public ::testing::Test {
 protected:
     TestHelm();
-    vector<Cluster> inputCluster();
+    void inputCluster();
     ArrayXXd data;
     ArrayXi labels; // labels of frames
     set<int> uniqueLabels;
