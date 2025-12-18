@@ -106,9 +106,10 @@ TEST_F(TestHelm, TestClus){
     for(auto it=res.begin(); it!=res.end(); it++){
         vector<int> idx;
         for(auto c:it->second){
-            idx.insert(idx.end(), c.getIndices().begin(), c.getIndices().end());
+            for(int i:c.getIndices()){
+                idx.emplace_back(i);
+            }
         }
-
         vector<int> temp;
         for(int i:idx){
             for(int j=0; j<labels.size(); j++){
