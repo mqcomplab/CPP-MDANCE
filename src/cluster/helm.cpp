@@ -434,7 +434,7 @@ class Helm{
             }
             sort(keys.begin(), keys.end());
             this->totalIncoming = keys[0];
-            
+            totalSum = 0;
             for(auto clust:clusterMap[totalIncoming]){
                 this->totalSum += clust.getN();
             }
