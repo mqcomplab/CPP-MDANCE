@@ -404,43 +404,6 @@ class Helm{
         */
     }
 
-    pair<double, double> computeScores(vector<Cluster> clusters, Mat data){
-        /*
-            Computes Calinksi-Harabasz and Davies-Bouldin scores of clusters
-            using random labeling
-
-            Returns
-            -------------
-            pair: first element is Calinkski, second element Davies-Bouldin
-        */
-
-        //vector<Veci> clusterIndices;
-        vector<int> label;
-        int count=0;
-
-        for(auto c:clusters){
-            //clusterIndices.emplace_back(c.getIndices());
-            int Nik=c.getN();
-            label.insert(label.end(), Nik, count);
-            count++;
-        }
-        
-        set<int> temp;
-        for(int i:label){
-            temp.insert(i);
-        }
-        if(temp.size()==1){
-            return pair<double, double>{-1,-1};
-        }
-        else{
-            Veci labels = Eigen::Map<Veci>(label.data(), label.size());
-            double chScore = calinskiHarabaszScore(data, labels);
-            double dbScore = daviesBouldinScore(data, labels);
-
-            return pair<double, double>{chScore, dbScore};
-        }
-    }
-
     public:
         Helm(map<int, vector<Cluster>> clusterMap, int nAtoms, MD::Metric mt = MD::Metric::MSD, 
                 MD::MergeScheme mergeScheme = MD::MergeScheme::Inter, int nClusters = 0, float eps = -1, 
@@ -545,6 +508,41 @@ class Helm{
             return clusterMap;
         };
 
+         pair<double, double> computeScores(vector<Cluster> clusters, Mat data){
+            /*
+                Computes Calinksi-Harabasz and Davies-Bouldin scores of clusters
+                using random labeling
 
+                Returns
+                -------------
+                pair: first element is Calinkski, second element Davies-Bouldin
+            */
+
+            //vector<Veci> clusterIndices;
+            vector<int> label;
+            int count=0;
+
+            for(auto c:clusters){
+                //clusterIndices.emplace_back(c.getIndices());
+                int Nik=c.getN();
+                label.insert(label.end(), Nik, count);
+                count++;
+            }
+            
+            set<int> temp;
+            for(int i:label){
+                temp.insert(i);
+            }
+            if(temp.size()==1){
+                return pair<double, double>{-1,-1};
+            }
+            else{
+                Veci labels = Eigen::Map<Veci>(label.data(), label.size());
+                double chScore = calinskiHarabaszScore(data, labels);
+                double dbScore = daviesBouldinScore(data, labels);
+
+                return pair<double, double>{chScore, dbScore};
+            }
+        };
 };
 
