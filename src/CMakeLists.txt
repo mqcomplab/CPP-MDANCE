@@ -9,7 +9,7 @@ add_library(mdance_tools STATIC
     tools/esim.cpp 
     # FIXME: scores.cpp does not compile
     # this is not a core problem right now
-    # tools/scores.cpp
+    tools/scores.cpp
 )
 target_include_directories(mdance_tools PUBLIC 
     tools
