@@ -155,4 +155,93 @@ TEST_F(TestHelm, TestClus){
     }
 }
 
+TEST_F(TestHelm, TrimK){
+    int nAtoms = 50;
+    int nClusters = 1; 
+    bool trimStart = true;
+    int trimK = 1;
+    double minSamples = 0.025; 
+    // trim_start=True, trim_k=1, trim_val=None, min_samples=0.025)()
+    Helm helm = Helm(clusters_map,
+        nAtoms, 
+        MD::Metric::MSD, 
+        MD::MergeScheme::Inter, 
+        nClusters,
+        -1, // default eps value
+        trimStart,
+        MD::AlignMethod::None, // default alignMeth value
+        minSamples,
+        MD::Link::None, // default link value
+        0, // default trimVal value
+        trimK
+    ); 
+    map<int, vector<Cluster>> res = helm.run();
+    int expectedNClusters = 8;
+    // check if 8 in the map
+    ASSERT_EQ(res.find(expectedNClusters) != res.end(), true);
+
+    std::vector<Cluster> clusters = res[expectedNClusters];
+    ASSERT_EQ(clusters.size(), expectedNClusters);
+
+    std::vector<double> msds;
+    ArrayXXd data(2, clusters[0].getCsum().size());
+    for (int i = 0; i < clusters.size(); i++) {
+        data.row(0) = clusters[i].getCsum();
+        data.row(1) = clusters[i].getSQsum();
+        int Ni = clusters[i].getN();
+        double msd = extendedComparison(data, Ni, nAtoms, true, MD::Metric::MSD);
+        msds.push_back(msd);
+        double pop = (double) clusters[i].getN()/6001.0;
+        EXPECT_GT(pop, 0.025);
+    }
+    // fixme: msd comparison is failing
+    std::vector<double> expected_msds = {
+        0.7159290983066504, 2.339201422302611, 3.362941769846286, 
+        3.53136323974767, 5.2539237168022215, 5.458759986365163, 
+        5.9705582725822515, 6.09399997860286
+    };
+    for (int i = 0; i < msds.size(); i++) {
+        EXPECT_NEAR(msds[i], expected_msds[i], 1e-5);
+    }
+
+    int N0 = clusters.size();
+
+    vector<pair<double, double>> scores;
+
+    for(auto it=res.rbegin(); it!=res.rend(); it++){
+        vector<int> idx;
+        for(auto c:it->second){
+            for(int i:c.getIndices()){
+                idx.emplace_back(i);
+            }
+        }
+        vector<int> temp;
+        for(int i:idx){
+            for(int j=0; j<labels.size(); j++){
+                if(labels(j)==i){
+                    temp.emplace_back(j);
+                }
+            }
+        }
+        Mat arr = data(temp, Eigen::placeholders::all);
+        scores.emplace_back(helm.computeScores(it->second, arr));
+    }
+    // Fixme: this is failing
+    std::vector<pair<double, double>> expectedScores = {
+        {1027.0159808301096, 1.3503102468493706}, 
+        {1104.807519769014, 1.205066197610796}, 
+        {1172.6483112177802, 0.8824355830201499}, 
+        {1227.2333015488437, 0.9712858749211579}, 
+        {1332.727994435348, 0.9596798547189016}, 
+        {1381.3259570829998, 1.1368566266419298}, 
+        {1482.6296232781137, 0.9381045938050468}
+    };
+    for(int i=0; i<expectedScores.size(); i++){
+        EXPECT_NEAR(scores[i].first, expectedScores[i].first, 1e-5);
+        EXPECT_NEAR(scores[i].second, expectedScores[i].second, 1e-5);
+    }
+    // this is assigned correctly. 
+    EXPECT_NEAR(scores.back().first, -1.0, 1e-5);
+    EXPECT_NEAR(scores.back().second, -1.0, 1e-5);
+}
 
