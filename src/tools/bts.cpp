@@ -49,6 +49,7 @@ double msdCondensed(ArrayXd& cSum, ArrayXd& sqSum, Index N, int nAtoms){
         return (double)2.0 * (sqSum * N - cSum.square()).sum() / ((double)N * N * nAtoms);
     }
     else{
+        std::cout<<round(cSum.sum())<<" "<<round(sqSum.sum())<<" "<<N<<" "<<nAtoms<<std::endl;
         return (double)2.0 * (sqSum * N - cSum.square()).sum() / (N * N * nAtoms);
     }
 }
