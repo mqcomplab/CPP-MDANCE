@@ -56,9 +56,7 @@ class Helm{
                 continue;
             }
 
-            Mat data(2, cSum.size());
-            data.row(0) = cSum;
-            data.row(1) = sqSum;
+            Mat data = makeDataByRow(cSum, sqSum);
             clusterMsds.emplace_back(pair<double, int>(extendedComparison(data, Nik, nAtoms, true, mt), i));
         }
 
