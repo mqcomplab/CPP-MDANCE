@@ -51,6 +51,18 @@ TestHelm::TestHelm() {
     clusters_map[N0] = clusters;
 }
 
+ArrayXXd TestHelm::makeDataByRow(ArrayXd a, ArrayXd b){
+        //a and b need to be same length
+        //a will be csum, and b will be sqsum
+        //this function necessary for extendedComparison()
+        Mat data(2, a.size());
+        data.row(0) = a;
+        data.row(1) = b;
+
+        return data;
+}
+
+/*
 TEST_F(TestHelm, TestPops){
     int nAtoms = 50;
     int nClusters = 10;
@@ -155,4 +167,85 @@ TEST_F(TestHelm, TestClus){
     }
 }
 
+*/
+TEST_F(TestHelm, TestTrimK){
+    int N0 = uniqueLabels.size();
+    int nAtoms = 50;
+    int nClusters = 1;
+    float trimK = 1;
+    float eps=-1;
+    float minSamples = 0.025;
+    float trimVal = 0;
+    bool savePairwiseSum = false;
+    bool trimStart = true;
 
+    Helm helm = Helm(clusters_map, nAtoms, MD::Metric::MSD, MD::MergeScheme::Inter, nClusters,
+        eps, trimStart, MD::AlignMethod::None, minSamples, MD::Link::None, trimVal, trimK, savePairwiseSum, "", "");
+    map<int, vector<Cluster>> res = helm.run();
+
+    int expectedNClusters = 8;
+    ASSERT_EQ(res[8].size(), expectedNClusters);
+
+    double totalPop = 6001.0;
+    vector<double> pops;
+    vector<double> msds;
+    
+    std::cout<<"\nstart debugging here\n"<<std::endl;
+    for(auto c:res[8]){
+        ArrayXd cSum = c.getCsum();
+        ArrayXd sqSum = c.getSQsum();
+        int Nik = c.getN();
+
+        ArrayXXd data = makeDataByRow(cSum, sqSum);
+        double msd = extendedComparison(data, Nik, 50, true, MD::Metric::MSD);
+        msds.emplace_back(msd);
+        pops.emplace_back(Nik / totalPop);
+    }
+    for(double p:pops){
+        ASSERT_GT(p, 0.025);
+    }
+
+    vector<double> expectedMSDS = {0.7159290983066504, 2.339201422302611, 3.362941769846286, 
+        3.53136323974767, 5.2539237168022215, 5.458759986365163, 
+        5.9705582725822515, 6.0939999786028};
+    for(int i=0; i<msds.size(); i++){
+        EXPECT_NEAR(msds[i], expectedMSDS[i], 1e-5);
+    }
+
+    //Compute CH and DB scores
+    vector<pair<double, double>> scores;
+    for(auto it=res.rbegin(); it!=res.rend(); it++){
+        vector<int> idx;
+        for(auto c:it->second){
+            for(int i:c.getIndices()){
+                idx.emplace_back(i);
+            }
+        }
+        vector<int> temp;
+        for(int i:idx){
+            for(int j=0; j<labels.size(); j++){
+                if(labels(j)==i){
+                    temp.emplace_back(j);
+                }
+            }
+        }
+        Mat arr = data(temp, Eigen::placeholders::all);
+        scores.emplace_back(helm.computeScores(it->second, arr));
+    }
+
+    vector<pair<double, double>> expectedScores = {
+        {1027.0159808301096, 1.3503102468493706}, 
+        {1104.807519769014, 1.205066197610796}, 
+        {1172.6483112177802, 0.8824355830201499}, 
+        {1227.2333015488437, 0.9712858749211579}, 
+        {1332.727994435348, 0.9596798547189016}, 
+        {1381.3259570829998, 1.1368566266419298}, 
+        {1482.6296232781137, 0.9381045938050468}, 
+        {-1, -1}
+    };
+
+    for(int i=0; i<scores.size(); i++){
+        EXPECT_NEAR(scores[i].first, expectedScores[i].first, 1e-5);
+        ASSERT_EQ(scores[i].second, expectedScores[i].second);
+    }
+}
