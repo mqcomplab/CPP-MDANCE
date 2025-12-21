@@ -196,10 +196,8 @@ TEST_F(TestHelm, TrimK){
     ASSERT_EQ(clusters.size(), expectedNClusters);
 
     std::vector<double> msds;
-    ArrayXXd data(2, clusters[0].getCsum().size());
     for (int i = 0; i < clusters.size(); i++) {
-        data.row(0) = clusters[i].getCsum();
-        data.row(1) = clusters[i].getSQsum();
+        ArrayXXd data = makeDataByRow(clusters[i].getCsum(), clusters[i].getSQsum());
         int Ni = clusters[i].getN();
         double msd = extendedComparison(data, Ni, nAtoms, true, MD::Metric::MSD);
         msds.push_back(msd);
