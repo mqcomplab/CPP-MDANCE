@@ -192,19 +192,29 @@ TEST_F(TestHelm, TrimK){
     // check if 8 in the map
     ASSERT_EQ(res.find(expectedNClusters) != res.end(), true);
 
+    // check number of clusters
     std::vector<Cluster> clusters = res[expectedNClusters];
     ASSERT_EQ(clusters.size(), expectedNClusters);
 
     std::vector<double> msds;
+    std::vector<int> Niks;
     for (int i = 0; i < clusters.size(); i++) {
         ArrayXXd data = makeDataByRow(clusters[i].getCsum(), clusters[i].getSQsum());
         int Ni = clusters[i].getN();
+        Niks.push_back(Ni);
         double msd = extendedComparison(data, Ni, nAtoms, true, MD::Metric::MSD);
         msds.push_back(msd);
         double pop = (double) clusters[i].getN()/6001.0;
         EXPECT_GT(pop, 0.025);
     }
-    // fixme: msd comparison is failing
+
+    // check if cluster sizes are correct
+    std::vector<int> expected_Niks = {205, 161, 568, 153, 211, 160, 180, 158};
+    for (int i = 0; i < Niks.size(); i++) {
+        EXPECT_EQ(Niks[i], expected_Niks[i]);
+    }
+
+    // check msds
     std::vector<double> expected_msds = {
         0.7159290983066504, 2.339201422302611, 3.362941769846286, 
         3.53136323974767, 5.2539237168022215, 5.458759986365163, 
@@ -236,7 +246,8 @@ TEST_F(TestHelm, TrimK){
         Mat arr = data(temp, Eigen::placeholders::all);
         scores.emplace_back(helm.computeScores(it->second, arr));
     }
-    // Fixme: this is failing
+
+    //check scores
     std::vector<pair<double, double>> expectedScores = {
         {1027.0159808301096, 1.3503102468493706}, 
         {1104.807519769014, 1.205066197610796}, 
@@ -250,7 +261,6 @@ TEST_F(TestHelm, TrimK){
         EXPECT_NEAR(scores[i].first, expectedScores[i].first, 1e-5);
         EXPECT_NEAR(scores[i].second, expectedScores[i].second, 1e-5);
     }
-    // this is assigned correctly. 
     EXPECT_NEAR(scores.back().first, -1.0, 1e-5);
     EXPECT_NEAR(scores.back().second, -1.0, 1e-5);
 }

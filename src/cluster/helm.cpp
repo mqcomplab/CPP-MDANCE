@@ -77,7 +77,11 @@ class Helm{
                 std::cerr<<"trimK is more than 50% of the clusters. This may lead to poor clustering"<<std::endl;
             }
             for(int i=0; i<clusterMsds.size()-trimK; i++){
-                newClusterMap[trimIncoming].emplace_back(clusterMap[totalIncoming][i]);
+                int index = clusterMsds[i].second;
+                if (index < 0 || index >= clusterMap[totalIncoming].size()) {
+                    throw std::runtime_error("Index out of bounds when trimming clusters.");
+                }
+                newClusterMap[trimIncoming].emplace_back(clusterMap[totalIncoming][index]);
             }
         } 
         else if(trimVal){
