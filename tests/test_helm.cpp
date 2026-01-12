@@ -265,4 +265,49 @@ TEST_F(TestHelm, TrimK){
     EXPECT_NEAR(scores.back().second, -1.0, 1e-5);
 }
 
-   
+TEST_F(TestHelm, TrimK2){
+    int nAtoms = 50;
+    int nClusters = 1; 
+    bool trimStart = true;
+    int trimK = 50;
+    double minSamples = 0.0;
+    Helm helm = Helm(clusters_map,
+        nAtoms, 
+        MD::Metric::MSD, 
+        MD::MergeScheme::Inter, 
+        nClusters,
+        -1, // default eps value
+        trimStart,
+        MD::AlignMethod::None, // default alignMeth value
+        minSamples,
+        MD::Link::None, // default link value
+        0, // default trimVal value
+        trimK
+    );
+    map<int, vector<Cluster>> res = helm.run();
+    int expectedNClusters = 10;
+    ASSERT_EQ(res.find(expectedNClusters) != res.end(), true);
+
+    // check number of clusters
+    std::vector<Cluster> clusters = res[expectedNClusters];
+    ASSERT_EQ(clusters.size(), expectedNClusters);
+
+    std::vector<double> msds;
+    for (int i = 0; i < clusters.size(); i++) {
+        ArrayXXd data = makeDataByRow(clusters[i].getCsum(), clusters[i].getSQsum());
+        int Ni = clusters[i].getN();
+        double msd = extendedComparison(data, Ni, nAtoms, true, MD::Metric::MSD);
+        msds.push_back(msd);
+    }
+    // check msds
+    std::vector<double> expected_msds = {
+        0.533111401482992, 0.7159290983066504, 
+        0.84978424877854, 1.5715154323945075, 
+        2.2918233940183708, 2.339201422302611, 
+        2.394802731761288, 2.516757040247173, 
+        2.5290370776959334, 2.788671261009775
+    };
+    for (int i = 0; i < msds.size(); i++) {
+        EXPECT_NEAR(msds[i], expected_msds[i], 1e-5);
+    }
+}
