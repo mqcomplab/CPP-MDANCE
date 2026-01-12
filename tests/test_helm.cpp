@@ -58,10 +58,8 @@ ArrayXXd TestHelm::makeDataByRow(ArrayXd a, ArrayXd b){
         Mat data(2, a.size());
         data.row(0) = a;
         data.row(1) = b;
-
         return data;
 }
-
 
 TEST_F(TestHelm, TestPops){
     int nAtoms = 50;
@@ -114,6 +112,7 @@ TEST_F(TestHelm, TestClus){
     Helm helm = Helm(clusters_map, nAtoms, MD::Metric::MSD, MD::MergeScheme::Inter, nClusters);
     map<int, vector<Cluster>> res = helm.run();
 
+    //Compute CH and DB scores
     vector<pair<double, double>> scores;
     for(auto it=res.rbegin(); it!=res.rend(); it++){
         vector<int> idx;
@@ -309,5 +308,61 @@ TEST_F(TestHelm, TrimK2){
     };
     for (int i = 0; i < msds.size(); i++) {
         EXPECT_NEAR(msds[i], expected_msds[i], 1e-5);
+    }
+}
+
+TEST_F(TestHelm, TestEps){
+    int N0 = uniqueLabels.size();
+    inputCluster();
+    int nAtoms = 50;
+    float eps = 15;
+
+    Helm helm = Helm(clusters_map,
+        nAtoms, 
+        MD::Metric::MSD, 
+        MD::MergeScheme::Inter, 
+        0,
+        eps // default eps value
+    ); 
+    map<int, vector<Cluster>> res = helm.run();
+
+    //Compute CH and DB scores
+    vector<pair<double, double>> scores;
+    for(auto it=res.rbegin(); it!=res.rend(); it++){
+        if(it->second.empty()){
+            continue;
+        }
+
+        vector<int> idx;
+        for(auto c:it->second){
+            for(int i:c.getIndices()){
+                idx.emplace_back(i);
+            }
+        }
+        vector<int> temp;
+        for(int i:idx){
+            for(int j=0; j<labels.size(); j++){
+                if(labels(j)==i){
+                    temp.emplace_back(j);
+                }
+            }
+        }
+        Mat arr = data(temp, Eigen::placeholders::all);
+        scores.emplace_back(helm.computeScores(it->second, arr));
+    }
+
+    vector<pair<double, double>> expectedScores = {
+        {291.2198060306322, 1.7370614645545726},
+        {295.7352641684398, 1.7122884537735075},
+        {296.11490509768595, 1.7245038612367665},
+        {297.8213492701506, 1.7246552370601154},
+        {299.0810730592307, 1.738637643465005},
+        {300.34386300863565, 1.750692719498292},
+        {302.7012989347063, 1.755325543510106}
+    };
+
+    for(int i=0; i<expectedScores.size(); i++){
+        EXPECT_NEAR(expectedScores[i].first, scores[i].first, 1e-5);
+        EXPECT_NEAR(expectedScores[i].second, scores[i].second, 1e-5);
     }
 }
