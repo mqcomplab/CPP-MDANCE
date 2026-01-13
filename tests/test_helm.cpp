@@ -366,3 +366,53 @@ TEST_F(TestHelm, TestEps){
         EXPECT_NEAR(expectedScores[i].second, scores[i].second, 1e-5);
     }
 }
+
+TEST_F(TestHelm, TestTrimVal){
+    int N0 = uniqueLabels.size();
+    inputCluster();
+    int nAtoms = 50;
+    int nClusters = 1;
+    bool trimStart = true;
+    int trimVal = 5;
+    float minSamples = 0.025;
+
+    Helm helm = Helm(clusters_map,
+        nAtoms, 
+        MD::Metric::MSD, 
+        MD::MergeScheme::Inter, 
+        nClusters,
+        -1, // default eps value
+        trimStart,
+        MD::AlignMethod::None, // default alignMeth value
+        minSamples,
+        MD::Link::None,
+        trimVal
+    );
+
+    map<int, vector<Cluster>> clusters = helm.run();
+    int expectedNClusters = 4;
+    EXPECT_EQ(clusters[4].size(), expectedNClusters);
+
+    vector<double> msds;
+    for(auto c:clusters[4]){
+        Vec cSum = c.getCsum();
+        Vec sqSum = c.getSQsum();
+        int Nik = c.getN();
+        ArrayXXd data = makeDataByRow(cSum, sqSum);
+        double msd = extendedComparison(data, Nik, nAtoms, true);
+
+        msds.emplace_back(msd);
+    }
+
+    vector<double> expectedMsds = {
+        0.7159290983066504, 
+        2.339201422302611, 
+        3.362941769846286, 
+        3.53136323974767
+    };
+
+    for(int i=0; i<expectedMsds.size(); i++){
+        EXPECT_NEAR(msds[i], expectedMsds[i], 1e-5);
+        EXPECT_LT(msds[i], 5);
+    }
+}
