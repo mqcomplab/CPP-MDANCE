@@ -1,4 +1,4 @@
 #include "types.h"
 
-double calinskiHarabaszScore(ArrayXXd data, VectorXi labels);
-double daviesBouldinScore(ArrayXXd data, VectorXi labels);
+double calinskiHarabaszScore(const ArrayXXd data, VectorXi labels);
+double daviesBouldinScore(const ArrayXXd data, VectorXi labels);

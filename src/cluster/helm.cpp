@@ -2,6 +2,7 @@
 
 #include "../tools/bts.h"
 #include "../tools/cluster.h"
+#include "../tools/scores.h"
 #include "../tools/types.h"
 
 class Helm{
@@ -26,51 +27,9 @@ class Helm{
     string inputTraj;
     int totalSum;
 
-    //finished
-    map<int, vector<Cluster>> run(){
-        /*
-            Performs HELM clustering of initial clusters
-
-            Returns
-            -----------
-            map of clusters ( map<int, vector<vector<Cluster>>>)
-        */
-
-        if(nClusters == 0){
-            nClusters = 1;
-        }
-        if(link == MD::Link::Ward){
-            //gen_link_matrix();
-            //return linkMatrixToClusterMap();
-        }
-        if(trimStart){
-            clusterMap = trimClusters();
-        }
-
-        //perform clustering
-        vector<int> keys;
-        for(auto pair:clusterMap){
-            keys.emplace_back(pair.first);
-        }
-        sort(keys.begin(), keys.end());
-        int n = keys[0];
-
-        while(n>1){
-            vector<Cluster> previousClusters = clusterMap[n];
-            vector<Cluster> newClusters = genNewClusters(previousClusters);
-            clusterMap[n-1] = newClusters;
-
-            //termination conditions
-            if(n==(nClusters+1) || newClusters.empty()){
-                break;
-            }
-            n-=1;
-        }
-        return clusterMap;
-    };
-
     Mat makeDataByRow(Vec a, Vec b){
         //a and b need to be same length
+        //a will be csum, and b will be sqsum
         Mat data(2, a.size());
         data.row(0) = a;
         data.row(1) = b;
@@ -97,9 +56,7 @@ class Helm{
                 continue;
             }
 
-            Mat data(2, cSum.size());
-            data.row(0) = cSum;
-            data.row(1) = sqSum;
+            Mat data = makeDataByRow(cSum, sqSum);
             clusterMsds.emplace_back(pair<double, int>(extendedComparison(data, Nik, nAtoms, true, mt), i));
         }
 
@@ -117,7 +74,11 @@ class Helm{
                 std::cerr<<"trimK is more than 50% of the clusters. This may lead to poor clustering"<<std::endl;
             }
             for(int i=0; i<clusterMsds.size()-trimK; i++){
-                newClusterMap[trimIncoming].emplace_back(clusterMap[totalIncoming][i]);
+                int index = clusterMsds[i].second;
+                if (index < 0 || index >= clusterMap[totalIncoming].size()) {
+                    throw std::runtime_error("Index out of bounds when trimming clusters.");
+                }
+                newClusterMap[trimIncoming].emplace_back(clusterMap[totalIncoming][index]);
             }
         } 
         else if(trimVal){
@@ -161,23 +122,28 @@ class Helm{
             //Add new cluster to distance matrix
             //np hstack 
             Mat temp1(clusterDists.rows(), clusterDists.cols() + 1);
-            temp1<<clusterDists, distsToNewCluster;
+            temp1.leftCols(clusterDists.cols()) = clusterDists;
+            temp1.col(clusterDists.cols()) = distsToNewCluster;
             
             //np vstack
             Mat temp2(temp1.rows() + 1, temp1.cols());
-            temp2<<temp1, Vec::Constant(previousClusters.size(), INFINITY);
-
+            temp2.topRows(temp1.rows()) = temp1;
+            temp2.row(temp1.rows()).setConstant(INFINITY);
             clusterDists = temp2;
         }   
 
         //Find the two most similar clusters
         Index minRow, minCol;       //minRow and minCol refer to two different clusters
         float mergeDist = clusterDists.minCoeff(&minRow, &minCol);
-
+        // add check for minRow and minCol being same. This can cause UB or crash. 
+        if (minRow == minCol){
+            throw std::runtime_error("Got same cluster idx for the two most similar clusters.");
+        }
         //Merge the two most similar clusters
         Vec cSum, sqSum;
         if(alignMeth == MD::AlignMethod::Kron){
             //will add later
+            // todo add kron alignment
             ;
         }
         else{
@@ -189,6 +155,7 @@ class Helm{
         Vec sqSumik = sqSum;
         int Nik = previousClusters[minRow].getN() + previousClusters[minCol].getN();
         if(alignMeth != MD::AlignMethod::None){
+            // todo add kron alignment
             //aligned combine clusters
             //continuation of kron
         }
@@ -202,10 +169,15 @@ class Helm{
                 newClusters.emplace_back(previousClusters[i]);
             }
         }
-        Veci indicesik = previousClusters[minRow].getIndices() + previousClusters[minCol].getIndices();
+        int nIndMinRow = previousClusters[minRow].getIndices().size();
+        int nIndMinCol = previousClusters[minCol].getIndices().size();
+        Veci indicesik(nIndMinRow + nIndMinCol);
+        indicesik(Eigen::seq(0, nIndMinRow-1)) = previousClusters[minRow].getIndices();
+        indicesik(Eigen::seq(nIndMinRow, indicesik.size()-1)) = previousClusters[minCol].getIndices();
 
         //Two different ways of saving the new cluster
         if(alignMeth != MD::AlignMethod::None){
+            // todo add kron alignment
             //newClusters.push_back(Cluster(indicesik, cSumik, sqSumik, Nik, aligned));
             //kron
             ;
@@ -215,16 +187,18 @@ class Helm{
         }
 
         //Remove distances of merged clusters
-        Veci clustersToKeep(clusterDists.size()-2);
+        Veci clustersToKeep(clusterDists.rows()-2);
         int ind=0;
-        for(int i=0; i<clusterDists.size(); i++){
+        for(int i=0; i<clusterDists.rows(); i++){
             if(i!= minRow && i!=minCol){
                 clustersToKeep[ind] = i;
+                ind++;
             }
-            ind++;
+            
         }
-        clusterDists = clusterDists(Eigen::placeholders::all, clustersToKeep);
-        clusterDists = clusterDists(clustersToKeep, Eigen::placeholders::all);
+        Mat clusterDists_temp1 = clusterDists(Eigen::placeholders::all, clustersToKeep);
+        Mat clusterDists_temp2 = clusterDists_temp1(clustersToKeep, Eigen::placeholders::all);
+        clusterDists = clusterDists_temp2;
 
         if(eps==-1 || mergeDist < eps){
             return newClusters;
@@ -258,6 +232,7 @@ class Helm{
         Vec cSum;
         Vec sqSum;
         if(alignMeth == MD::AlignMethod::Kron){
+            // todo add kron alignment
             //when alignMeth is not None, previousCluster[i][3]=input_clusters
             ;
 
@@ -299,7 +274,7 @@ class Helm{
             pairwise similarity matrix (void)
         */
 
-        clusterDists = Mat::Zero(previousClusters.size(), previousClusters.size());
+        clusterDists = Mat::Zero(previousClusters.size(), previousClusters.size()) + INFINITY;
         for(int i=0; i<previousClusters.size(); i++){
             for(int j=i+1; j<previousClusters.size(); j++){
                 float helmSim = calc(previousClusters, i, j);
@@ -354,7 +329,7 @@ class Helm{
         return distances;
     }
 
-    //gen_link_matrix()
+    //todo gen_link_matrix()
     //i will assume that a link matrix is ArrayXXd (or eq. Mat)
 
     //finished
@@ -461,7 +436,7 @@ class Helm{
             }
             sort(keys.begin(), keys.end());
             this->totalIncoming = keys[0];
-            
+            totalSum = 0;
             for(auto clust:clusterMap[totalIncoming]){
                 this->totalSum += clust.getN();
             }
@@ -489,7 +464,86 @@ class Helm{
                 this->minSamples = int(this->minSamples);
             }
 
-            run();
         }
+        //finished
+        map<int, vector<Cluster>> run(){
+            /*
+                Performs HELM clustering of initial clusters
+
+                Returns
+                -----------
+                map of clusters ( map<int, vector<vector<Cluster>>>)
+            */
+
+            if(nClusters == 0){
+                nClusters = 1;
+            }
+            if(link == MD::Link::Ward){
+                // todo add ward linkage
+                //gen_link_matrix();
+                //return linkMatrixToClusterMap();
+            }
+            if(trimStart){
+                clusterMap = trimClusters();
+            }
+
+            //perform clustering
+            vector<int> keys;
+            for(auto pair:clusterMap){
+                keys.emplace_back(pair.first);
+            }
+            sort(keys.begin(), keys.end());
+            int n = keys[0];
+
+            while(n>1){
+                vector<Cluster> previousClusters = clusterMap[n];
+                vector<Cluster> newClusters = genNewClusters(previousClusters);
+                clusterMap[n-1] = newClusters;
+
+                //termination conditions
+                if(n==(nClusters+1) || newClusters.empty()){
+                    break;
+                }
+                n-=1;
+            }
+            return clusterMap;
+        };
+
+         pair<double, double> computeScores(vector<Cluster> clusters, Mat data){
+            /*
+                Computes Calinksi-Harabasz and Davies-Bouldin scores of clusters
+                using random labeling
+
+                Returns
+                -------------
+                pair: first element is Calinkski, second element Davies-Bouldin
+            */
+
+            //vector<Veci> clusterIndices;
+            vector<int> label;
+            int count=0;
+
+            for(auto c:clusters){
+                //clusterIndices.emplace_back(c.getIndices());
+                int Nik=c.getN();
+                label.insert(label.end(), Nik, count);
+                count++;
+            }
+            
+            set<int> temp;
+            for(int i:label){
+                temp.insert(i);
+            }
+            if(temp.size()==1){
+                return pair<double, double>{-1,-1};
+            }
+            else{
+                Veci labels = Eigen::Map<Veci>(label.data(), label.size());
+                double chScore = calinskiHarabaszScore(data, labels);
+                double dbScore = daviesBouldinScore(data, labels);
+
+                return pair<double, double>{chScore, dbScore};
+            }
+        };
 };
 

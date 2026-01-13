@@ -24,7 +24,7 @@ TEST(KMeansNani, simcsv){
             std::cerr << "Error: Label out of bounds: " << labels[i] << std::endl;
         }
     }
-    std::filesystem::path pyLabelsFile = dataPath / "sim_py_labels.csv";
+    std::filesystem::path pyLabelsFile = dataPath / "sim_py_labels_kmeans.csv";
     ArrayXXd pyLabels = readCSVtoEigen(pyLabelsFile.string());
     ArrayXi pyLabelsInt = pyLabels.col(0).cast<int>();
 
