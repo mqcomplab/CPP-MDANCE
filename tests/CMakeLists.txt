@@ -4,7 +4,7 @@ find_package(GTest REQUIRED)
 
 add_executable(test test_utils.cpp 
                     test_main.cpp
-                    #test_kmeans.cpp
+                    test_kmeans.cpp
                     test_helm.cpp
 )
 target_link_libraries(test PRIVATE 
