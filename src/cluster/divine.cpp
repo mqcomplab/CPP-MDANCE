@@ -23,6 +23,7 @@ class Divine{
     //ready for testing
     void divisiveAlgorithm() {
         int minFrames = std::max(1, (int)round(threshold * data.rows()));
+
         while (true) {
             if(end==0){
                 if(clusters.size() >= kClusters)    break;
@@ -39,7 +40,7 @@ class Divine{
             while (!didSplit) {
                 Index clusterToSplit = selectClusterToSplit(failedSplits);
                 if (clusterToSplit < 0) {
-                    std::cerr<<"Cluster {cluster_to_split} could not be split meaningfully — skipping."<<std::endl;
+                    std::cerr<<"Cluster"<<clusterToSplit<<"could not be split meaningfully — skipping."<<std::endl;
                 }   
                 didSplit = splitCluster(clusterToSplit, minFrames);
                 failedSplits[clusterToSplit] = !didSplit;
@@ -51,7 +52,9 @@ class Divine{
         double bestScore = -1;
 
         for (Index i = 0; i < clusters.size(); ++i) {
-            if (failedSplits[i] || clusters[i].size() < 2) continue;
+            if (failedSplits[i] || clusters[i].size() < 2) {
+                continue;
+            }
 
             double score = -1;
             Mat subdata = data(clusters[i], Eigen::placeholders::all);
@@ -63,7 +66,7 @@ class Divine{
                 Vec dists = (subdata.rowwise() - medoid.transpose()).square().rowwise().sum() / nAtoms;
                 score = dists.maxCoeff();
             } else if (splitType == MD::DivineSplit::WeightedMSD) {
-                score = clusters[i].size() * extendedComparison(subdata, 0, nAtoms, false, mt);      
+                score = clusters[i].size() * extendedComparison(subdata, 0, nAtoms, false, mt);  
             }
 
             if (score > bestScore) {
@@ -74,6 +77,9 @@ class Divine{
         return topCluster;
     };
     bool splitCluster(Index clusterToSplit, int minFrames) {
+        if(clusterToSplit < 0){
+            throw std::runtime_error("invalid index");
+        }
         if (clusters[clusterToSplit].size() < 2 * minFrames) {
             throw std::runtime_error("There are not enough points to split the cluster further.");
         }
@@ -222,6 +228,11 @@ public:
         } else {
             kClusters = k;
         }
+        vector<Index> initCluster;
+        for(int i=0; i<data.rows(); i++){
+            initCluster.emplace_back(i);
+        }
+        clusters.emplace_back(initCluster);
         divisiveAlgorithm();
     };
 
