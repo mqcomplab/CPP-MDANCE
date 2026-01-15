@@ -41,6 +41,7 @@ class Divine{
                 Index clusterToSplit = selectClusterToSplit(failedSplits);
                 if (clusterToSplit < 0) {
                     std::cerr<<"Cluster"<<clusterToSplit<<"could not be split meaningfully — skipping."<<std::endl;
+
                 }   
                 didSplit = splitCluster(clusterToSplit, minFrames);
                 failedSplits[clusterToSplit] = !didSplit;
@@ -77,11 +78,9 @@ class Divine{
         return topCluster;
     };
     bool splitCluster(Index clusterToSplit, int minFrames) {
-        if(clusterToSplit < 0){
-            throw std::runtime_error("invalid index");
-        }
         if (clusters[clusterToSplit].size() < 2 * minFrames) {
-            throw std::runtime_error("There are not enough points to split the cluster further.");
+            std::cerr<<"There are not enough points to split the cluster further.";
+            return false;
         }
         Mat subdata = data(clusters[clusterToSplit], Eigen::placeholders::all);
         if (anchorType == MD::DivineAnchors::NANI) {
@@ -95,9 +94,11 @@ class Divine{
                     cluster2.push_back(clusters[clusterToSplit][i]);
                 }
             }
+            /*
             if (cluster1.size() < minFrames || cluster2.size() < minFrames) {
                 throw std::runtime_error("One of the clusters after the split is smaller than the minimum frame requirements.");
             }
+            */
             clusters[clusterToSplit] = cluster1;
             clusters.push_back(cluster2);
         } else if (anchorType == MD::DivineAnchors::OutlierPair || anchorType == MD::DivineAnchors::SplinterPair) {
@@ -142,16 +143,28 @@ class Divine{
                         cluster2.push_back(clusters[clusterToSplit][i]);
                     }
                 }
+                /*
                 if (cluster1.size() < minFrames || cluster2.size() < minFrames) {
                     throw std::runtime_error("One of the clusters after the split is smaller than the minimum frame requirement.");
+                }
+                    */
+                set<int> uniqueLabels;
+                for(auto i:sublabels){
+                    uniqueLabels.insert(i);
+                }
+                if(uniqueLabels.size() < 2){
+                    std::cerr<<"K-Means refinement failed to find two distinc clusters."<<std::endl;
+                    return false;
                 }
                 clusters[clusterToSplit] = cluster1;
                 clusters.push_back(cluster2);
 
             } else {
+                /*
                 if (initialMask.size() < minFrames || notInitialMask.size() < minFrames) {
                     throw std::runtime_error("One of the clusters after the split is smaller than the minimum frame requirement.");
                 }
+                    */
                 clusters[clusterToSplit] = initialMask;
                 clusters.push_back(notInitialMask);
                 
@@ -198,16 +211,28 @@ class Divine{
                         cluster2.push_back(clusters[clusterToSplit][i]);
                     }
                 }
+                /*
                 if (cluster1.size() < minFrames || cluster2.size() < minFrames) {
                     throw std::runtime_error("One of the clusters after the split is smaller than the minimum frame requirement.");
+                }
+                */
+                set<int> uniqueLabels;
+                for(auto i:sublabels){
+                    uniqueLabels.insert(i);
+                }
+                if(uniqueLabels.size() < 2){
+                    std::cerr<<"K-Means refinement failed to find two distinc clusters."<<std::endl;
+                    return true;
                 }
                 clusters[clusterToSplit] = cluster1;
                 clusters.push_back(cluster2);
 
             } else {
+                /*
                 if (mainGroup.size() < minFrames || splinterGroup.size() < minFrames) {
                     throw std::runtime_error("One of the clusters after the split is smaller than the minimum frame requirement.");
                 }
+                    */
                 clusters[clusterToSplit] = mainGroup;
                 clusters.push_back(splinterGroup);
                 
@@ -241,5 +266,19 @@ public:
     }
     vector<vector<Index>> getClusters(){
         return clusters;
+    }
+    pair<double, double> computeScores(Veci labels, Mat data){
+        set<int> uniqueLabels;
+        for(auto i:labels){
+            uniqueLabels.insert(i);
+        }
+
+        if(uniqueLabels.size() <= 1 || uniqueLabels.size() >= data.rows()){
+            return pair<double, double>(0,0);
+        }
+
+        double chScore = calinskiHarabaszScore(data, labels);
+        double dbScore = daviesBouldinScore(data, labels);
+        return pair<double, double>(chScore, dbScore);
     }
 };
