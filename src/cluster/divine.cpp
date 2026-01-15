@@ -19,6 +19,8 @@ class Divine{
     int percentage;
 
     vector<vector<Index>> clusters;
+    vector<pair<double, double>> scores;
+    vector<int> clusterSizes;
 
     //ready for testing
     void divisiveAlgorithm() {
@@ -46,6 +48,15 @@ class Divine{
                 didSplit = splitCluster(clusterToSplit, minFrames);
                 failedSplits[clusterToSplit] = !didSplit;
             }
+
+            //Compute clustering scores
+            set<int> uniqueLabels;
+            for(auto i:labels){
+                uniqueLabels.insert(i);
+            }
+            pair<double, double> s = computeScores(labels, data);
+            scores.emplace_back(pair<double, double>(s.first, s.second));
+            clusterSizes.emplace_back(clusters.size());
         }
     };
     Index selectClusterToSplit(vector<bool>& failedSplits) {
@@ -267,6 +278,10 @@ public:
     vector<vector<Index>> getClusters(){
         return clusters;
     }
+    vector<pair<double, double>> getScores(){
+        return scores;
+    }
+
     pair<double, double> computeScores(Veci labels, Mat data){
         set<int> uniqueLabels;
         for(auto i:labels){
