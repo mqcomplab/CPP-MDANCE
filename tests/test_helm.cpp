@@ -416,3 +416,46 @@ TEST_F(TestHelm, TestTrimVal){
         EXPECT_LT(msds[i], 5);
     }
 }
+
+TEST_F(TestHelm, ZMatrix){
+    int nAtoms = 50;
+    int nClus = 37;
+    Helm helm = Helm(clusters_map,
+        nAtoms, 
+        MD::Metric::MSD, 
+        MD::MergeScheme::Inter, 
+        nClus
+    );
+    map<int, vector<Cluster>> clusters = helm.run();
+    Mat Z = helm.calculateZMatrix(clusters);
+    Mat expectedZ(23, 4);
+    expectedZ <<2, 23, 1.0, 2, 
+        47, 60, 2.0, 3, 
+        15, 31, 3.0, 2, 
+        22, 45, 4.0, 2, 
+        5, 55, 5.0, 2, 
+        26, 34, 6.0, 2, 
+        9, 41, 7.0, 2, 
+        14, 27, 8.0, 2, 
+        4, 17, 9.0, 2, 
+        8, 62, 10.0, 3, 
+        0, 11, 11.0, 2, 
+        3, 6, 12.0, 2, 
+        19, 25, 13.0, 2, 
+        57, 63, 14.0, 3, 
+        35, 52, 15.0, 2, 
+        18, 64, 16.0, 3, 
+        20, 42, 17.0, 2, 
+        16, 68, 18.0, 3, 
+        66, 75, 19.0, 5, 
+        1, 72, 20.0, 3, 
+        21, 65, 21.0, 3, 
+        36, 40, 22.0, 2, 
+        51, 56, 23.0, 2;
+    for(int i=0; i<expectedZ.rows(); i++){
+        for(int j=0; j<4; j++){
+            EXPECT_EQ(Z(i,j), expectedZ(i,j));
+        }
+    }
+        
+}

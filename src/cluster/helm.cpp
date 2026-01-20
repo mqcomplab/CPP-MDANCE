@@ -399,12 +399,6 @@ class Helm{
         return clusters;
     }
 
-    void zMatrix(map<int, vector<vector<Cluster>>>& clusterMap){
-        /*
-            Converts the cluster dictionary to a linkage matrix for plotting dendogram
-        */
-    }
-
     public:
         Helm(map<int, vector<Cluster>> clusterMap, int nAtoms, MD::Metric mt = MD::Metric::MSD, 
                 MD::MergeScheme mergeScheme = MD::MergeScheme::Inter, int nClusters = 0, float eps = -1, 
@@ -545,5 +539,76 @@ class Helm{
                 return pair<double, double>{chScore, dbScore};
             }
         };
+
+        Mat calculateZMatrix(map<int, vector<Cluster>> clusterMap){
+            /* 
+                Converts the cluster dictionary to a linkage matrix Z
+
+                Returns
+                -------------
+                Z matrix (Mat)
+            */
+            vector<Veci> indices_clusters; // contains all unique clusters, and merged clusters
+            vector<Cluster> initial_clusters = clusterMap.rbegin()->second;
+            for (int i = 0; i < initial_clusters.size(); i++) {
+                indices_clusters.push_back(initial_clusters[i].getIndices());
+            }
+
+            Mat zMatrix(clusterMap.size()-1, 4);
+            int row = 0;
+            
+            // iterate through clusterMap in reverse order to get merging order
+            // clusterMap is sorted by keys (No. clusters) in ascending order, thus we must traverse it in reverse
+            for(auto it = clusterMap.rbegin(); it != clusterMap.rend(); ++it){
+                vector<Cluster> current_clusters = it->second;
+                for (auto cluster : current_clusters){
+                    // convert vector to set so that it is easier to compare them
+                    Veci inds = cluster.getIndices();
+                    std::set inds_set(std::begin(inds), std::end(inds));
+                    if (inds.size() != inds_set.size()){
+                        throw std::runtime_error("indices of current cluster has duplicate members!");
+                    }
+                    // check if this cluster already exists in indices_clusters. This means it is not a new merged cluster
+                    bool found = false;
+                    for (int i = 0; i < indices_clusters.size(); i++){
+                        Veci ind_prev_cluster = indices_clusters[i];
+                        std::set<int> ind_prev_cluster_set(std::begin(ind_prev_cluster), std::end(ind_prev_cluster));
+
+                        if (ind_prev_cluster.size() != ind_prev_cluster_set.size()){
+                            throw std::runtime_error("indices of cluster has duplicate members!");
+                        }
+                        if (ind_prev_cluster_set == inds_set){
+                            found = true;
+                            break;
+                        }
+                    }
+                    // extract data for Z matrix for the merged cluster
+                    if (!found){
+                        for (int i = 0; i < indices_clusters.size(); i++){
+                            for (int j = i+1; j < indices_clusters.size(); j++){
+                                Veci ind_i = indices_clusters[i];
+                                Veci ind_j = indices_clusters[j];
+                                set<int> set_i(std::begin(ind_i), std::end(ind_i));
+                                set<int> set_j(std::begin(ind_j), std::end(ind_j));
+                                set<int> set_union_ij;
+                                std::set_union(set_i.begin(), set_i.end(), set_j.begin(), set_j.end(), std::inserter(set_union_ij, set_union_ij.begin()));
+                                if (set_union_ij == inds_set){
+                                    // found two clusters being merged
+                                    zMatrix(row, 0) = i; // index of first cluster being merged
+                                    zMatrix(row, 1) = j; // index of second cluster being merged
+                                    zMatrix(row, 2) = row+1; // "distance" between clusters (using row number as proxy)
+                                    zMatrix(row, 3) = inds_set.size(); // number of cluster members
+                                    row +=1;
+                                    break;
+                                }
+                            }
+                        }
+                        indices_clusters.push_back(inds); // add new merged cluster to list
+                    }
+                }
+                // fixme: there are no checks to ensure that there is only one new merged cluster per iteration! 
+        }
+        return zMatrix;
+    };
 };
 
