@@ -4,7 +4,7 @@
 
 class Divine{
     Mat data;
-    Veci labels;
+    vector<int> labels;
 
     MD::Metric mt;
     MD::DivineSplit splitType;
@@ -42,13 +42,14 @@ class Divine{
             while (!didSplit) {
                 Index clusterToSplit = selectClusterToSplit(failedSplits);
                 if (clusterToSplit < 0) {
-                    std::cerr<<"Cluster"<<clusterToSplit<<"could not be split meaningfully — skipping."<<std::endl;
-
-                }   
+                    throw std::runtime_error("No more cluster splits possible that would yield valid subclusters");
+                    //std::cerr<<"Cluster"<<clusterToSplit<<"could not be split meaningfully — skipping."<<std::endl;
+                } 
                 didSplit = splitCluster(clusterToSplit, minFrames);
                 failedSplits[clusterToSplit] = !didSplit;
             }
 
+            /*
             //Compute clustering scores
             set<int> uniqueLabels;
             for(auto i:labels){
@@ -57,6 +58,7 @@ class Divine{
             pair<double, double> s = computeScores(labels, data);
             scores.emplace_back(pair<double, double>(s.first, s.second));
             clusterSizes.emplace_back(clusters.size());
+            */
         }
     };
     Index selectClusterToSplit(vector<bool>& failedSplits) {
@@ -89,11 +91,18 @@ class Divine{
         return topCluster;
     };
     bool splitCluster(Index clusterToSplit, int minFrames) {
-        if (clusters[clusterToSplit].size() < 2 * minFrames) {
-            std::cerr<<"There are not enough points to split the cluster further.";
+        if (clusters[clusterToSplit].size() < 2) {
+            std::cerr<<"Cannot split a cluster with less than 2 points";
             return false;
         }
-        Mat subdata = data(clusters[clusterToSplit], Eigen::placeholders::all);
+
+        Veci subdataIndices;
+        subdataIndices.resize(clusters[clusterToSplit].size());
+        for(int i=0; i<clusters[clusterToSplit].size(); i++){
+            subdataIndices[i]=clusters[clusterToSplit][i];
+        }
+        Mat subdata = data(subdataIndices, Eigen::placeholders::all);
+        
         if (anchorType == MD::DivineAnchors::NANI) {
             KmeansNANI kmeans(subdata, 2, mt, kinit, nAtoms, percentage);
             ArrayXi sublabels = kmeans.getLabels();
@@ -112,7 +121,7 @@ class Divine{
             */
             clusters[clusterToSplit] = cluster1;
             clusters.push_back(cluster2);
-        } else if (anchorType == MD::DivineAnchors::OutlierPair || anchorType == MD::DivineAnchors::SplinterPair) {
+        } else if (anchorType == MD::DivineAnchors::OutlierPair) {
             Index outlierIdx = calculateOutlier(subdata, nAtoms, mt);
             Vec anchorA = subdata.row(outlierIdx);
             Vec dists = (subdata.rowwise() - anchorA.transpose()).square().rowwise().sum() / nAtoms;
@@ -164,11 +173,14 @@ class Divine{
                     uniqueLabels.insert(i);
                 }
                 if(uniqueLabels.size() < 2){
-                    std::cerr<<"K-Means refinement failed to find two distinc clusters."<<std::endl;
-                    return false;
+                    std::cerr<<"K-Means refinement failed to find two distinct clusters."<<std::endl;
+                    clusters[clusterToSplit] = initialMask;
+                    clusters.push_back(notInitialMask);
                 }
-                clusters[clusterToSplit] = cluster1;
-                clusters.push_back(cluster2);
+                else{
+                    clusters[clusterToSplit] = cluster1;
+                    clusters.push_back(cluster2);
+                }
 
             } else {
                 /*
@@ -181,6 +193,10 @@ class Divine{
                 
             }
         } else if (anchorType == MD::DivineAnchors::SplinterPair) {
+            if(subdata.rows() < 2){
+                return false;
+            }
+
             Index splinterIdx = calculateOutlier(subdata, nAtoms, mt);
             Vec splinterPoint = subdata.row(splinterIdx);
 
@@ -193,15 +209,15 @@ class Divine{
             mainGroup.reserve(subdata.rows() - 1);
 
             for (Index i = 0; i < subdata.rows(); ++i) {
-                if (i == splinterIdx) continue;
+                if (subdataIndices[i] == splinterIdx) continue;
 
-                double dS = (subdata.row(i) - splinterPoint).square().sum() / nAtoms;
-                double dM = (subdata.row(i) - medoidPoint).square().sum() / nAtoms;
+                double dS = (subdata.row(i).transpose() - splinterPoint).square().sum() / nAtoms;
+                double dM = (subdata.row(i).transpose() - medoidPoint).square().sum() / nAtoms;
 
                 if (dS < dM) {
-                    splinterGroup.push_back(i);
+                    splinterGroup.push_back(subdataIndices[i]);
                 } else {
-                    mainGroup.push_back(i);
+                    mainGroup.push_back(subdataIndices[i]);
                 }
             }
             if (refine) {
@@ -232,11 +248,14 @@ class Divine{
                     uniqueLabels.insert(i);
                 }
                 if(uniqueLabels.size() < 2){
-                    std::cerr<<"K-Means refinement failed to find two distinc clusters."<<std::endl;
-                    return true;
+                    std::cerr<<"K-Means refinement failed to find two distinct clusters."<<std::endl;
+                    clusters[clusterToSplit] = cluster1;
+                    clusters.push_back(cluster2);
                 }
-                clusters[clusterToSplit] = cluster1;
-                clusters.push_back(cluster2);
+                else{
+                    clusters[clusterToSplit] = cluster1;
+                    clusters.push_back(cluster2);
+                }
 
             } else {
                 /*
@@ -245,10 +264,8 @@ class Divine{
                 }
                     */
                 clusters[clusterToSplit] = mainGroup;
-                clusters.push_back(splinterGroup);
-                
+                clusters.push_back(splinterGroup);   
             }
-
         }
         return true;
     };
@@ -264,15 +281,18 @@ public:
         } else {
             kClusters = k;
         }
+
         vector<Index> initCluster;
         for(int i=0; i<data.rows(); i++){
             initCluster.emplace_back(i);
         }
         clusters.emplace_back(initCluster);
         divisiveAlgorithm();
+        labels.assign(data.rows(), -1);
+        createLabels(data.rows());
     };
 
-    Veci getLabels(){
+    vector<int> getLabels(){
         return labels;
     }
     vector<vector<Index>> getClusters(){
@@ -295,5 +315,13 @@ public:
         double chScore = calinskiHarabaszScore(data, labels);
         double dbScore = daviesBouldinScore(data, labels);
         return pair<double, double>(chScore, dbScore);
+    }
+
+    void createLabels(int nTotal){
+        for(int i=0; i<clusters.size(); i++){
+            for(int j:clusters[i]){
+                labels[j] = i;
+            }
+        }
     }
 };
