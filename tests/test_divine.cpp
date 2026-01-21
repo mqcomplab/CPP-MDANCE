@@ -44,11 +44,8 @@ TEST_F(DivineTest, TestCombinations){
     int nAtoms = 1;
     int end = 0;        //end = 0 means 'k'
     for(auto s:split){
-        std::cout<<1;
         for(auto a:anchor){
-            std::cout<<2;
             for(auto r:refine){
-                std::cout<<3;
                 Divine model=Divine(
                     data,
                     s,
@@ -75,7 +72,6 @@ TEST_F(DivineTest, TestCombinations){
                 EXPECT_EQ(uniqueLabels.size(), 3);
             }
         }
-        std::cout<<"\n";
     }
 }
 
@@ -98,4 +94,9 @@ TEST_F(DivineTest, TestPoint){
     scores = model.getScores();
 
     EXPECT_EQ(clusters.size(), smallData.rows());
+    set<int> uniqueLabels;
+    for(int i:labels){
+        uniqueLabels.insert(i);
+    }
+    EXPECT_EQ(labels.size(), uniqueLabels.size());
 }
