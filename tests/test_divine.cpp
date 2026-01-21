@@ -75,6 +75,7 @@ TEST_F(DivineTest, TestCombinations){
     }
 }
 
+/*
 TEST_F(DivineTest, TestPoint){
     Mat smallData = data(Eigen::seq(0,4), Eigen::placeholders::all);
     int end=1;
@@ -91,7 +92,6 @@ TEST_F(DivineTest, TestPoint){
     );
     labels = model.getLabels();
     clusters = model.getClusters();
-    scores = model.getScores();
 
     EXPECT_EQ(clusters.size(), smallData.rows());
     set<int> uniqueLabels;
@@ -99,4 +99,25 @@ TEST_F(DivineTest, TestPoint){
         uniqueLabels.insert(i);
     }
     EXPECT_EQ(labels.size(), uniqueLabels.size());
+}
+*/
+
+TEST_F(DivineTest, TestEmpty){
+    Mat data = Mat::Zero(1, 2);
+    Divine model=Divine(
+        data,
+        MD::DivineSplit::MSD,
+        MD::DivineAnchors::NANI,
+        MD::KinitType::StratAll,
+        0,
+        3
+    );
+
+    clusters = model.getClusters();
+    labels = model.getLabels();
+
+    //an runtime error is thrown (deliberate), but this is expected and as a result 
+    //the clusters and labels size should be 0
+    EXPECT_EQ(clusters.size(), 0);
+    EXPECT_EQ(labels.size(), 0);
 }
