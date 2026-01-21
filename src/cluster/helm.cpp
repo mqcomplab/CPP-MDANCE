@@ -453,7 +453,6 @@ class Helm{
             if(this->trimVal && this->trimK){
                 throw std::invalid_argument("You can only provided either trimVal or trimK, but not both.");
             }
-
             if(this->minSamples < 0){
                 throw std::invalid_argument("minSamples must be greater than 0.");
             }
