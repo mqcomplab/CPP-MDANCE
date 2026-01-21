@@ -3,7 +3,8 @@
 #include "test_helm.h"
 #include "test_utils.h"
 
-#include "../../src/cluster/helm.cpp"
+#include "../../src/cluster/helm.h"
+#include "../../tools/bts.h"
 #include "../../tools/scores.cpp"
 
 TestHelm::TestHelm() {
