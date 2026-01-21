@@ -75,7 +75,7 @@ TEST_F(DivineTest, TestCombinations){
     }
 }
 
-/*
+
 TEST_F(DivineTest, TestPoint){
     Mat smallData = data(Eigen::seq(0,4), Eigen::placeholders::all);
     int end=1;
@@ -100,7 +100,7 @@ TEST_F(DivineTest, TestPoint){
     }
     EXPECT_EQ(labels.size(), uniqueLabels.size());
 }
-*/
+
 
 TEST_F(DivineTest, TestEmpty){
     Mat data = Mat::Zero(1, 2);
