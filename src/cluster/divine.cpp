@@ -184,7 +184,7 @@ class Divine{
             mainGroup.reserve(subdata.rows() - 1);
 
             for (Index i = 0; i < subdata.rows(); ++i) {
-                if (subdataIndices[i] == splinterIdx) continue;
+                if (i == splinterIdx) continue;
 
                 double dS = (subdata.row(i).transpose() - splinterPoint).square().sum() / nAtoms;
                 double dM = (subdata.row(i).transpose() - medoidPoint).square().sum() / nAtoms;
