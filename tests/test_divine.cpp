@@ -9,7 +9,7 @@ DivineTest::DivineTest(){
     //read in data (make_blobs.csv)
     std::filesystem::path path = std::filesystem::current_path();
     path = path.parent_path().parent_path();
-    path = path/"tests"/"data/make_blobs.csv";
+    path = path/"tests"/"data/make_blobs_divine.csv";
     data = readCSVtoEigen(path.string());
 }
 
