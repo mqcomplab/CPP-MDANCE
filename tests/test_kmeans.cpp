@@ -3,7 +3,7 @@
 #include <gtest/gtest.h>
 
 #include "test_utils.h"
-#include "../src/cluster/KMeansRex/KMeans.cpp"
+#include "../src/cluster/KMeansRex/KMeans.h"
 
 TEST(KMeansNani, simcsv){
     // Construct path to data file
