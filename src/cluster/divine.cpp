@@ -22,7 +22,6 @@ void Divine::divisiveAlgorithm() {
             Index clusterToSplit = selectClusterToSplit(failedSplits);
             if (clusterToSplit < 0) {
                 throw std::runtime_error("No more cluster splits possible that would yield valid subclusters");
-                //std::cerr<<"Cluster"<<clusterToSplit<<"could not be split meaningfully — skipping."<<std::endl;
             } 
             didSplit = splitCluster(clusterToSplit, minFrames);
             failedSplits[clusterToSplit] = !didSplit;
