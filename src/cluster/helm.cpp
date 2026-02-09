@@ -14,7 +14,7 @@ Mat Helm::makeDataByRow(Vec a, Vec b){
     return data;
 }
 
-map<int, vector<Cluster>> Helm::trimClusters(){
+vector<HCTree> Helm::trimClusters(){
     /*
         Trims the intial clusters based on the trimVal or trimK
 
@@ -24,10 +24,10 @@ map<int, vector<Cluster>> Helm::trimClusters(){
     */
     vector<pair<double, int>> clusterMsds;
     int i=0;
-    for(int i=0; i<clusterMap[totalIncoming].size(); i++){
-        Vec cSum = clusterMap[totalIncoming].at(i).getCsum();
-        Vec sqSum = clusterMap[totalIncoming].at(i).getSQsum();
-        int Nik = clusterMap[totalIncoming].at(i).getN();
+    for(int i=0; i<clusterTree.size(); i++){
+        Vec cSum = clusterTree.at(i).getRootCSum();
+        Vec sqSum = clusterTree.at(i).getRootSQSum();
+        int Nik = clusterTree.at(i).getRootNObjects();
 
         if(Nik < minSamples){
             continue;
@@ -40,10 +40,9 @@ map<int, vector<Cluster>> Helm::trimClusters(){
     sort(clusterMsds.begin(), clusterMsds.end());
 
     //trim the clusters based on the trim_k or trim_val
-    map<int, vector<Cluster>> newClusterMap;
+    vector<HCTree> newClusterTree;
     if(trimK){
         this->trimIncoming = clusterMsds.size()-trimK;
-        newClusterMap[trimIncoming] = vector<Cluster>();
         if (trimK >= clusterMsds.size()-1){
             throw std::runtime_error("trimK is too large!");
         }
@@ -52,10 +51,10 @@ map<int, vector<Cluster>> Helm::trimClusters(){
         }
         for(int i=0; i<clusterMsds.size()-trimK; i++){
             int index = clusterMsds[i].second;
-            if (index < 0 || index >= clusterMap[totalIncoming].size()) {
+            if (index < 0 || index >= clusterTree.size()) {
                 throw std::runtime_error("Index out of bounds when trimming clusters.");
             }
-            newClusterMap[trimIncoming].emplace_back(clusterMap[totalIncoming][index]);
+            newClusterTree.emplace_back(clusterTree[index]);
         }
     } 
     else if(trimVal){
@@ -66,18 +65,17 @@ map<int, vector<Cluster>> Helm::trimClusters(){
             }
         }
 
-        newClusterMap.emplace(trimIncoming, vector<Cluster>());
         for(auto i:clusterMsds){
             if(i.first < trimVal){
-                newClusterMap[trimIncoming].emplace_back(clusterMap[totalIncoming][i.second]);
+                newClusterTree.emplace_back(clusterTree[i.second]);
             }
         }
     }
 
-    return newClusterMap;
+    return newClusterTree;
 }
 
-vector<Cluster> Helm::genNewClusters(vector<Cluster>& previousClusters){
+vector<HCTree> Helm::genNewClusters(){
     /*
         Generates new cluster by merging two most similar clusters.
 
@@ -85,14 +83,15 @@ vector<Cluster> Helm::genNewClusters(vector<Cluster>& previousClusters){
         ------------
         previous_clusters: contains info about clusters in kth iteration
     */
-
+    int previousSize = clusterTree.size();
+    vector<HCTree> previousClusters = clusterTree;
     if(clusterDists.rows()==0 && clusterDists.cols()==0){
         genClusterDists(previousClusters);
     }
     else{
-        Vec distsToNewCluster = Vec::Constant(previousClusters.size()-1, INFINITY);
-        for(int i=0; i<previousClusters.size()-1; i++){
-            float helmSim = calc(previousClusters, i, previousClusters.size()-1);
+        Vec distsToNewCluster = Vec::Constant(previousSize-1, INFINITY);
+        for(int i=0; i < previousSize - 1; i++){
+            float helmSim = calcHelmSim(previousClusters[i], previousClusters[previousSize - 1]); // assumes new cluster is at the end of clusterTree!
             distsToNewCluster[i] = helmSim;
         }
 
@@ -111,6 +110,7 @@ vector<Cluster> Helm::genNewClusters(vector<Cluster>& previousClusters){
 
     //Find the two most similar clusters
     Index minRow, minCol;       //minRow and minCol refer to two different clusters
+    
     float mergeDist = clusterDists.minCoeff(&minRow, &minCol);
     // add check for minRow and minCol being same. This can cause UB or crash. 
     if (minRow == minCol){
@@ -124,13 +124,13 @@ vector<Cluster> Helm::genNewClusters(vector<Cluster>& previousClusters){
         ;
     }
     else{
-        cSum = previousClusters[minRow].getCsum() + previousClusters[minCol].getCsum();
-        sqSum = previousClusters[minRow].getSQsum() + previousClusters[minCol].getSQsum();
+        cSum = previousClusters[minRow].getRootCSum() + previousClusters[minCol].getRootCSum();
+        sqSum = previousClusters[minRow].getRootSQSum() + previousClusters[minCol].getRootSQSum();
     }
 
     Vec cSumik = cSum;
     Vec sqSumik = sqSum;
-    int Nik = previousClusters[minRow].getN() + previousClusters[minCol].getN();
+    int Nik = previousClusters[minRow].getRootNObjects() + previousClusters[minCol].getRootNObjects();
     if(alignMeth != MD::AlignMethod::None){
         // todo add kron alignment
         //aligned combine clusters
@@ -138,7 +138,7 @@ vector<Cluster> Helm::genNewClusters(vector<Cluster>& previousClusters){
     }
 
     //Save the new clusters after mergin
-    vector<Cluster> newClusters;
+    vector<HCTree> newClusters;
     newClusters.reserve(previousClusters.size()+1);
     for(int i=0; i<previousClusters.size(); i++){
         if(i==minRow || i==minCol){;}
@@ -146,11 +146,11 @@ vector<Cluster> Helm::genNewClusters(vector<Cluster>& previousClusters){
             newClusters.emplace_back(previousClusters[i]);
         }
     }
-    int nIndMinRow = previousClusters[minRow].getIndices().size();
-    int nIndMinCol = previousClusters[minCol].getIndices().size();
-    Veci indicesik(nIndMinRow + nIndMinCol);
-    indicesik(Eigen::seq(0, nIndMinRow-1)) = previousClusters[minRow].getIndices();
-    indicesik(Eigen::seq(nIndMinRow, indicesik.size()-1)) = previousClusters[minCol].getIndices();
+    // int nIndMinRow = previousClusters[minRow].getIndices().size();
+    // int nIndMinCol = previousClusters[minCol].getIndices().size();
+    // Veci indicesik(nIndMinRow + nIndMinCol);
+    // indicesik(Eigen::seq(0, nIndMinRow-1)) = previousClusters[minRow].getIndices();
+    // indicesik(Eigen::seq(nIndMinRow, indicesik.size()-1)) = previousClusters[minCol].getIndices();
 
     //Two different ways of saving the new cluster
     if(alignMeth != MD::AlignMethod::None){
@@ -160,7 +160,9 @@ vector<Cluster> Helm::genNewClusters(vector<Cluster>& previousClusters){
         ;
     }
     else{
-        newClusters.emplace_back(Cluster(indicesik, cSumik, sqSumik, Nik));
+        int dummyZIndex = -1; // this will be updated later in combineTrees function
+        previousClusters[minRow].combineTrees(previousClusters[minCol], dummyZIndex);
+        newClusters.emplace_back(previousClusters[minRow]);
     }
 
     //Remove distances of merged clusters
@@ -180,26 +182,25 @@ vector<Cluster> Helm::genNewClusters(vector<Cluster>& previousClusters){
     if(eps==-1 || mergeDist < eps){
         return newClusters;
     }
-    return vector<Cluster>();
+    return vector<HCTree>();
 }
 
-float Helm::calc(vector<Cluster>& previousClusters, int i, int j){
+float Helm::calcHelmSim(HCTree& firstTree, HCTree& secondTree){
     /*
-        Calculates the similarity between two clusters
+        Calculates the similarity between two clusters. These are the roots of the two trees that are passed. 
 
         Parameters
         ------------
-        previousClusters: contains info about clusters in kth iteration
-        i: index of first cluster
-        j: index of second cluster
+        firstTree: HCTree object containing info about first cluster at root
+        secondTree: HCTree object containing info about second cluster at root
     */
 
-    Vec cSumA = previousClusters[i].getCsum();
-    Vec cSumB = previousClusters[j].getCsum();
-    Vec sqSumA = previousClusters[i].getSQsum();
-    Vec sqSumB = previousClusters[j].getSQsum();
-    int nA = previousClusters[i].getN();
-    int nB = previousClusters[j].getN();
+    Vec cSumA = firstTree.getRootCSum();
+    Vec cSumB = secondTree.getRootCSum();
+    Vec sqSumA = firstTree.getRootSQSum();
+    Vec sqSumB = secondTree.getRootSQSum();
+    int nA = firstTree.getRootNObjects();
+    int nB = secondTree.getRootNObjects();
 
     Mat dataA = makeDataByRow(cSumA, sqSumA);
     double simA = extendedComparison(dataA, nA, nAtoms, true, mt);
@@ -218,7 +219,7 @@ float Helm::calc(vector<Cluster>& previousClusters, int i, int j){
         sqSum = sqSumA + sqSumB;
     }
 
-    int n = previousClusters[i].getN() + nB;
+    int n = nA + nB;
     Mat data = makeDataByRow(cSum, sqSum);
     double sim = extendedComparison(data, n, nAtoms, true, mt);
 
@@ -238,7 +239,7 @@ float Helm::calc(vector<Cluster>& previousClusters, int i, int j){
 }
 
     //finished
-void Helm::genClusterDists(vector<Cluster>& previousClusters){
+void Helm::genClusterDists(vector<HCTree>& previousClusters){
     /*
         Generates pairwise similairty matrix for initial clusters
 
@@ -254,137 +255,139 @@ void Helm::genClusterDists(vector<Cluster>& previousClusters){
     clusterDists = Mat::Zero(previousClusters.size(), previousClusters.size()) + INFINITY;
     for(int i=0; i<previousClusters.size(); i++){
         for(int j=i+1; j<previousClusters.size(); j++){
-            float helmSim = calc(previousClusters, i, j);
+            float helmSim = calcHelmSim(previousClusters[i], previousClusters[j]);
             clusterDists(i, j) = helmSim;
         }
     }
 }
 
 //finished
-Mat Helm::initialPairwiseMatrix(vector<Cluster>& previousClusters){
-    /*
-        Generates pairwise similarity matrix for the initial clusters
+//todo: update to new strucure
+
+// Mat Helm::initialPairwiseMatrix(vector<Cluster>& previousClusters){
+//     /*
+//         Generates pairwise similarity matrix for the initial clusters
         
-        Parameters
-        -------------
-        previousClusters: contains the info about clusters in kth iteration
+//         Parameters
+//         -------------
+//         previousClusters: contains the info about clusters in kth iteration
 
-        Results
-        --------------
-        returns pairwise similarity matrix
-    */
+//         Results
+//         --------------
+//         returns pairwise similarity matrix
+//     */
 
-    //Optimally trim the initial clusters step
-    if(trimStart){
-        clusterMap = trimClusters();
-    }
+//     //Optimally trim the initial clusters step
+//     if(trimStart){
+//         clusterMap = trimClusters();
+//     }
 
-    //extracting all keys of clusterMap
-    vector<int> keys;
-    for(auto pair:clusterMap){
-        keys.emplace_back(pair.first);
-    }
-    sort(keys.begin(), keys.end());
-    int n = keys[0];
+//     //extracting all keys of clusterMap
+//     vector<int> keys;
+//     for(auto pair:clusterMap){
+//         keys.emplace_back(pair.first);
+//     }
+//     sort(keys.begin(), keys.end());
+//     int n = keys[0];
 
-    previousClusters = clusterMap[n];
+//     previousClusters = clusterMap[n];
 
-    Mat distances(n,n);
-    for(int i=0; i<n; i++){
-        for(int j=0; j<n; j++){
-            if(i==j){
-                distances(i,j) = 0;
-            }
-            else{
-                float helmSim = calc(previousClusters, i, j);
-                distances(i,j) = helmSim;
-            }
-        }
-    }
+//     Mat distances(n,n);
+//     for(int i=0; i<n; i++){
+//         for(int j=0; j<n; j++){
+//             if(i==j){
+//                 distances(i,j) = 0;
+//             }
+//             else{
+//                 float helmSim = calcHelmSim(previousClusters[i], previousClusters[j]);
+//                 distances(i,j) = helmSim;
+//             }
+//         }
+//     }
 
-    distances = refineDisMatrix(distances);
-    return distances;
-}
+//     distances = refineDisMatrix(distances);
+//     return distances;
+// }
 
     //todo gen_link_matrix()
     //i will assume that a link matrix is ArrayXXd (or eq. Mat)
 
 //finished
-map<int, vector<Cluster>> Helm::linkMatrixToClusterMap(){
-    vector<int> naniSizes;
-    for(auto it=clusterMap.begin(); it!=clusterMap.end(); it++){
-        for(auto clust:it->second){
-            naniSizes.emplace_back(clust.getN());
-        }
-    }
+// todo: convert to new HCTree structure
+// map<int, vector<Cluster>> Helm::linkMatrixToClusterMap(){
+//     vector<int> naniSizes;
+//     for(auto it=clusterMap.begin(); it!=clusterMap.end(); it++){
+//         for(auto clust:it->second){
+//             naniSizes.emplace_back(clust.getN());
+//         }
+//     }
 
-    //cluster IDs
-    int k = linkMatrix.size() + 1;
-    vector<vector<int>> vecCluster;
-    for(int i=0; i<k; i++){
-        vecCluster.emplace_back(vector<int>{i});
-    }
+//     //cluster IDs
+//     int k = linkMatrix.size() + 1;
+//     vector<vector<int>> vecCluster;
+//     for(int i=0; i<k; i++){
+//         vecCluster.emplace_back(vector<int>{i});
+//     }
 
-    map<int, vector<vector<int>>> clusterInds;
-    vector<vector<int>> copyVecCluster = vecCluster;
-    clusterInds[k] = copyVecCluster;
+//     map<int, vector<vector<int>>> clusterInds;
+//     vector<vector<int>> copyVecCluster = vecCluster;
+//     clusterInds[k] = copyVecCluster;
 
-    for(int i=0; i<linkMatrix.size(); i++){
-        vector<vector<int>> levelClusters;
+//     for(int i=0; i<linkMatrix.size(); i++){
+//         vector<vector<int>> levelClusters;
 
-        auto row=linkMatrix.row(i);            
-        int c1 = row[0];
-        int c2 = row[1];
+//         auto row=linkMatrix.row(i);            
+//         int c1 = row[0];
+//         int c2 = row[1];
 
-        vector<int> newVec(vecCluster[c1]);
-        for(int i:vecCluster[c2]){
-            newVec.emplace_back(i);
-        }
-        vecCluster.emplace_back(newVec);
-        int newK = k-i-1;
+//         vector<int> newVec(vecCluster[c1]);
+//         for(int i:vecCluster[c2]){
+//             newVec.emplace_back(i);
+//         }
+//         vecCluster.emplace_back(newVec);
+//         int newK = k-i-1;
 
-        for(auto clust:clusterInds[k-i]){
-            //clust here is vector<int>
+//         for(auto clust:clusterInds[k-i]){
+//             //clust here is vector<int>
 
-            if(clust == vecCluster[c1]){;}
-            else if(clust == vecCluster[c2]){;}
-            else{
-                levelClusters.emplace_back(clust);
-            } 
-        }
-        levelClusters.emplace_back(vecCluster.back());
-        clusterInds[newK] = levelClusters;
-    }
+//             if(clust == vecCluster[c1]){;}
+//             else if(clust == vecCluster[c2]){;}
+//             else{
+//                 levelClusters.emplace_back(clust);
+//             } 
+//         }
+//         levelClusters.emplace_back(vecCluster.back());
+//         clusterInds[newK] = levelClusters;
+//     }
 
-    map<int, vector<Cluster>> clusters;
-    for(auto it=clusterInds.begin(); it!=clusterInds.end(); it++){
-        clusters[it->first] = vector<Cluster>();
-        for(auto clust:it->second){
-            int n_mols=0;
-            for(int i:clust){
-                n_mols+=naniSizes[i];
-            }
+//     map<int, vector<Cluster>> clusters;
+//     for(auto it=clusterInds.begin(); it!=clusterInds.end(); it++){
+//         clusters[it->first] = vector<Cluster>();
+//         for(auto clust:it->second){
+//             int n_mols=0;
+//             for(int i:clust){
+//                 n_mols+=naniSizes[i];
+//             }
 
-            //convert clust to Veci type
-            Veci clust_eigen(clust.size());
-            for(int i=0; i<clust.size(); i++){
-                clust_eigen(i) = clust[i];
-            }
-            clusters[it->first].emplace_back(Cluster(clust_eigen, Vec::Zero(clust.size()),Vec::Zero(clust.size()), n_mols));
-        }
-    }
-    return clusters;
-}
+//             //convert clust to Veci type
+//             Veci clust_eigen(clust.size());
+//             for(int i=0; i<clust.size(); i++){
+//                 clust_eigen(i) = clust[i];
+//             }
+//             clusters[it->first].emplace_back(Cluster(clust_eigen, Vec::Zero(clust.size()),Vec::Zero(clust.size()), n_mols));
+//         }
+//     }
+//     return clusters;
+// }
 
-Helm::Helm(map<int, vector<Cluster>> clusterMap, int nAtoms, MD::Metric mt, 
+Helm::Helm(vector<HCTree> clusterTree, int nAtoms, MD::Metric mt, 
         MD::MergeScheme mergeScheme, int nClusters, float eps, 
         bool trimStart, MD::AlignMethod alignMeth, 
         float minSamples, MD::Link link,
         float trimVal, float trimK,
         bool savePairwiseSum,
         string inputTop, string inputTraj){
-    
-    this->clusterMap = clusterMap;
+    this->clusterTree = clusterTree;
     this->mt = mt;
     this->nAtoms = nAtoms;
     this->mergeScheme = mergeScheme;
@@ -400,15 +403,10 @@ Helm::Helm(map<int, vector<Cluster>> clusterMap, int nAtoms, MD::Metric mt,
     this->inputTop = inputTop;
     this->inputTraj = inputTraj;
 
-    vector<int> keys;
-    for(auto pair:clusterMap){
-        keys.emplace_back(pair.first);
-    }
-    sort(keys.begin(), keys.end());
-    this->totalIncoming = keys[0];
+    this->totalIncoming = clusterTree.size();;
     totalSum = 0;
-    for(auto clust:clusterMap[totalIncoming]){
-        this->totalSum += clust.getN();
+    for(auto tree:clusterTree){
+        this->totalSum += tree.getRootNObjects();
     }
 
     //check end conditions
@@ -436,7 +434,7 @@ Helm::Helm(map<int, vector<Cluster>> clusterMap, int nAtoms, MD::Metric mt,
 
 }
 //finished
-map<int, vector<Cluster>> Helm::run(){
+vector<HCTree> Helm::run(){
     /*
         Performs HELM clustering of initial clusters
 
@@ -454,29 +452,22 @@ map<int, vector<Cluster>> Helm::run(){
         //return linkMatrixToClusterMap();
     }
     if(trimStart){
-        clusterMap = trimClusters();
+        clusterTree = trimClusters();
     }
 
     //perform clustering
-    vector<int> keys;
-    for(auto pair:clusterMap){
-        keys.emplace_back(pair.first);
-    }
-    sort(keys.begin(), keys.end());
-    int n = keys[0];
-
+    int n = clusterTree.size();
     while(n>1){
-        vector<Cluster> previousClusters = clusterMap[n];
-        vector<Cluster> newClusters = genNewClusters(previousClusters);
-        clusterMap[n-1] = newClusters;
-
+        // vector<Cluster> previousClusters = clusterMap[n];
+        vector<HCTree> newClusters = genNewClusters();
+        clusterTree = newClusters; // fixme: this would overwrite clusterTree to empty if that termination condition is met!
         //termination conditions
         if(n==(nClusters+1) || newClusters.empty()){
             break;
         }
         n-=1;
     }
-    return clusterMap;
+    return clusterTree;
 }
 
 pair<double, double> Helm::computeScores(vector<Cluster> clusters, Mat data){
@@ -515,7 +506,7 @@ pair<double, double> Helm::computeScores(vector<Cluster> clusters, Mat data){
         return pair<double, double>{chScore, dbScore};
     }
 }
-
+// fixme: this function is no longer required, but I will keep it for now until I have fully converted to the new HCTree structure.
 Mat Helm::calculateZMatrix(map<int, vector<Cluster>> clusterMap){
     /* 
         Converts the cluster dictionary to a linkage matrix Z
