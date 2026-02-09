@@ -6,6 +6,7 @@ find_package(Eigen3 3.3 REQUIRED)
 add_library(mdance_tools STATIC
     tools/bts.cpp 
     tools/cluster.cpp 
+    tools/hc_utils.cpp
     tools/esim.cpp 
     tools/scores.cpp
 )
