@@ -1,3 +1,6 @@
+#ifndef HC_UTILS_H
+#define HC_UTILS_H
+
 #include <Eigen/Dense>
 #include <list>
 
@@ -23,7 +26,7 @@ class HCTreeNode{
         HCTreeNode* rightPtr; // pointer to right child node
         
     public:
-        HCTreeNode(std::list<int> idx, Vec cSum, Vec sqsum, int z_ind);
+        HCTreeNode(std::list<int> idx, Vec cSum, Vec sqsum, int nObjects, int z_ind);
 
         Vec getCSum();
 
@@ -74,7 +77,9 @@ class HCTree{
 
         int getRootIdx();
 
-        void insertRoot(std::list<int> idx, Vec cSum, Vec sqsum, int z_ind);
+        void insertRoot(std::list<int> idx, Vec cSum, Vec sqsum, int nObjects, int z_ind);
 
         void combineTrees(HCTree other_tree, int new_z_ind);
 };
+
+#endif

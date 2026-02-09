@@ -6,11 +6,11 @@
  * @param idx A list of integers representing the indices of the objects in this node.
  * @param z_ind An integer representing the z_index for this node. This is the index of the node in the linkage matrix Z.
  */
-HCTreeNode::HCTreeNode(std::list<int> idx, Vec cSum, Vec sqsum, int z_ind){
-    setCSum(cSum);
+HCTreeNode::HCTreeNode(std::list<int> idx, Vec cSumIn, Vec sqsum, int nObjects, int z_ind){
+    setCSum(cSumIn);
     setSQSum(sqsum);
     setIndices(idx);
-    setNObjects(idx.size());
+    setNObjects(nObjects);
     setLeftPtr(NULL);
     setRightPtr(NULL);
     setIdx(z_ind);
@@ -25,16 +25,16 @@ Vec HCTreeNode::getCSum(){
 }
 
 
-void HCTreeNode::setCSum(Vec cSum){
-    cSum = cSum;
+void HCTreeNode::setCSum(Vec cSumIn){
+    cSum = cSumIn;
 }
 
 Vec HCTreeNode::getSQSum(){
     return sqSum;
 }
 
-void HCTreeNode::setSQSum(Vec sqSum){
-    sqSum = sqSum;
+void HCTreeNode::setSQSum(Vec sqSumIn){
+    sqSum = sqSumIn;
 }
 
 /**
@@ -196,8 +196,8 @@ int HCTree::getRootIdx(){ //z_index
  * @param idx A list of integers representing the indices of the objects in the new root node.
  * @param ind An integer representing the z_index for the new root node.
  */
-void HCTree::insertRoot(std::list<int> idx, Vec cSum, Vec sqsum, int z_ind){
-    rootPtr = new HCTreeNode(fps, idx, ind);
+void HCTree::insertRoot(std::list<int> idx, Vec cSum, Vec sqsum, int nObjects, int z_ind){
+    rootPtr = new HCTreeNode(idx, cSum, sqsum, nObjects, z_ind);
 }
 
 /**
@@ -220,9 +220,9 @@ void HCTree::combineTrees(HCTree other_tree, int new_z_ind){
     std::list<int> idx = other_tree.getRootIndices();
     idx.splice(idx.end(), getRootIndices());
     idx.sort();
-
+    int nObjectsNew = other_tree.getRootNObjects() + getRootNObjects();
     //create new root node
-    HCTreeNode* new_root = new HCTreeNode(idx, csum_new, sqsum_new, new_z_ind);
+    HCTreeNode* new_root = new HCTreeNode(idx, csum_new, sqsum_new, nObjectsNew, new_z_ind);
 
     // set left and right pointers so that z_left < z_right
     int z_other_tree = other_tree.getRootIdx();
