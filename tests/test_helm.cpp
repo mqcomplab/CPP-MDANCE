@@ -46,7 +46,7 @@ TestHelm::TestHelm() {
         }
         // todo: zind is set to 1 --> Not sure if that is correct
         HCTree tree = HCTree();
-        tree.insertRoot(indices, cSumi, sqSumi, ni, 1);
+        tree.insertRoot(indices, cSumi, sqSumi, ni, i);
         clusters.push_back(tree);
     }
     if (N0 != clusters.size()) {
@@ -183,7 +183,7 @@ TEST_F(TestHelm, TestPops){
 //     int trimK = 1;
 //     double minSamples = 0.025; 
 //     // trim_start=True, trim_k=1, trim_val=None, min_samples=0.025)()
-//     Helm helm = Helm(clusters_map,
+//     Helm helm = Helm(clusterTree,
 //         nAtoms, 
 //         MD::Metric::MSD, 
 //         MD::MergeScheme::Inter, 
@@ -196,24 +196,23 @@ TEST_F(TestHelm, TestPops){
 //         0, // default trimVal value
 //         trimK
 //     ); 
-//     map<int, vector<Cluster>> res = helm.run();
-//     int expectedNClusters = 8;
+//     vector<HCTree> clusters = helm.run();
+//     int expectedNClusters = 1;
 //     // check if 8 in the map
-//     ASSERT_EQ(res.find(expectedNClusters) != res.end(), true);
-
-//     // check number of clusters
-//     std::vector<Cluster> clusters = res[expectedNClusters];
 //     ASSERT_EQ(clusters.size(), expectedNClusters);
+
+//     // to check trimming, we need to have 8 clusters --> traverse the cluster tree to get the 8 clusters.
+
 
 //     std::vector<double> msds;
 //     std::vector<int> Niks;
 //     for (int i = 0; i < clusters.size(); i++) {
-//         ArrayXXd data = makeDataByRow(clusters[i].getCsum(), clusters[i].getSQsum());
-//         int Ni = clusters[i].getN();
+//         ArrayXXd data = makeDataByRow(clusters[i].getRootCSum(), clusters[i].getRootSQSum());
+//         int Ni = clusters[i].getRootNObjects();
 //         Niks.push_back(Ni);
 //         double msd = extendedComparison(data, Ni, nAtoms, true, MD::Metric::MSD);
 //         msds.push_back(msd);
-//         double pop = (double) clusters[i].getN()/6001.0;
+//         double pop = (double) clusters[i].getRootNObjects()/6001.0;
 //         EXPECT_GT(pop, 0.025);
 //     }
 
@@ -254,7 +253,7 @@ TEST_F(TestHelm, TestPops){
 //         }
 //         Mat arr = data(temp, Eigen::placeholders::all);
 //         scores.emplace_back(helm.computeScores(it->second, arr));
-//     }
+    // }
 
 //     //check scores
 //     std::vector<pair<double, double>> expectedScores = {
@@ -427,45 +426,45 @@ TEST_F(TestHelm, TestPops){
 //     }
 // }
 
-// TEST_F(TestHelm, ZMatrix){
-//     int nAtoms = 50;
-//     int nClus = 37;
-//     Helm helm = Helm(clusters_map,
-//         nAtoms, 
-//         MD::Metric::MSD, 
-//         MD::MergeScheme::Inter, 
-//         nClus
-//     );
-//     map<int, vector<Cluster>> clusters = helm.run();
-//     Mat Z = helm.calculateZMatrix(clusters);
-//     Mat expectedZ(23, 4);
-//     expectedZ <<2, 23, 1.0, 2, 
-//         47, 60, 2.0, 3, 
-//         15, 31, 3.0, 2, 
-//         22, 45, 4.0, 2, 
-//         5, 55, 5.0, 2, 
-//         26, 34, 6.0, 2, 
-//         9, 41, 7.0, 2, 
-//         14, 27, 8.0, 2, 
-//         4, 17, 9.0, 2, 
-//         8, 62, 10.0, 3, 
-//         0, 11, 11.0, 2, 
-//         3, 6, 12.0, 2, 
-//         19, 25, 13.0, 2, 
-//         57, 63, 14.0, 3, 
-//         35, 52, 15.0, 2, 
-//         18, 64, 16.0, 3, 
-//         20, 42, 17.0, 2, 
-//         16, 68, 18.0, 3, 
-//         66, 75, 19.0, 5, 
-//         1, 72, 20.0, 3, 
-//         21, 65, 21.0, 3, 
-//         36, 40, 22.0, 2, 
-//         51, 56, 23.0, 2;
-//     for(int i=0; i<expectedZ.rows(); i++){
-//         for(int j=0; j<4; j++){
-//             EXPECT_EQ(Z(i,j), expectedZ(i,j));
-//         }
-//     }
+TEST_F(TestHelm, ZMatrix){
+    int nAtoms = 50;
+    int nClus = 37;
+    Helm helm = Helm(clusterTree,
+        nAtoms, 
+        MD::Metric::MSD, 
+        MD::MergeScheme::Inter, 
+        nClus
+    );
+    vector<HCTree> clusters = helm.run();
+    Mat Z = helm.calculateZMatrix();
+    Mat expectedZ(23, 4);
+    expectedZ <<2, 23, 1.0, 2, 
+        47, 60, 2.0, 3, 
+        15, 31, 3.0, 2, 
+        22, 45, 4.0, 2, 
+        5, 55, 5.0, 2, 
+        26, 34, 6.0, 2, 
+        9, 41, 7.0, 2, 
+        14, 27, 8.0, 2, 
+        4, 17, 9.0, 2, 
+        8, 62, 10.0, 3, 
+        0, 11, 11.0, 2, 
+        3, 6, 12.0, 2, 
+        19, 25, 13.0, 2, 
+        57, 63, 14.0, 3, 
+        35, 52, 15.0, 2, 
+        18, 64, 16.0, 3, 
+        20, 42, 17.0, 2, 
+        16, 68, 18.0, 3, 
+        66, 75, 19.0, 5, 
+        1, 72, 20.0, 3, 
+        21, 65, 21.0, 3, 
+        36, 40, 22.0, 2, 
+        51, 56, 23.0, 2;
+    for(int i=0; i<expectedZ.rows(); i++){
+        for(int j=0; j<4; j++){
+            EXPECT_EQ(Z(i,j), expectedZ(i,j));
+        }
+    }
         
-// }
+}
