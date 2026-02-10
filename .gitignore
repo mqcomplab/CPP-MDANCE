@@ -33,3 +33,7 @@
 
 # Build directories
 /build*
+
+# clangd / tooling caches
+.cache/
+.clangd/
