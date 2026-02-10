@@ -12,7 +12,7 @@ class Helm{
                 bool savePairwiseSum = false,
                 string inputTop ="", string inputTraj ="");
         vector<HCTree> run();
-        pair<double, double> computeScores(vector<Cluster> clusters, Mat data);
+        pair<double, double> computeScores(vector<HCTree> clusters, Mat data);
         Mat getZMatrix();
     private:
         vector<HCTree> clusterTree;

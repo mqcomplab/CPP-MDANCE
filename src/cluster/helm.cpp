@@ -499,7 +499,7 @@ vector<HCTree> Helm::run(){
     return clusterTree;
 }
 
-pair<double, double> Helm::computeScores(vector<Cluster> clusters, Mat data){
+pair<double, double> Helm::computeScores(vector<HCTree> clusters, Mat data){
     /*
         Computes Calinksi-Harabasz and Davies-Bouldin scores of clusters
         using random labeling
@@ -515,7 +515,7 @@ pair<double, double> Helm::computeScores(vector<Cluster> clusters, Mat data){
 
     for(auto c:clusters){
         //clusterIndices.emplace_back(c.getIndices());
-        int Nik=c.getN();
+        int Nik=c.getRootNObjects();
         label.insert(label.end(), Nik, count);
         count++;
     }

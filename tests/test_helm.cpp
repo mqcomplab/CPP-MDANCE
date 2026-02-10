@@ -232,45 +232,28 @@ TEST_F(TestHelm, TrimK){
         EXPECT_NEAR(msds[i], expected_msds[i], 1e-5);
     }
 
-//     int N0 = clusters.size();
+    int N0 = clusters.size();
 
-//     vector<pair<double, double>> scores;
+    vector<pair<double, double>> scores;
 
-//     for(auto it=res.rbegin(); it!=res.rend(); it++){
-//         vector<int> idx;
-//         for(auto c:it->second){
-//             for(int i:c.getIndices()){
-//                 idx.emplace_back(i);
-//             }
-//         }
-//         vector<int> temp;
-//         for(int i:idx){
-//             for(int j=0; j<labels.size(); j++){
-//                 if(labels(j)==i){
-//                     temp.emplace_back(j);
-//                 }
-//             }
-//         }
-//         Mat arr = data(temp, Eigen::placeholders::all);
-//         scores.emplace_back(helm.computeScores(it->second, arr));
-    // }
-
-//     //check scores
-//     std::vector<pair<double, double>> expectedScores = {
-//         {1027.0159808301096, 1.3503102468493706}, 
-//         {1104.807519769014, 1.205066197610796}, 
-//         {1172.6483112177802, 0.8824355830201499}, 
-//         {1227.2333015488437, 0.9712858749211579}, 
-//         {1332.727994435348, 0.9596798547189016}, 
-//         {1381.3259570829998, 1.1368566266419298}, 
-//         {1482.6296232781137, 0.9381045938050468}
-//     };
-//     for(int i=0; i<expectedScores.size(); i++){
-//         EXPECT_NEAR(scores[i].first, expectedScores[i].first, 1e-5);
-//         EXPECT_NEAR(scores[i].second, expectedScores[i].second, 1e-5);
-//     }
-//     EXPECT_NEAR(scores.back().first, -1.0, 1e-5);
-//     EXPECT_NEAR(scores.back().second, -1.0, 1e-5);
+    vector<int> selectedClusterLabels; // contains all the cluster labels that are in the resulting clusters. 
+    for(auto c:clusters){
+        for(int i:c.getRootIndices()){
+            selectedClusterLabels.emplace_back(i);
+        }
+    }
+    vector<int> selectedFrameIndices; // list of  frames within the selected clusters.
+    for(int i:selectedClusterLabels){
+        for(int j=0; j<labels.size(); j++){
+            if(labels(j)==i){
+                selectedFrameIndices.emplace_back(j);
+            }
+        }
+    }
+    Mat selectedData = data(selectedFrameIndices, Eigen::placeholders::all);
+    pair<double, double> scoreRes = helm.computeScores(clusters, selectedData);
+    EXPECT_NEAR(scoreRes.first, 1027.0159808301096, 1e-5);
+    EXPECT_NEAR(scoreRes.second, 1.3503102468493706, 1e-5);
 }
 
 TEST_F(TestHelm, TrimK2){
