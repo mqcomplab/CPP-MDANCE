@@ -161,22 +161,10 @@ vector<HCTree> Helm::genNewClusters(int ZIdx){
     }
     else{
         // update zMatrix with new merged cluster info
+        int idxMinRow = previousClusters[minRow].getRootIdx();
+        int idxMinCol = previousClusters[minCol].getRootIdx();
         int nClustsMerged = previousClusters[minRow].getRootIndices().size() + previousClusters[minCol].getRootIndices().size();
-
-        if (zMatrix.rows() == 0 && zMatrix.cols() == 0){
-            zMatrix = Mat::Zero(1,4);
-            zMatrix(0, 0) = previousClusters[minRow].getRootIdx();
-            zMatrix(0, 1) = previousClusters[minCol].getRootIdx();
-            zMatrix(0, 2) = 1;
-            zMatrix(0, 3) = nClustsMerged;
-        }
-        else{
-            Vec zMatrixRow(4);
-            int distZMatrix = zMatrix.rows() + 1;
-            zMatrixRow << previousClusters[minRow].getRootIdx(), previousClusters[minCol].getRootIdx(), distZMatrix, nClustsMerged;
-            zMatrix.conservativeResize(zMatrix.rows()+1, zMatrix.cols());
-            zMatrix.row(zMatrix.rows()-1) = zMatrixRow;
-        }
+        updateZMatrix(idxMinRow, idxMinCol, nClustsMerged);
 
         // merge clusters and add to newClusters
         previousClusters[minRow].combineTrees(previousClusters[minCol], ZIdx);
@@ -201,6 +189,23 @@ vector<HCTree> Helm::genNewClusters(int ZIdx){
         return newClusters;
     }
     return vector<HCTree>();
+}
+
+void Helm::updateZMatrix(int idxA, int idxB, int mergedClusts){
+    if (zMatrix.rows() == 0 && zMatrix.cols() == 0){
+        zMatrix = Mat::Zero(1,4);
+        zMatrix(0, 0) = idxA;
+        zMatrix(0, 1) = idxB;
+        zMatrix(0, 2) = 1;
+        zMatrix(0, 3) = mergedClusts;
+    }
+    else{
+        Vec zMatrixRow(4);
+        int distZMatrix = zMatrix.rows() + 1;
+        zMatrixRow << idxA, idxB, distZMatrix, mergedClusts;
+        zMatrix.conservativeResize(zMatrix.rows()+1, zMatrix.cols());
+        zMatrix.row(zMatrix.rows()-1) = zMatrixRow;
+    }
 }
 
 float Helm::calcHelmSim(HCTree& firstTree, HCTree& secondTree){

@@ -42,6 +42,7 @@ class Helm{
         vector<HCTree> genNewClusters(int ZIdx);
         float calcHelmSim(HCTree& firstTree, HCTree& secondTree);
         void genClusterDists(vector<HCTree>& previousClusters);
+        void updateZMatrix(int idxA, int idxB, int mergedClusts);
         Mat initialPairwiseMatrix(vector<Cluster>& previousClusters);
         map<int, vector<Cluster>> linkMatrixToClusterMap();
 };
