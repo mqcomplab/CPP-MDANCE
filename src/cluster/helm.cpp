@@ -481,6 +481,10 @@ vector<HCTree> Helm::run(){
     //perform clustering
     int n = clusterTree.size();
     int currentZInd = clusterTree.size();
+    if (nClusters == n) {
+        std::cerr << "Number of clusters is already equal to nClusters. No clustering will be performed." << std::endl;
+        return clusterTree;
+    }
     while(n>1){
         // vector<Cluster> previousClusters = clusterMap[n];
         vector<HCTree> newClusters = genNewClusters(currentZInd);
