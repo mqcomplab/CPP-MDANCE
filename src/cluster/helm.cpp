@@ -75,7 +75,7 @@ vector<HCTree> Helm::trimClusters(){
     return newClusterTree;
 }
 
-vector<HCTree> Helm::genNewClusters(){
+vector<HCTree> Helm::genNewClusters(int ZIdx){
     /*
         Generates new cluster by merging two most similar clusters.
 
@@ -160,8 +160,26 @@ vector<HCTree> Helm::genNewClusters(){
         ;
     }
     else{
-        int dummyZIndex = -1; // this will be updated later in combineTrees function
-        previousClusters[minRow].combineTrees(previousClusters[minCol], dummyZIndex);
+        // update zMatrix with new merged cluster info
+        int nClustsMerged = previousClusters[minRow].getRootIndices().size() + previousClusters[minCol].getRootIndices().size();
+
+        if (zMatrix.rows() == 0 && zMatrix.cols() == 0){
+            zMatrix = Mat::Zero(1,4);
+            zMatrix(0, 0) = previousClusters[minRow].getRootIdx();
+            zMatrix(0, 1) = previousClusters[minCol].getRootIdx();
+            zMatrix(0, 2) = 1;
+            zMatrix(0, 3) = nClustsMerged;
+        }
+        else{
+            Vec zMatrixRow(4);
+            int distZMatrix = zMatrix.rows() + 1;
+            zMatrixRow << previousClusters[minRow].getRootIdx(), previousClusters[minCol].getRootIdx(), distZMatrix, nClustsMerged;
+            zMatrix.conservativeResize(zMatrix.rows()+1, zMatrix.cols());
+            zMatrix.row(zMatrix.rows()-1) = zMatrixRow;
+        }
+
+        // merge clusters and add to newClusters
+        previousClusters[minRow].combineTrees(previousClusters[minCol], ZIdx);
         newClusters.emplace_back(previousClusters[minRow]);
     }
 
@@ -457,10 +475,12 @@ vector<HCTree> Helm::run(){
 
     //perform clustering
     int n = clusterTree.size();
+    int currentZInd = clusterTree.size();
     while(n>1){
         // vector<Cluster> previousClusters = clusterMap[n];
-        vector<HCTree> newClusters = genNewClusters();
+        vector<HCTree> newClusters = genNewClusters(currentZInd);
         clusterTree = newClusters; // fixme: this would overwrite clusterTree to empty if that termination condition is met!
+        currentZInd +=1; // increment Z index for new merged cluster
         //termination conditions
         if(n==(nClusters+1) || newClusters.empty()){
             break;
@@ -506,8 +526,8 @@ pair<double, double> Helm::computeScores(vector<Cluster> clusters, Mat data){
         return pair<double, double>{chScore, dbScore};
     }
 }
-// fixme: this function is no longer required, but I will keep it for now until I have fully converted to the new HCTree structure.
-Mat Helm::calculateZMatrix(map<int, vector<Cluster>> clusterMap){
+
+Mat Helm::calculateZMatrix(){
     /* 
         Converts the cluster dictionary to a linkage matrix Z
 
@@ -515,66 +535,9 @@ Mat Helm::calculateZMatrix(map<int, vector<Cluster>> clusterMap){
         -------------
         Z matrix (Mat)
     */
-    vector<Veci> indices_clusters; // contains all unique clusters, and merged clusters
-    vector<Cluster> initial_clusters = clusterMap.rbegin()->second;
-    for (int i = 0; i < initial_clusters.size(); i++) {
-        indices_clusters.push_back(initial_clusters[i].getIndices());
+    if (zMatrix.rows() == 0 && zMatrix.cols() == 0){
+        std::cerr<<"Z matrix is empty. No clusters were merged."<<std::endl;
     }
-
-    Mat zMatrix(clusterMap.size()-1, 4);
-    int row = 0;
-    
-    // iterate through clusterMap in reverse order to get merging order
-    // clusterMap is sorted by keys (No. clusters) in ascending order, thus we must traverse it in reverse
-    for(auto it = clusterMap.rbegin(); it != clusterMap.rend(); ++it){
-        vector<Cluster> current_clusters = it->second;
-        for (auto cluster : current_clusters){
-            // convert vector to set so that it is easier to compare them
-            Veci inds = cluster.getIndices();
-            std::set inds_set(std::begin(inds), std::end(inds));
-            if (inds.size() != inds_set.size()){
-                throw std::runtime_error("indices of current cluster has duplicate members!");
-            }
-            // check if this cluster already exists in indices_clusters. This means it is not a new merged cluster
-            bool found = false;
-            for (int i = 0; i < indices_clusters.size(); i++){
-                Veci ind_prev_cluster = indices_clusters[i];
-                std::set<int> ind_prev_cluster_set(std::begin(ind_prev_cluster), std::end(ind_prev_cluster));
-
-                if (ind_prev_cluster.size() != ind_prev_cluster_set.size()){
-                    throw std::runtime_error("indices of cluster has duplicate members!");
-                }
-                if (ind_prev_cluster_set == inds_set){
-                    found = true;
-                    break;
-                }
-            }
-            // extract data for Z matrix for the merged cluster
-            if (!found){
-                for (int i = 0; i < indices_clusters.size(); i++){
-                    for (int j = i+1; j < indices_clusters.size(); j++){
-                        Veci ind_i = indices_clusters[i];
-                        Veci ind_j = indices_clusters[j];
-                        set<int> set_i(std::begin(ind_i), std::end(ind_i));
-                        set<int> set_j(std::begin(ind_j), std::end(ind_j));
-                        set<int> set_union_ij;
-                        std::set_union(set_i.begin(), set_i.end(), set_j.begin(), set_j.end(), std::inserter(set_union_ij, set_union_ij.begin()));
-                        if (set_union_ij == inds_set){
-                            // found two clusters being merged
-                            zMatrix(row, 0) = i; // index of first cluster being merged
-                            zMatrix(row, 1) = j; // index of second cluster being merged
-                            zMatrix(row, 2) = row+1; // "distance" between clusters (using row number as proxy)
-                            zMatrix(row, 3) = inds_set.size(); // number of cluster members
-                            row +=1;
-                            break;
-                        }
-                    }
-                }
-                indices_clusters.push_back(inds); // add new merged cluster to list
-            }
-        }
-        // fixme: there are no checks to ensure that there is only one new merged cluster per iteration! 
-}
-return zMatrix;
+    return zMatrix;
 }
 

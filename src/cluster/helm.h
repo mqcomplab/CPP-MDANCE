@@ -13,7 +13,7 @@ class Helm{
                 string inputTop ="", string inputTraj ="");
         vector<HCTree> run();
         pair<double, double> computeScores(vector<Cluster> clusters, Mat data);
-        Mat calculateZMatrix(map<int, vector<Cluster>> clusterMap);
+        Mat calculateZMatrix();
     private:
         vector<HCTree> clusterTree;
         int nAtoms;
@@ -35,10 +35,11 @@ class Helm{
         string inputTop;
         string inputTraj;
         int totalSum;
+        Mat zMatrix;
 
         Mat makeDataByRow(Vec a, Vec b);
         vector<HCTree> trimClusters();
-        vector<HCTree> genNewClusters();
+        vector<HCTree> genNewClusters(int ZIdx);
         float calcHelmSim(HCTree& firstTree, HCTree& secondTree);
         void genClusterDists(vector<HCTree>& previousClusters);
         Mat initialPairwiseMatrix(vector<Cluster>& previousClusters);
