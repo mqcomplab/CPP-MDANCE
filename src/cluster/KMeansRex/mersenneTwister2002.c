@@ -41,7 +41,7 @@
    email: m-mat @ math.sci.hiroshima-u.ac.jp (remove space)
 */
 
-#include <stdio.h>
+#include "mersenneTwister2002.h"
 
 /* Period parameters */  
 #define N_N 624

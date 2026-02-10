@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 
+enable_language(C CXX)
+
 find_package(Eigen3 3.3 REQUIRED)
 
 # Create library for tools
@@ -15,12 +17,15 @@ target_include_directories(mdance_tools PUBLIC
 
 # create library for kmeans
 add_library(mdance_kmeans STATIC 
-    cluster/KMeansRex/KMeans.cpp 
-    cluster/KMeansRex/KMeansRexCore.cpp
-    cluster/KMeansRex/mersenneTwister2002.c 
+    cluster/KMeansRex/KMeans.cpp
+    cluster/KMeansRex/mersenneTwister2002.c
+)
+set_source_files_properties(cluster/KMeansRex/mersenneTwister2002.c PROPERTIES 
+    LANGUAGE C
 )
 target_include_directories(mdance_kmeans PUBLIC cluster/KMeansRex)
 target_link_libraries(mdance_kmeans PUBLIC mdance_tools)
+
 
 # create library for helm
 add_library(mdance_helm STATIC 
