@@ -13,7 +13,7 @@ class Helm{
                 string inputTop ="", string inputTraj ="");
         vector<HCTree> run();
         pair<double, double> computeScores(vector<Cluster> clusters, Mat data);
-        Mat calculateZMatrix();
+        Mat getZMatrix();
     private:
         vector<HCTree> clusterTree;
         int nAtoms;

@@ -436,7 +436,7 @@ TEST_F(TestHelm, ZMatrix){
         nClus
     );
     vector<HCTree> clusters = helm.run();
-    Mat Z = helm.calculateZMatrix();
+    Mat Z = helm.getZMatrix();
     Mat expectedZ(23, 4);
     expectedZ <<2, 23, 1.0, 2, 
         47, 60, 2.0, 3, 

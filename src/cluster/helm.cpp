@@ -532,7 +532,7 @@ pair<double, double> Helm::computeScores(vector<Cluster> clusters, Mat data){
     }
 }
 
-Mat Helm::calculateZMatrix(){
+Mat Helm::getZMatrix(){
     /* 
         Converts the cluster dictionary to a linkage matrix Z
 
