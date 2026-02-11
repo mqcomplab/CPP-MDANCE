@@ -141,13 +141,13 @@ vector<HCTree> Helm::genNewClusters(int ZIdx){
     // indicesik(Eigen::seq(nIndMinRow, indicesik.size()-1)) = previousClusters[minCol].getIndices();
 
     // update zMatrix with new merged cluster info
-    int idxMinRow = previousClusters[minRow].getRootIdx();
-    int idxMinCol = previousClusters[minCol].getRootIdx();
-    int nClustsMerged = previousClusters[minRow].getRootIndices().size() + previousClusters[minCol].getRootIndices().size();
+    int idxMinRow = previousClusters[minRow].getRootZIdx();
+    int idxMinCol = previousClusters[minCol].getRootZIdx();
+    int nClustsMerged = previousClusters[minRow].getRootClusterIndices().size() + previousClusters[minCol].getRootClusterIndices().size();
     updateZMatrix(idxMinRow, idxMinCol, nClustsMerged);
 
     // merge clusters and add to newClusters
-    previousClusters[minRow].combineTrees(previousClusters[minCol], ZIdx);
+    previousClusters[minRow].mergeTree(previousClusters[minCol], ZIdx);
     newClusters.emplace_back(previousClusters[minRow]);
 
     //Remove distances of merged clusters

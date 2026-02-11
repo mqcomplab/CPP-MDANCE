@@ -74,13 +74,13 @@ class HCTree{
 
         int getRootNObjects();
 
-        std::list<int> getRootIndices();
+        std::list<int> getRootClusterIndices();
 
-        int getRootIdx();
+        int getRootZIdx();
 
         void insertRoot(std::list<int> idx, Vec cSum, Vec sqsum, int nObjects, int z_ind);
 
-        void combineTrees(HCTree other_tree, int new_z_ind);
+        void mergeTree(HCTree other_tree, int new_z_ind);
 };
 
 #endif
