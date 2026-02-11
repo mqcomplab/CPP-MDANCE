@@ -114,67 +114,39 @@ TEST_F(TestHelm, TestPops){
     }
 }
 
-// TEST_F(TestHelm, TestClus){
-//     int N0 = uniqueLabels.size();
-//     inputCluster();
-//     int nAtoms = 50; 
-//     int nClusters = 37;
-//     Helm helm = Helm(clusters_map, nAtoms, MD::Metric::MSD, MD::MergeScheme::Inter, nClusters);
-//     map<int, vector<Cluster>> res = helm.run();
+TEST_F(TestHelm, TestClus){
+    int N0 = uniqueLabels.size();
+    inputCluster();
+    int nAtoms = 50; 
+    int nClusters = 37;
+    Helm helm = Helm(clusterTree, nAtoms, MD::Metric::MSD, MD::MergeScheme::Inter, nClusters);
+    vector<HCTree> clusters = helm.run();
 
-//     //Compute CH and DB scores
-//     vector<pair<double, double>> scores;
-//     for(auto it=res.rbegin(); it!=res.rend(); it++){
-//         vector<int> idx;
-//         for(auto c:it->second){
-//             for(int i:c.getIndices()){
-//                 idx.emplace_back(i);
-//             }
-//         }
-//         vector<int> temp;
-//         for(int i:idx){
-//             for(int j=0; j<labels.size(); j++){
-//                 if(labels(j)==i){
-//                     temp.emplace_back(j);
-//                 }
-//             }
-//         }
-//         Mat arr = data(temp, Eigen::placeholders::all);
-//         scores.emplace_back(helm.computeScores(it->second, arr));
-//     }
+    ASSERT_EQ(clusters.size(), nClusters);
 
-//     vector<pair<double, double>> expectedScores = {
-//         {291.2198060306322, 1.7370614645545726},
-//         {295.7352641684398, 1.7122884537735075}, 
-//         {296.11490509768595, 1.7245038612367665}, 
-//         {297.8213492701506, 1.7246552370601154}, 
-//         {299.0810730592307, 1.738637643465005}, 
-//         {300.34386300863565, 1.750692719498292}, 
-//         {302.7012989347063, 1.755325543510106}, 
-//         {304.51797241739484, 1.7672459242576242}, 
-//         {306.6006824661377, 1.7695122974000195}, 
-//         {308.9021982976074, 1.7607190308607732}, 
-//         {307.1901532394585, 1.7721711289472055}, 
-//         {297.43176362926556, 1.7888202076551794}, 
-//         {299.34757173879535, 1.7833018738518591}, 
-//         {301.52432336513584, 1.7936056164868994}, 
-//         {306.08279103249237, 1.8034172355518991}, 
-//         {310.3208501789975, 1.809472686067903}, 
-//         {310.0361137593372, 1.825336725435764}, 
-//         {313.8978629372179, 1.8344594141834631}, 
-//         {315.0527200319327, 1.828991467839653}, 
-//         {314.5428710018461, 1.818951502602474}, 
-//         {314.94309021259465, 1.8091147842592137}, 
-//         {318.77039278363225, 1.8100164274989112}, 
-//         {323.7748207939142, 1.817475357075402}, 
-//         {329.3068227654963, 1.8437066236912167}
-//     };
+    //Compute CH and DB scores
 
-//     for(int i=0; i<scores.size(); i++){
-//         EXPECT_NEAR(scores[i].first, expectedScores[i].first, 1e-5);
-//         EXPECT_NEAR(scores[i].second, expectedScores[i].second, 1e-5);
-//     }
-// }
+    vector<int> selectedClusterLabels; // contains all the cluster labels that are in the resulting clusters. 
+    for(auto c:clusters){
+        for(int i:c.getRootIndices()){
+            selectedClusterLabels.emplace_back(i);
+        }
+    }
+    vector<int> selectedFrameIndices; // list of  frames within the selected clusters.
+    for(int i:selectedClusterLabels){
+        for(int j=0; j<labels.size(); j++){
+            if(labels(j)==i){
+                selectedFrameIndices.emplace_back(j);
+            }
+        }
+    }
+    Mat selectedData = data(selectedFrameIndices, Eigen::placeholders::all);
+    pair<double, double> scoreRes = helm.computeScores(clusters, selectedData);
+
+    // compare scores to expected values
+    EXPECT_NEAR(scoreRes.first, 329.3068227654963, 1e-5);
+    EXPECT_NEAR(scoreRes.second, 1.8437066236912167, 1e-5);
+}
 
 TEST_F(TestHelm, TrimK){
     int nAtoms = 50;
