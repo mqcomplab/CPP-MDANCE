@@ -7,6 +7,7 @@
 #include "../../src/cluster/helm.h"
 #include "../../tools/bts.h"
 #include "../../tools/scores.cpp"
+#include "types.h"
 
 TestHelm::TestHelm() {
     // read in data:
@@ -169,6 +170,7 @@ TEST_F(TestHelm, TrimK){
         -1, // default eps value
         trimStart,
         minSamples,
+        MD::Link ::None, 
         0, // default trimVal value
         trimK
     ); 
@@ -229,6 +231,7 @@ TEST_F(TestHelm, TrimK2){
         -1, // default eps value
         trimStart,
         minSamples,
+        MD::Link ::None,
         0, // default trimVal value
         trimK
     );
@@ -296,6 +299,7 @@ TEST_F(TestHelm, TestTrimVal){
         -1, // default eps value
         trimStart,
         minSamples,
+        MD::Link ::None,
         trimVal
     );
 

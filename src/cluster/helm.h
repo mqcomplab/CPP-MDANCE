@@ -7,7 +7,7 @@ class Helm{
         Helm(vector<HCTree> clusterTree, int nAtoms, MD::Metric mt = MD::Metric::MSD, 
                 MD::MergeScheme mergeScheme = MD::MergeScheme::Inter, int nClusters = 0, float eps = -1, 
                 bool trimStart = false,
-                float minSamples = 0.01,
+                float minSamples = 0.01, MD::Link link = MD::Link::None,
                 float trimVal=0, float trimK=0,
                 bool savePairwiseSum = false,
                 string inputTop ="", string inputTraj ="");
@@ -34,6 +34,7 @@ class Helm{
         string inputTraj;
         int totalSum;
         Mat zMatrix;
+        MD::Link link;
 
         Mat makeDataByRow(Vec a, Vec b);
         vector<HCTree> trimClusters();
