@@ -26,8 +26,6 @@ class Helm{
         int trimIncoming;
         MD::Metric mt;
         MD::MergeScheme mergeScheme;
-        MD::AlignMethod alignMeth;
-        MD::Link link;
         Mat clusterDists;
         Mat linkMatrix;
         int totalIncoming;
