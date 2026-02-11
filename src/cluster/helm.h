@@ -6,7 +6,7 @@ class Helm{
     public:
         Helm(vector<HCTree> clusterTree, int nAtoms, MD::Metric mt = MD::Metric::MSD, 
                 MD::MergeScheme mergeScheme = MD::MergeScheme::Inter, int nClusters = 0, float eps = -1, 
-                bool trimStart = false, MD::AlignMethod alignMeth = MD::AlignMethod::None, 
+                bool trimStart = false,
                 float minSamples = 0.01, MD::Link link = MD::Link::None,
                 float trimVal=0, float trimK=0,
                 bool savePairwiseSum = false,
