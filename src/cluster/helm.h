@@ -6,7 +6,7 @@ class Helm{
     public:
         Helm(vector<HCTree> clusterTree, int nAtoms, MD::Metric mt = MD::Metric::MSD, 
                 MD::MergeScheme mergeScheme = MD::MergeScheme::Inter, int nClusters = 0, float eps = -1, 
-                bool trimStart = false,
+                 bool trimStart = false, MD::AlignMethod alignMeth = MD::AlignMethod::None, 
                 float minSamples = 0.01,
                 float trimVal=0, float trimK=0,
                 bool savePairwiseSum = false,
@@ -30,6 +30,7 @@ class Helm{
         Mat linkMatrix;
         int totalIncoming;
         bool savePairwiseSum;
+        MD::AlignMethod alignMeth;
         string inputTop;
         string inputTraj;
         int totalSum;
