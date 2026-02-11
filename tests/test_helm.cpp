@@ -70,7 +70,7 @@ Mat TestHelm::getSelectedData(vector<HCTree> clusters){
 
     vector<int> selectedClusterLabels; // contains all the cluster labels that are in the resulting clusters. 
     for(auto c:clusters){
-        for(int i:c.getRootIndices()){
+        for(int i:c.getRootClusterIndices()){
             selectedClusterLabels.emplace_back(i);
         }
     }
@@ -99,7 +99,7 @@ TEST_F(TestHelm, TestPops){
     for (int i = 0; i < clusters.size(); i++) {
         double pop = (double) clusters[i].getRootNObjects()/6001.0;
         pops.push_back(pop);
-        std::list<int> idx = clusters[i].getRootIndices();
+        std::list<int> idx = clusters[i].getRootClusterIndices();
         // convert idx to vector:
         std::vector<int> idx_vec(idx.begin(), idx.end());
         merged_clusts.push_back(idx_vec);
