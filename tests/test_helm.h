@@ -10,6 +10,7 @@ protected:
     TestHelm();
     void inputCluster();
     ArrayXXd makeDataByRow(ArrayXd a, ArrayXd b);
+    Mat getSelectedData(vector<HCTree> clusters);
     ArrayXXd data;
     ArrayXi labels; // labels of frames
     set<int> uniqueLabels;

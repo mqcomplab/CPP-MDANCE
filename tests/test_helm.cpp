@@ -65,6 +65,27 @@ ArrayXXd TestHelm::makeDataByRow(ArrayXd a, ArrayXd b){
         return data;
 }
 
+Mat TestHelm::getSelectedData(vector<HCTree> clusters){
+    // extracts data for frames that are in the resulting clusters. This is necessary for computing CH and DB scores.
+
+    vector<int> selectedClusterLabels; // contains all the cluster labels that are in the resulting clusters. 
+    for(auto c:clusters){
+        for(int i:c.getRootIndices()){
+            selectedClusterLabels.emplace_back(i);
+        }
+    }
+    vector<int> selectedFrameIndices; // list of  frames within the selected clusters.
+    for(int i:selectedClusterLabels){
+        for(int j=0; j<labels.size(); j++){
+            if(labels(j)==i){
+                selectedFrameIndices.emplace_back(j);
+            }
+        }
+    }
+    Mat selectedData = data(selectedFrameIndices, Eigen::placeholders::all);
+    return selectedData;
+}
+
 TEST_F(TestHelm, TestPops){
     int nAtoms = 50;
     int nClusters = 10;
@@ -125,22 +146,7 @@ TEST_F(TestHelm, TestClus){
     ASSERT_EQ(clusters.size(), nClusters);
 
     //Compute CH and DB scores
-
-    vector<int> selectedClusterLabels; // contains all the cluster labels that are in the resulting clusters. 
-    for(auto c:clusters){
-        for(int i:c.getRootIndices()){
-            selectedClusterLabels.emplace_back(i);
-        }
-    }
-    vector<int> selectedFrameIndices; // list of  frames within the selected clusters.
-    for(int i:selectedClusterLabels){
-        for(int j=0; j<labels.size(); j++){
-            if(labels(j)==i){
-                selectedFrameIndices.emplace_back(j);
-            }
-        }
-    }
-    Mat selectedData = data(selectedFrameIndices, Eigen::placeholders::all);
+    Mat selectedData = getSelectedData(clusters);
     pair<double, double> scoreRes = helm.computeScores(clusters, selectedData);
 
     // compare scores to expected values
@@ -204,25 +210,8 @@ TEST_F(TestHelm, TrimK){
         EXPECT_NEAR(msds[i], expected_msds[i], 1e-5);
     }
 
-    int N0 = clusters.size();
-
-    vector<pair<double, double>> scores;
-
-    vector<int> selectedClusterLabels; // contains all the cluster labels that are in the resulting clusters. 
-    for(auto c:clusters){
-        for(int i:c.getRootIndices()){
-            selectedClusterLabels.emplace_back(i);
-        }
-    }
-    vector<int> selectedFrameIndices; // list of  frames within the selected clusters.
-    for(int i:selectedClusterLabels){
-        for(int j=0; j<labels.size(); j++){
-            if(labels(j)==i){
-                selectedFrameIndices.emplace_back(j);
-            }
-        }
-    }
-    Mat selectedData = data(selectedFrameIndices, Eigen::placeholders::all);
+    // check scores
+    Mat selectedData = getSelectedData(clusters);
     pair<double, double> scoreRes = helm.computeScores(clusters, selectedData);
     EXPECT_NEAR(scoreRes.first, 1027.0159808301096, 1e-5);
     EXPECT_NEAR(scoreRes.second, 1.3503102468493706, 1e-5);
@@ -288,22 +277,7 @@ TEST_F(TestHelm, TestEps){
     std::cout << "Number of clusters: " << clusters.size() << std::endl;
 
     //Compute CH and DB scores
-
-    vector<int> selectedClusterLabels; // contains all the cluster labels that are in the resulting clusters. 
-    for(auto c:clusters){
-        for(int i:c.getRootIndices()){
-            selectedClusterLabels.emplace_back(i);
-        }
-    }
-    vector<int> selectedFrameIndices; // list of  frames within the selected clusters.
-    for(int i:selectedClusterLabels){
-        for(int j=0; j<labels.size(); j++){
-            if(labels(j)==i){
-                selectedFrameIndices.emplace_back(j);
-            }
-        }
-    }
-    Mat selectedData = data(selectedFrameIndices, Eigen::placeholders::all);
+    Mat selectedData = getSelectedData(clusters);
     pair<double, double> scoreRes = helm.computeScores(clusters, selectedData);
     EXPECT_NEAR(scoreRes.first, 302.7012989347063, 1e-5);
     EXPECT_NEAR(scoreRes.second, 1.755325543510106, 1e-5);
