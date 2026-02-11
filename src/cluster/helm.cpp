@@ -488,7 +488,9 @@ vector<HCTree> Helm::run(){
     while(n>1){
         // vector<Cluster> previousClusters = clusterMap[n];
         vector<HCTree> newClusters = genNewClusters(currentZInd);
-        clusterTree = newClusters; // fixme: this would overwrite clusterTree to empty if that termination condition is met!
+        if (!newClusters.empty()){
+            clusterTree = newClusters;
+        }
         currentZInd +=1; // increment Z index for new merged cluster
         //termination conditions
         if(n==(nClusters+1) || newClusters.empty()){
