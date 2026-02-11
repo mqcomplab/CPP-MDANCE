@@ -10,9 +10,10 @@ void Divine::divisiveAlgorithm() {
 
     int maxIter=50000;
     int counter=1;
-    while (true) {
+    bool done=true;
+    while (done) {
         //stopping conditions
-        if(counter>50000)   break;
+        if(counter>maxIter)   break;
         counter++;
         if(end==0){
             if(clusters.size() >= kClusters)    break;
@@ -32,7 +33,9 @@ void Divine::divisiveAlgorithm() {
             //determine which cluster to split
             Index clusterToSplit = selectClusterToSplit(failedSplits);
             if (clusterToSplit < 0) {
-                throw std::runtime_error("No more cluster splits possible that would yield valid subclusters");
+                std::cerr<<"No more cluster splits possible that would yield valid subclusters."<<std::endl;
+                done=false;
+                break;
             } 
             //split the selected cluster into sub-clusters
             didSplit = splitCluster(clusterToSplit);
@@ -283,7 +286,9 @@ Divine::Divine(Mat data, MD::DivineSplit splitType,
     for(int i=0; i<data.rows(); i++){
         initCluster.emplace_back(i);
     }
-    clusters.emplace_back(initCluster);
+    if(initCluster.size()){
+        clusters.emplace_back(initCluster);
+    }
     divisiveAlgorithm();
     labels.assign(data.rows(), -1);
     createLabels(data.rows());
