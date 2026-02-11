@@ -2,18 +2,20 @@
 
 /**
  * @brief Constructor for the HCTreeNode class.
- * @param fps A 1D Eigen Array representing the fingerprints for the node.
- * @param idx A list of integers representing the indices of the objects in this node.
+ * @param clusterIdx A list of integers representing the indices of the initial clusters in this node. The initial cluster indices are the labels of the clusters before running HELM. 
+ * @param cSumIn A 1D Eigen Array representing the columnwise sum of the data for the molecules in this node. 
+ * @param sqsum A 1D Eigen Array representing the columnwise sum of squares of the data for the molecules in this node.
+ * @param nObjects An integer representing the number of molecules/frames in this node.
  * @param z_ind An integer representing the z_index for this node. This is the index of the node in the linkage matrix Z.
  */
-HCTreeNode::HCTreeNode(std::list<int> idx, Vec cSumIn, Vec sqsum, int nObjects, int z_ind){
+HCTreeNode::HCTreeNode(std::list<int> clusterIdx, Vec cSumIn, Vec sqsum, int nObjects, int z_ind){
     setCSum(cSumIn);
     setSQSum(sqsum);
-    setIndices(idx);
+    setClusterIndices(clusterIdx);
     setNObjects(nObjects);
     setLeftPtr(NULL);
     setRightPtr(NULL);
-    setIdx(z_ind);
+    setZIdx(z_ind);
 };
 
 /**
@@ -41,16 +43,16 @@ void HCTreeNode::setSQSum(Vec sqSumIn){
  * @brief Get the z_index for this node.
  * @return int The z_index for this node.
  */
-int HCTreeNode::getIdx(){
-    return z_index;
+int HCTreeNode::getZIdx(){
+    return zIndex;
 }
 
 /**
  * @brief Set the z_index for this node.
  * @param z_ind An integer representing the z_index for this node.
  */
-void HCTreeNode::setIdx(int z_ind){
-    z_index = z_ind;
+void HCTreeNode::setZIdx(int z_ind){
+    zIndex = z_ind;
 }
 
 /**
@@ -86,11 +88,11 @@ void HCTreeNode::setRightPtr(HCTreeNode* input_right){
 }
 
 /**
- * @brief Get the number of objects in this node.
- * @return int The number of objects in this node.
+ * @brief Get the number of molecules/frames in this node.
+ * @return int The number of molecules/frames in this node.
  */
 int HCTreeNode::getNObjects(){
-    return n_objects;
+    return nObjects;
 }
 
 /**
@@ -98,23 +100,23 @@ int HCTreeNode::getNObjects(){
  * @param n_mol An integer representing the number of objects in this node.
  */
 void HCTreeNode::setNObjects(int n_mol){
-    n_objects = n_mol;
+    nObjects = n_mol;
 }
 
 /**
- * @brief Get the list of indices for the objects in this node.
- * @return std::list<int> A list of integers representing the indices of the objects in this node.
+ * @brief Get the list of indices for the clusters in this node.
+ * @return std::list<int> A list of integers representing the clusters in this node.
  */
-std::list<int> HCTreeNode::getIndices(){
-    return obj_indices;
+std::list<int> HCTreeNode::getClusterIndices(){
+    return clusterIndices;
 }
 
 /**
- * @brief Set the list of indices for the objects in this node.
- * @param idx A list of integers representing the indices of the objects in this node.
+ * @brief Set the list of indices for the clusters in this node.
+ * @param idx A list of integers representing the indices of the clusters in this node.
  */
-void HCTreeNode::setIndices(std::list<int> idx){
-    obj_indices=idx;
+void HCTreeNode::setClusterIndices(std::list<int> idx){
+    clusterIndices=idx;
 }
 
 
@@ -177,7 +179,7 @@ int HCTree::getRootNObjects(){
  * @return std::list<int> A list of integers representing the indices of the objects in the root node of the tree.
  */
 std::list<int> HCTree::getRootIndices(){
-    return rootPtr->getIndices();
+    return rootPtr->getClusterIndices();
 }
 
 /**
@@ -186,7 +188,7 @@ std::list<int> HCTree::getRootIndices(){
  * @return int The z_index for the root node of the tree.
  */
 int HCTree::getRootIdx(){ //z_index
-    return rootPtr->getIdx();
+    return rootPtr->getZIdx();
 }
 
 /**

@@ -9,19 +9,20 @@
 class HCTreeNode{
     // Class for the hierarchical clustering tree node
     // each node stores:
-    //     fingerprints: the columwise sum of the fingerprints
-    //     obj_indices: indices of the molecules in the cluster
+    //     cSum: columnwise sum of the data for the molecules in the cluster
+    //     sqSum: columnwise sum of squares of the data for the molecules in the
+    //     clusterIndices: indices of the initial clusters in the cluster
     //     n_objects: number of molecules in the cluster
     // in addition to pointers to the left and right child nodes. 
 
     friend class HCTree;
 
     private:
-        int n_objects; // number of molecules in node/cluster
-        int z_index; // cluster index for Z matrix
+        int nObjects; // number of molecules/frames in node/cluster
+        int zIndex; // index of cluster represented by tree node. This is used for constructing the Z matrix
         Vec cSum; // columnwise sum of data
         Vec sqSum; // columnwise sum of squares of data
-        std::list<int> obj_indices;
+        std::list<int> clusterIndices; // list of indices of initial clusters in the cluster
         HCTreeNode* leftPtr; // pointer to left child node
         HCTreeNode* rightPtr; // pointer to right child node
         
@@ -48,13 +49,13 @@ class HCTreeNode{
 
         int getNObjects();
 
-        void setIndices(std::list<int> idx);
+        void setClusterIndices(std::list<int> idx);
 
-        std::list<int> getIndices();
+        std::list<int> getClusterIndices();
 
-        void setIdx(int i);
+        void setZIdx(int i);
 
-        int getIdx();
+        int getZIdx();
 };
 
 class HCTree{
