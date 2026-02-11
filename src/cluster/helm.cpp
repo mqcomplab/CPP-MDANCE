@@ -20,7 +20,7 @@ vector<HCTree> Helm::trimClusters(){
 
         returns
         ------------
-        map of clusters
+        new cluster tree after trimming (vector<HCTree>)
     */
     vector<pair<double, int>> clusterMsds;
     int i=0;
@@ -81,10 +81,12 @@ vector<HCTree> Helm::genNewClusters(int ZIdx){
 
         Parameters
         ------------
-        previous_clusters: contains info about clusters in kth iteration
+        zIdx: the Z index to assign to the new merged cluster. This is used for keeping track of the order of merges and for creating the Z matrix.
     */
     int previousSize = clusterTree.size();
     vector<HCTree> previousClusters = clusterTree;
+
+    // update distance matrix with new cluster distances
     if(clusterDists.rows()==0 && clusterDists.cols()==0){
         genClusterDists(previousClusters);
     }
@@ -121,8 +123,6 @@ vector<HCTree> Helm::genNewClusters(int ZIdx){
     cSum = previousClusters[minRow].getRootCSum() + previousClusters[minCol].getRootCSum();
     sqSum = previousClusters[minRow].getRootSQSum() + previousClusters[minCol].getRootSQSum();
 
-    Vec cSumik = cSum;
-    Vec sqSumik = sqSum;
     int Nik = previousClusters[minRow].getRootNObjects() + previousClusters[minCol].getRootNObjects();
 
     //Save the new clusters after mergin
@@ -134,11 +134,6 @@ vector<HCTree> Helm::genNewClusters(int ZIdx){
             newClusters.emplace_back(previousClusters[i]);
         }
     }
-    // int nIndMinRow = previousClusters[minRow].getIndices().size();
-    // int nIndMinCol = previousClusters[minCol].getIndices().size();
-    // Veci indicesik(nIndMinRow + nIndMinCol);
-    // indicesik(Eigen::seq(0, nIndMinRow-1)) = previousClusters[minRow].getIndices();
-    // indicesik(Eigen::seq(nIndMinRow, indicesik.size()-1)) = previousClusters[minCol].getIndices();
 
     // update zMatrix with new merged cluster info
     int idxMinRow = previousClusters[minRow].getRootZIdx();
@@ -171,7 +166,13 @@ vector<HCTree> Helm::genNewClusters(int ZIdx){
 }
 
 void Helm::updateZMatrix(int idxA, int idxB, int mergedClusts){
+    /* Update the Z matrix with the new merged cluster info. This is used for keeping track of the order of merges and for creating the Z matrix.
+
+     First two columns are the indices of the merged clusters, third column is the distance between the merged clusters, and fourth column is the number of clusters merged to create the new cluster. 
+
+     In our case, distance between merged clusters corresponds to the "rank" of the merge. I.e. the first merge will have distance 1, the second merge will have distance 2, and so on.*/
     if (zMatrix.rows() == 0 && zMatrix.cols() == 0){
+        // first merge, initialize Z matrix
         zMatrix = Mat::Zero(1,4);
         zMatrix(0, 0) = idxA;
         zMatrix(0, 1) = idxB;
@@ -233,7 +234,6 @@ float Helm::calcHelmSim(HCTree& firstTree, HCTree& secondTree){
     return helmSim;
 }
 
-    //finished
 void Helm::genClusterDists(vector<HCTree>& previousClusters){
     /*
         Generates pairwise similairty matrix for initial clusters
@@ -263,6 +263,36 @@ Helm::Helm(vector<HCTree> clusterTree, int nAtoms, MD::Metric mt,
         float trimVal, float trimK,
         bool savePairwiseSum,
         string inputTop, string inputTraj){
+            /* Constructor for Helm class. Initializes the class variables and checks for end conditions.
+        Parameters
+        ----------
+        clusterTree: 
+            vector of HCTree objects containing info about initial clusters at root
+        nAtoms: 
+            number of atoms in the system. This is used for calculating the similarity between clusters
+        mt: 
+            metric to use for calculating similarity between clusters. This is used for calculating the similarity between clusters
+        mergeScheme: 
+            the scheme to use for determining which clusters to merge. This is used for calculating the similarity between clusters
+        nClusters: 
+            the number of clusters to return.
+        eps:
+            epsilon MSD value to terminate clustering process.
+        trimStart:
+            whether to trim the initial clusters before starting the clustering process. This is used for improving the clustering results and reducing the runtime. If true, then either trimVal or trimK must be provided. This is used for improving the clustering results and reducing the runtime.
+        minSamples:
+            the minimum number of samples a cluster must have to be considered for trimming. This is used for improving the clustering results and reducing the runtime.
+        trimVal:
+            the MSD value to use for trimming the initial clusters. This is used for improving the clustering results and reducing the runtime. 
+        trimK:
+            the number of clusters to keep after trimming the initial clusters. This is used for improving the clustering results and reducing the runtime. 
+        savePairwiseSum:
+            wether to save pairwise similarity matrix. Note: this is currently unused. 
+        inputTop:
+            topology file of the MD system
+        inputTraj:
+            trajectory file of the MD system
+            */
     this->clusterTree = clusterTree;
     this->mt = mt;
     this->nAtoms = nAtoms;
@@ -307,14 +337,14 @@ Helm::Helm(vector<HCTree> clusterTree, int nAtoms, MD::Metric mt,
     }
 
 }
-//finished
+
 vector<HCTree> Helm::run(){
     /*
         Performs HELM clustering of initial clusters
 
         Returns
         -----------
-        map of clusters ( map<int, vector<vector<Cluster>>>)
+        tree of clusters (vector<HCTree>) after performing HELM clustering
     */
 
     if(nClusters == 0){
@@ -333,9 +363,9 @@ vector<HCTree> Helm::run(){
         return clusterTree;
     }
     while(n>1){
-        // vector<Cluster> previousClusters = clusterMap[n];
         vector<HCTree> newClusters = genNewClusters(currentZInd);
-        if (!newClusters.empty()){
+        if (!newClusters.empty()){ 
+            // if new clusters are empty, clustering is stopped. In order to return the results, we cannot return the empty clusters, so we return the previous clusters.
             clusterTree = newClusters;
         }
         currentZInd +=1; // increment Z index for new merged cluster
@@ -353,31 +383,36 @@ pair<double, double> Helm::computeScores(vector<HCTree> clusters, Mat data){
         Computes Calinksi-Harabasz and Davies-Bouldin scores of clusters
         using random labeling
 
+        Parameters
+        -------------
+        clusters: vector of HCTree objects containing info about clusters at root
+        data: the data matrix used for clustering. This is used for calculating the scores. The row order has to be the same as the cluster and frame order in clusters. E.g. given the following clusters = [cluster1: frames 0, 2, 4; cluster2: frames 1, 3, 5], the data matrix should have the rows in the order of [frame0, frame2, frame4, frame1, frame3, frame5].
+
         Returns
         -------------
         pair: first element is Calinkski, second element Davies-Bouldin
     */
 
     //vector<Veci> clusterIndices;
-    vector<int> label;
+    vector<int> frameLabel;
     int count=0;
 
     for(auto c:clusters){
         //clusterIndices.emplace_back(c.getIndices());
         int Nik=c.getRootNObjects();
-        label.insert(label.end(), Nik, count);
+        frameLabel.insert(frameLabel.end(), Nik, count);
         count++;
     }
     
-    set<int> temp;
-    for(int i:label){
-        temp.insert(i);
+    set<int> frameLabelSet;
+    for(int i:frameLabel){
+        frameLabelSet.insert(i);
     }
-    if(temp.size()==1){
+    if(frameLabelSet.size()==1){// everything is in one cluster
         return pair<double, double>{-1,-1};
     }
     else{
-        Veci labels = Eigen::Map<Veci>(label.data(), label.size());
+        Veci labels = Eigen::Map<Veci>(frameLabel.data(), frameLabel.size());
         double chScore = calinskiHarabaszScore(data, labels);
         double dbScore = daviesBouldinScore(data, labels);
 
@@ -387,7 +422,7 @@ pair<double, double> Helm::computeScores(vector<HCTree> clusters, Mat data){
 
 Mat Helm::getZMatrix(){
     /* 
-        Converts the cluster dictionary to a linkage matrix Z
+        getter for Z matrix. This is used for keeping track of the order of merges and for creating the Z matrix.
 
         Returns
         -------------
