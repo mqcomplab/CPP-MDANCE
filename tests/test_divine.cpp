@@ -103,7 +103,7 @@ TEST_F(DivineTest, TestPoint){
 
 
 TEST_F(DivineTest, TestEmpty){
-    Mat data = Mat::Zero(1, 2);
+    Mat data = Mat::Zero(0, 2);
     Divine model=Divine(
         data,
         MD::DivineSplit::MSD,
@@ -116,8 +116,6 @@ TEST_F(DivineTest, TestEmpty){
     clusters = model.getClusters();
     labels = model.getLabels();
 
-    //an runtime error is thrown (deliberate), but this is expected and as a result 
-    //the clusters and labels size should be 0
     EXPECT_EQ(clusters.size(), 0);
     EXPECT_EQ(labels.size(), 0);
 }
