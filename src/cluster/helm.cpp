@@ -271,7 +271,6 @@ Helm::Helm(vector<HCTree> clusterTree, int nAtoms, MD::Metric mt,
     this->eps = eps;
     this->trimStart = trimStart;
     this->minSamples = minSamples;
-    this->link = link;
     this->trimVal = trimVal;
     this->trimK = trimK;
     this->savePairwiseSum = savePairwiseSum;
