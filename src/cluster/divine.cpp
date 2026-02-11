@@ -3,32 +3,56 @@
 
 //ready for testing
 void Divine::divisiveAlgorithm() {
+    /* 
+        Main loop for recursively splitting clusters.
+    */
     int minFrames = std::max(1, (int)round(threshold * data.rows()));
 
+    int maxIter=50000;
+    int counter=1;
     while (true) {
+        //stopping conditions
+        if(counter>50000)   break;
+        counter++;
         if(end==0){
             if(clusters.size() >= kClusters)    break;
         }
         else if(end==1){
+            //if all clusters are size of 1, then break
             bool flag=false;
             for(Index i=0; i<clusters.size(); i++){
                 if(clusters[i].size()!=1)   flag=true;
             }
             if(!flag)   break;
         }
+
         vector<bool> failedSplits(clusters.size(), false);
         bool didSplit = false;
         while (!didSplit) {
+            //determine which cluster to split
             Index clusterToSplit = selectClusterToSplit(failedSplits);
             if (clusterToSplit < 0) {
                 throw std::runtime_error("No more cluster splits possible that would yield valid subclusters");
             } 
-            didSplit = splitCluster(clusterToSplit, minFrames);
+            //split the selected cluster into sub-clusters
+            didSplit = splitCluster(clusterToSplit);
+            //update failedSplits
             failedSplits[clusterToSplit] = !didSplit;
         }
     }
 };
 Index Divine::selectClusterToSplit(vector<bool>& failedSplits) {
+    /*
+        This function selects the cluster with the highest score for a criteria.
+
+        Parameters
+        -------------
+        failedSplits: indices of clusters previously deemed unsplittable.
+
+        Returns
+        -------------
+        Index: index of the cluster to split, -1 if no suitable split found.
+    */
     Index topCluster = -1;
     double bestScore = -1;
 
@@ -45,6 +69,7 @@ Index Divine::selectClusterToSplit(vector<bool>& failedSplits) {
             Index medoidIdx = calculateMedoid(subdata, nAtoms, mt);
             Vec medoid = subdata.row(medoidIdx);
             Vec dists = (subdata.rowwise() - medoid.transpose()).square().rowwise().sum() / nAtoms;
+
             score = dists.maxCoeff();
         } else if (splitType == MD::DivineSplit::WeightedMSD) {
             score = clusters[i].size() * extendedComparison(subdata, 0, nAtoms, false, mt);  
@@ -57,12 +82,24 @@ Index Divine::selectClusterToSplit(vector<bool>& failedSplits) {
     }
     return topCluster;
 };
-bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
+bool Divine::splitCluster(Index clusterToSplit) {
+    /*
+        This functioni splits the specified cluster into two subclusters.
+
+        Parameters
+        -------------
+        clusterToSplit: index of the cluster to split.
+        
+        Returns
+        -------------
+        bool: whether or not split was successful or not
+    */
     if (clusters[clusterToSplit].size() < 2) {
         std::cerr<<"Cannot split a cluster with less than 2 points";
         return false;
     }
 
+    //subset the indices of the cluster to be split
     Veci subdataIndices;
     subdataIndices.resize(clusters[clusterToSplit].size());
     for(int i=0; i<clusters[clusterToSplit].size(); i++){
@@ -82,19 +119,23 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
             }
         }
 
+        //merge the two newly split clusters to clusters vector
         clusters[clusterToSplit] = cluster1;
         clusters.push_back(cluster2);
     } else if (anchorType == MD::DivineAnchors::OutlierPair) {
         Index outlierIdx = calculateOutlier(subdata, nAtoms, mt);
         Vec anchorA = subdata.row(outlierIdx);
+        //calculate distances between subdata rows and anchorA row
         Vec dists = (subdata.rowwise() - anchorA.transpose()).square().rowwise().sum() / nAtoms;
         Index idxFurthest;
+        
+        //find row that is the farthest away from anchorA row based on dists
         dists.maxCoeff(&idxFurthest);
         Vec anchorB = subdata.row(idxFurthest);
 
-        Mat dataC = data(clusters[clusterToSplit], Eigen::placeholders::all);
-        Vec dA = (dataC.rowwise() - anchorA.transpose()).square().rowwise().sum() / nAtoms;
-        Vec dB = (dataC.rowwise() - anchorB.transpose()).square().rowwise().sum() / nAtoms;
+        //calculate distances between subdata and each anchor row
+        Vec dA = (subdata.rowwise() - anchorA.transpose()).square().rowwise().sum() / nAtoms;
+        Vec dB = (subdata.rowwise() - anchorB.transpose()).square().rowwise().sum() / nAtoms;
 
         vector<Index> initialMask;
         vector<Index> notInitialMask;
@@ -111,13 +152,17 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
         if (refine) {
             Mat groupA = subdata(initialMask, Eigen::placeholders::all);
             Mat groupB = subdata(notInitialMask, Eigen::placeholders::all);
+
             Index medoidA = groupA.size() <= 2 ? 0 : calculateMedoid(groupA, nAtoms, mt);
             Index medoidB = groupB.size() <= 2 ? 0 : calculateMedoid(groupB, nAtoms, mt);
+
             Mat initiators = Mat::Zero(2, data.row(0).size());
             initiators.row(0) = groupA.row(medoidA);
             initiators.row(1) = groupB.row(medoidB);
+
             KmeansNANI kmeans(subdata, 2, mt, initiators, nAtoms);
             Veci sublabels = kmeans.getLabels();
+
             vector<Index> cluster1, cluster2;
             for (Index i = 0; i < sublabels.size(); ++i) {
                 if (sublabels[i] == 0) {
@@ -126,6 +171,8 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
                     cluster2.push_back(clusters[clusterToSplit][i]);
                 }
             }
+
+            //find number of unique labels
             set<int> uniqueLabels;
             for(auto i:sublabels){
                 uniqueLabels.insert(i);
@@ -156,6 +203,7 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
         Index medoidIdx = calculateMedoid(subdata, nAtoms, mt);
         Vec medoidPoint = subdata.row(medoidIdx);
 
+        //split cluster indices into splinterGroup and mainGroup
         vector<Index> splinterGroup = {subdataIndices[splinterIdx]};
         vector<Index> mainGroup;
         splinterGroup.reserve(subdata.rows() - 1);
@@ -165,7 +213,6 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
             if (i == splinterIdx){
                 continue;
             }
-
             double dS = (subdata.row(i).transpose() - splinterPoint).square().sum() / nAtoms;
             double dM = (subdata.row(i).transpose() - medoidPoint).square().sum() / nAtoms;
 
@@ -178,13 +225,17 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
         if (refine) {
             Mat groupA = subdata(mainGroup, Eigen::placeholders::all);
             Mat groupB = subdata(splinterGroup, Eigen::placeholders::all);
+
             Index medoidA = splinterGroup.size() <= 2 ? 0 : calculateMedoid(groupA, nAtoms, mt);
             Index medoidB = groupB.size() <= 2 ? 0 : calculateMedoid(groupB, nAtoms, mt);
+
             Mat initiators = Mat::Zero(2, data.row(0).size());
             initiators.row(0) = groupA.row(medoidA);
             initiators.row(1) = groupB.row(medoidB);
+
             KmeansNANI kmeans(subdata, 2, mt, initiators, nAtoms);
             Veci sublabels = kmeans.getLabels();
+
             vector<Index> cluster1, cluster2;
             for (Index i = 0; i < sublabels.size(); ++i) {
                 if (sublabels[i] == 0) {
@@ -193,6 +244,8 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
                     cluster2.push_back(clusters[clusterToSplit][i]);
                 }
             }
+
+            //find number of unique labels
             set<int> uniqueLabels;
             for(auto i:sublabels){
                 uniqueLabels.insert(i);
@@ -225,7 +278,7 @@ Divine::Divine(Mat data, MD::DivineSplit splitType,
     } else {
         kClusters = k;
     }
-
+    //initialize clusters
     vector<Index> initCluster;
     for(int i=0; i<data.rows(); i++){
         initCluster.emplace_back(i);
