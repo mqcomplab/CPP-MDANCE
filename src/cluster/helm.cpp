@@ -393,7 +393,6 @@ pair<double, double> Helm::computeScores(vector<HCTree> clusters, Mat data){
         pair: first element is Calinkski, second element Davies-Bouldin
     */
 
-    //vector<Veci> clusterIndices;
     vector<int> frameLabel;
     int count=0;
 
