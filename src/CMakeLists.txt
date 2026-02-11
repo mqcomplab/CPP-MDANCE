@@ -8,6 +8,7 @@ find_package(Eigen3 3.3 REQUIRED)
 add_library(mdance_tools STATIC
     tools/bts.cpp 
     tools/cluster.cpp 
+    tools/hc_utils.cpp
     tools/esim.cpp 
     tools/scores.cpp
 )
@@ -30,6 +31,9 @@ target_link_libraries(mdance_kmeans PUBLIC mdance_tools)
 # create library for helm
 add_library(mdance_helm STATIC 
     cluster/helm.cpp
+)
+target_include_directories(mdance_helm PUBLIC 
+    cluster
 )
 target_link_libraries(mdance_helm PUBLIC mdance_tools)
 

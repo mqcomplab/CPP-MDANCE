@@ -1,9 +1,11 @@
 #include <filesystem>
+#include <list> 
 
 #include "test_helm.h"
 #include "test_utils.h"
 
-#include "../../src/cluster/helm.cpp"
+#include "../../src/cluster/helm.h"
+#include "../../tools/bts.h"
 #include "../../tools/scores.cpp"
 
 TestHelm::TestHelm() {
@@ -28,10 +30,10 @@ TestHelm::TestHelm() {
         uniqueLabels.insert(labels(i));
     }
 
-    std::vector<Cluster> clusters;
+    std::vector<HCTree> clusters;
     int N0 = uniqueLabels.size();
     for ( int i = 0; i < N0; i++) {
-        std::vector<int> indices = {i};
+        std::list<int> indices = {i};
         Vec cSumi = Vec::Zero(data.cols()); 
         Vec sqSumi = Vec::Zero(data.cols());
         int ni = 0;
@@ -42,13 +44,15 @@ TestHelm::TestHelm() {
                 sqSumi += data.row(j).square();
             }
         }
-        Eigen::Map<Veci> idx(indices.data(), indices.size());
-        clusters.push_back(Cluster(idx, cSumi, sqSumi, ni));
+        // todo: zind is set to 1 --> Not sure if that is correct
+        HCTree tree = HCTree();
+        tree.insertRoot(indices, cSumi, sqSumi, ni, i);
+        clusters.push_back(tree);
     }
     if (N0 != clusters.size()) {
         throw std::runtime_error("Error in inputCluster: number of unique labels does not match number of clusters.");
     }
-    clusters_map[N0] = clusters;
+    clusterTree = clusters;
 }
 
 ArrayXXd TestHelm::makeDataByRow(ArrayXd a, ArrayXd b){
@@ -61,20 +65,44 @@ ArrayXXd TestHelm::makeDataByRow(ArrayXd a, ArrayXd b){
         return data;
 }
 
+Mat TestHelm::getSelectedData(vector<HCTree> clusters){
+    // extracts data for frames that are in the resulting clusters. This is necessary for computing CH and DB scores.
+
+    vector<int> selectedClusterLabels; // contains all the cluster labels that are in the resulting clusters. 
+    for(auto c:clusters){
+        for(int i:c.getRootIndices()){
+            selectedClusterLabels.emplace_back(i);
+        }
+    }
+    vector<int> selectedFrameIndices; // list of  frames within the selected clusters.
+    for(int i:selectedClusterLabels){
+        for(int j=0; j<labels.size(); j++){
+            if(labels(j)==i){
+                selectedFrameIndices.emplace_back(j);
+            }
+        }
+    }
+    Mat selectedData = data(selectedFrameIndices, Eigen::placeholders::all);
+    return selectedData;
+}
+
 TEST_F(TestHelm, TestPops){
     int nAtoms = 50;
     int nClusters = 10;
-    Helm helm = Helm(clusters_map, nAtoms, MD::Metric::MSD, MD::MergeScheme::Inter, nClusters); 
-    map<int, vector<Cluster>> res = helm.run();
+    Helm helm = Helm(clusterTree, nAtoms, MD::Metric::MSD, MD::MergeScheme::Inter, nClusters); 
+    vector<HCTree> clusters = helm.run();
+
+    ASSERT_EQ(clusters.size(), nClusters);
+
     std::vector<double> pops;
-    std::vector<Cluster> clusters = res[10];
     std::vector<std::vector<int>> merged_clusts;
     for (int i = 0; i < clusters.size(); i++) {
-        double pop = (double) clusters[i].getN()/6001.0;
+        double pop = (double) clusters[i].getRootNObjects()/6001.0;
         pops.push_back(pop);
-        Veci idx = clusters[i].getIndices();
-        std::vector<int> temp_idx(idx.data(), idx.data() + idx.size());
-        merged_clusts.push_back(temp_idx);
+        std::list<int> idx = clusters[i].getRootIndices();
+        // convert idx to vector:
+        std::vector<int> idx_vec(idx.begin(), idx.end());
+        merged_clusts.push_back(idx_vec);
     }
     std::sort(pops.begin(), pops.end());
     std::vector<double> expected_pops = { 0.32511248, 0.21213131, 0.11898017, 0.11714714, 0.09948342, 0.07648725, 0.02216297,  0.01366439, 0.00799867, 0.00683219};
@@ -95,9 +123,12 @@ TEST_F(TestHelm, TestPops){
     for (int i = 0; i < pops.size(); i++) {
         EXPECT_NEAR(pops[i], expected_pops[i], 0.00001);
     }
-
-    for (int i = 0; i < merged_clusts.size(); i++) {
+    for (int i = 0; i < merged_clusts.size(); i++) {  
         ASSERT_EQ(merged_clusts[i].size(), expected_merged_clusters[i].size());
+
+        // we need to sort cluster indices since these are stored in a list. 
+        std::sort(expected_merged_clusters[i].begin(), expected_merged_clusters[i].end());
+        
         for (int j = 0; j < merged_clusts[i].size(); j++) {
             EXPECT_EQ(merged_clusts[i][j], expected_merged_clusters[i][j]);
         }
@@ -109,71 +140,28 @@ TEST_F(TestHelm, TestClus){
     inputCluster();
     int nAtoms = 50; 
     int nClusters = 37;
-    Helm helm = Helm(clusters_map, nAtoms, MD::Metric::MSD, MD::MergeScheme::Inter, nClusters);
-    map<int, vector<Cluster>> res = helm.run();
+    Helm helm = Helm(clusterTree, nAtoms, MD::Metric::MSD, MD::MergeScheme::Inter, nClusters);
+    vector<HCTree> clusters = helm.run();
+
+    ASSERT_EQ(clusters.size(), nClusters);
 
     //Compute CH and DB scores
-    vector<pair<double, double>> scores;
-    for(auto it=res.rbegin(); it!=res.rend(); it++){
-        vector<int> idx;
-        for(auto c:it->second){
-            for(int i:c.getIndices()){
-                idx.emplace_back(i);
-            }
-        }
-        vector<int> temp;
-        for(int i:idx){
-            for(int j=0; j<labels.size(); j++){
-                if(labels(j)==i){
-                    temp.emplace_back(j);
-                }
-            }
-        }
-        Mat arr = data(temp, Eigen::placeholders::all);
-        scores.emplace_back(helm.computeScores(it->second, arr));
-    }
+    Mat selectedData = getSelectedData(clusters);
+    pair<double, double> scoreRes = helm.computeScores(clusters, selectedData);
 
-    vector<pair<double, double>> expectedScores = {
-        {291.2198060306322, 1.7370614645545726},
-        {295.7352641684398, 1.7122884537735075}, 
-        {296.11490509768595, 1.7245038612367665}, 
-        {297.8213492701506, 1.7246552370601154}, 
-        {299.0810730592307, 1.738637643465005}, 
-        {300.34386300863565, 1.750692719498292}, 
-        {302.7012989347063, 1.755325543510106}, 
-        {304.51797241739484, 1.7672459242576242}, 
-        {306.6006824661377, 1.7695122974000195}, 
-        {308.9021982976074, 1.7607190308607732}, 
-        {307.1901532394585, 1.7721711289472055}, 
-        {297.43176362926556, 1.7888202076551794}, 
-        {299.34757173879535, 1.7833018738518591}, 
-        {301.52432336513584, 1.7936056164868994}, 
-        {306.08279103249237, 1.8034172355518991}, 
-        {310.3208501789975, 1.809472686067903}, 
-        {310.0361137593372, 1.825336725435764}, 
-        {313.8978629372179, 1.8344594141834631}, 
-        {315.0527200319327, 1.828991467839653}, 
-        {314.5428710018461, 1.818951502602474}, 
-        {314.94309021259465, 1.8091147842592137}, 
-        {318.77039278363225, 1.8100164274989112}, 
-        {323.7748207939142, 1.817475357075402}, 
-        {329.3068227654963, 1.8437066236912167}
-    };
-
-    for(int i=0; i<scores.size(); i++){
-        EXPECT_NEAR(scores[i].first, expectedScores[i].first, 1e-5);
-        EXPECT_NEAR(scores[i].second, expectedScores[i].second, 1e-5);
-    }
+    // compare scores to expected values
+    EXPECT_NEAR(scoreRes.first, 329.3068227654963, 1e-5);
+    EXPECT_NEAR(scoreRes.second, 1.8437066236912167, 1e-5);
 }
 
 TEST_F(TestHelm, TrimK){
     int nAtoms = 50;
-    int nClusters = 1; 
+    int nClusters = 8; 
     bool trimStart = true;
     int trimK = 1;
     double minSamples = 0.025; 
     // trim_start=True, trim_k=1, trim_val=None, min_samples=0.025)()
-    Helm helm = Helm(clusters_map,
+    Helm helm = Helm(clusterTree,
         nAtoms, 
         MD::Metric::MSD, 
         MD::MergeScheme::Inter, 
@@ -186,24 +174,23 @@ TEST_F(TestHelm, TrimK){
         0, // default trimVal value
         trimK
     ); 
-    map<int, vector<Cluster>> res = helm.run();
+    vector<HCTree> clusters = helm.run();
     int expectedNClusters = 8;
     // check if 8 in the map
-    ASSERT_EQ(res.find(expectedNClusters) != res.end(), true);
-
-    // check number of clusters
-    std::vector<Cluster> clusters = res[expectedNClusters];
     ASSERT_EQ(clusters.size(), expectedNClusters);
+
+    // to check trimming, we need to have 8 clusters --> traverse the cluster tree to get the 8 clusters.
+
 
     std::vector<double> msds;
     std::vector<int> Niks;
     for (int i = 0; i < clusters.size(); i++) {
-        ArrayXXd data = makeDataByRow(clusters[i].getCsum(), clusters[i].getSQsum());
-        int Ni = clusters[i].getN();
+        ArrayXXd data = makeDataByRow(clusters[i].getRootCSum(), clusters[i].getRootSQSum());
+        int Ni = clusters[i].getRootNObjects();
         Niks.push_back(Ni);
         double msd = extendedComparison(data, Ni, nAtoms, true, MD::Metric::MSD);
         msds.push_back(msd);
-        double pop = (double) clusters[i].getN()/6001.0;
+        double pop = (double) clusters[i].getRootNObjects()/6001.0;
         EXPECT_GT(pop, 0.025);
     }
 
@@ -223,54 +210,20 @@ TEST_F(TestHelm, TrimK){
         EXPECT_NEAR(msds[i], expected_msds[i], 1e-5);
     }
 
-    int N0 = clusters.size();
-
-    vector<pair<double, double>> scores;
-
-    for(auto it=res.rbegin(); it!=res.rend(); it++){
-        vector<int> idx;
-        for(auto c:it->second){
-            for(int i:c.getIndices()){
-                idx.emplace_back(i);
-            }
-        }
-        vector<int> temp;
-        for(int i:idx){
-            for(int j=0; j<labels.size(); j++){
-                if(labels(j)==i){
-                    temp.emplace_back(j);
-                }
-            }
-        }
-        Mat arr = data(temp, Eigen::placeholders::all);
-        scores.emplace_back(helm.computeScores(it->second, arr));
-    }
-
-    //check scores
-    std::vector<pair<double, double>> expectedScores = {
-        {1027.0159808301096, 1.3503102468493706}, 
-        {1104.807519769014, 1.205066197610796}, 
-        {1172.6483112177802, 0.8824355830201499}, 
-        {1227.2333015488437, 0.9712858749211579}, 
-        {1332.727994435348, 0.9596798547189016}, 
-        {1381.3259570829998, 1.1368566266419298}, 
-        {1482.6296232781137, 0.9381045938050468}
-    };
-    for(int i=0; i<expectedScores.size(); i++){
-        EXPECT_NEAR(scores[i].first, expectedScores[i].first, 1e-5);
-        EXPECT_NEAR(scores[i].second, expectedScores[i].second, 1e-5);
-    }
-    EXPECT_NEAR(scores.back().first, -1.0, 1e-5);
-    EXPECT_NEAR(scores.back().second, -1.0, 1e-5);
+    // check scores
+    Mat selectedData = getSelectedData(clusters);
+    pair<double, double> scoreRes = helm.computeScores(clusters, selectedData);
+    EXPECT_NEAR(scoreRes.first, 1027.0159808301096, 1e-5);
+    EXPECT_NEAR(scoreRes.second, 1.3503102468493706, 1e-5);
 }
 
 TEST_F(TestHelm, TrimK2){
     int nAtoms = 50;
-    int nClusters = 1; 
+    int nClusters = 10; 
     bool trimStart = true;
     int trimK = 50;
     double minSamples = 0.0;
-    Helm helm = Helm(clusters_map,
+    Helm helm = Helm(clusterTree,
         nAtoms, 
         MD::Metric::MSD, 
         MD::MergeScheme::Inter, 
@@ -283,18 +236,14 @@ TEST_F(TestHelm, TrimK2){
         0, // default trimVal value
         trimK
     );
-    map<int, vector<Cluster>> res = helm.run();
+    vector<HCTree> clusters = helm.run();
     int expectedNClusters = 10;
-    ASSERT_EQ(res.find(expectedNClusters) != res.end(), true);
-
-    // check number of clusters
-    std::vector<Cluster> clusters = res[expectedNClusters];
-    ASSERT_EQ(clusters.size(), expectedNClusters);
+    ASSERT_EQ(expectedNClusters, clusters.size());
 
     std::vector<double> msds;
     for (int i = 0; i < clusters.size(); i++) {
-        ArrayXXd data = makeDataByRow(clusters[i].getCsum(), clusters[i].getSQsum());
-        int Ni = clusters[i].getN();
+        ArrayXXd data = makeDataByRow(clusters[i].getRootCSum(), clusters[i].getRootSQSum());
+        int Ni = clusters[i].getRootNObjects();
         double msd = extendedComparison(data, Ni, nAtoms, true, MD::Metric::MSD);
         msds.push_back(msd);
     }
@@ -317,66 +266,33 @@ TEST_F(TestHelm, TestEps){
     int nAtoms = 50;
     float eps = 15;
 
-    Helm helm = Helm(clusters_map,
+    Helm helm = Helm(clusterTree,
         nAtoms, 
         MD::Metric::MSD, 
         MD::MergeScheme::Inter, 
         0,
         eps // default eps value
     ); 
-    map<int, vector<Cluster>> res = helm.run();
+    vector<HCTree> clusters = helm.run();
+    std::cout << "Number of clusters: " << clusters.size() << std::endl;
 
     //Compute CH and DB scores
-    vector<pair<double, double>> scores;
-    for(auto it=res.rbegin(); it!=res.rend(); it++){
-        if(it->second.empty()){
-            continue;
-        }
-
-        vector<int> idx;
-        for(auto c:it->second){
-            for(int i:c.getIndices()){
-                idx.emplace_back(i);
-            }
-        }
-        vector<int> temp;
-        for(int i:idx){
-            for(int j=0; j<labels.size(); j++){
-                if(labels(j)==i){
-                    temp.emplace_back(j);
-                }
-            }
-        }
-        Mat arr = data(temp, Eigen::placeholders::all);
-        scores.emplace_back(helm.computeScores(it->second, arr));
-    }
-
-    vector<pair<double, double>> expectedScores = {
-        {291.2198060306322, 1.7370614645545726},
-        {295.7352641684398, 1.7122884537735075},
-        {296.11490509768595, 1.7245038612367665},
-        {297.8213492701506, 1.7246552370601154},
-        {299.0810730592307, 1.738637643465005},
-        {300.34386300863565, 1.750692719498292},
-        {302.7012989347063, 1.755325543510106}
-    };
-
-    for(int i=0; i<expectedScores.size(); i++){
-        EXPECT_NEAR(expectedScores[i].first, scores[i].first, 1e-5);
-        EXPECT_NEAR(expectedScores[i].second, scores[i].second, 1e-5);
-    }
+    Mat selectedData = getSelectedData(clusters);
+    pair<double, double> scoreRes = helm.computeScores(clusters, selectedData);
+    EXPECT_NEAR(scoreRes.first, 302.7012989347063, 1e-5);
+    EXPECT_NEAR(scoreRes.second, 1.755325543510106, 1e-5);
 }
 
 TEST_F(TestHelm, TestTrimVal){
     int N0 = uniqueLabels.size();
     inputCluster();
     int nAtoms = 50;
-    int nClusters = 1;
+    int nClusters = 4;
     bool trimStart = true;
     int trimVal = 5;
     float minSamples = 0.025;
 
-    Helm helm = Helm(clusters_map,
+    Helm helm = Helm(clusterTree,
         nAtoms, 
         MD::Metric::MSD, 
         MD::MergeScheme::Inter, 
@@ -389,15 +305,15 @@ TEST_F(TestHelm, TestTrimVal){
         trimVal
     );
 
-    map<int, vector<Cluster>> clusters = helm.run();
+   vector<HCTree> clusters = helm.run();
     int expectedNClusters = 4;
-    EXPECT_EQ(clusters[4].size(), expectedNClusters);
+    EXPECT_EQ(clusters.size(), expectedNClusters);
 
     vector<double> msds;
-    for(auto c:clusters[4]){
-        Vec cSum = c.getCsum();
-        Vec sqSum = c.getSQsum();
-        int Nik = c.getN();
+    for(auto c:clusters){
+        Vec cSum = c.getRootCSum();
+        Vec sqSum = c.getRootSQSum();
+        int Nik = c.getRootNObjects();
         ArrayXXd data = makeDataByRow(cSum, sqSum);
         double msd = extendedComparison(data, Nik, nAtoms, true);
 
@@ -420,14 +336,14 @@ TEST_F(TestHelm, TestTrimVal){
 TEST_F(TestHelm, ZMatrix){
     int nAtoms = 50;
     int nClus = 37;
-    Helm helm = Helm(clusters_map,
+    Helm helm = Helm(clusterTree,
         nAtoms, 
         MD::Metric::MSD, 
         MD::MergeScheme::Inter, 
         nClus
     );
-    map<int, vector<Cluster>> clusters = helm.run();
-    Mat Z = helm.calculateZMatrix(clusters);
+    vector<HCTree> clusters = helm.run();
+    Mat Z = helm.getZMatrix();
     Mat expectedZ(23, 4);
     expectedZ <<2, 23, 1.0, 2, 
         47, 60, 2.0, 3, 
