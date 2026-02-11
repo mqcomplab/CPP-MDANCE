@@ -168,9 +168,7 @@ TEST_F(TestHelm, TrimK){
         nClusters,
         -1, // default eps value
         trimStart,
-        MD::AlignMethod::None, // default alignMeth value
         minSamples,
-        MD::Link::None, // default link value
         0, // default trimVal value
         trimK
     ); 
@@ -230,9 +228,7 @@ TEST_F(TestHelm, TrimK2){
         nClusters,
         -1, // default eps value
         trimStart,
-        MD::AlignMethod::None, // default alignMeth value
         minSamples,
-        MD::Link::None, // default link value
         0, // default trimVal value
         trimK
     );
@@ -299,9 +295,7 @@ TEST_F(TestHelm, TestTrimVal){
         nClusters,
         -1, // default eps value
         trimStart,
-        MD::AlignMethod::None, // default alignMeth value
         minSamples,
-        MD::Link::None,
         trimVal
     );
 
