@@ -8,7 +8,7 @@ void Divine::divisiveAlgorithm() {
     */
     int minFrames = std::max(1, (int)round(threshold * data.rows()));
 
-    int maxIter=50000;
+    int maxIter=data.rows()+1;
     int counter=1;
     bool done=true;
     while (done) {
