@@ -8,7 +8,7 @@ void Divine::divisiveAlgorithm() {
     */
     int minFrames = std::max(1, (int)round(threshold * data.rows()));
 
-    int maxIter=50000;
+    int maxIter=data.rows()+1;
     int counter=1;
     bool done=true;
     while (done) {
@@ -38,7 +38,7 @@ void Divine::divisiveAlgorithm() {
                 break;
             } 
             //split the selected cluster into sub-clusters
-            didSplit = splitCluster(clusterToSplit);
+            didSplit = splitCluster(clusterToSplit, minFrames);
             //update failedSplits
             failedSplits[clusterToSplit] = !didSplit;
         }
@@ -85,7 +85,7 @@ Index Divine::selectClusterToSplit(vector<bool>& failedSplits) {
     }
     return topCluster;
 };
-bool Divine::splitCluster(Index clusterToSplit) {
+bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
     /*
         This functioni splits the specified cluster into two subclusters.
 
@@ -180,6 +180,10 @@ bool Divine::splitCluster(Index clusterToSplit) {
             for(auto i:sublabels){
                 uniqueLabels.insert(i);
             }
+            if(initialMask.size()<minFrames || notInitialMask.size()<minFrames){
+                return false;
+            }
+
             if(uniqueLabels.size() < 2){
                 std::cerr<<"K-Means refinement failed to find two distinct clusters."<<std::endl;
                 clusters[clusterToSplit] = initialMask;
@@ -191,6 +195,10 @@ bool Divine::splitCluster(Index clusterToSplit) {
             }
 
         } else {
+            if(initialMask.size()<minFrames || notInitialMask.size()<minFrames){
+                return false;
+            }
+
             clusters[clusterToSplit] = initialMask;
             clusters.push_back(notInitialMask);
             
@@ -253,6 +261,10 @@ bool Divine::splitCluster(Index clusterToSplit) {
             for(auto i:sublabels){
                 uniqueLabels.insert(i);
             }
+            if(mainGroup.size()<minFrames || splinterGroup.size()<minFrames){
+                return false;
+            }
+
             if(uniqueLabels.size() < 2){
                 std::cerr<<"K-Means refinement failed to find two distinct clusters."<<std::endl;
                 clusters[clusterToSplit] = cluster1;
@@ -264,6 +276,10 @@ bool Divine::splitCluster(Index clusterToSplit) {
             }
 
         } else {
+            if(mainGroup.size()<minFrames || splinterGroup.size()<minFrames){
+                return false;
+            }
+
             clusters[clusterToSplit] = mainGroup;
             clusters.push_back(splinterGroup);   
         }

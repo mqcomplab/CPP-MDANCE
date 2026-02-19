@@ -27,7 +27,7 @@ class Divine{
 
     void divisiveAlgorithm();
     Index selectClusterToSplit(vector<bool>& failedSplits);
-    bool splitCluster(Index clusterToSplit);
+    bool splitCluster(Index clusterToSplit, int minFrames);
 
 public:
     Divine(Mat data, MD::DivineSplit splitType = MD::DivineSplit::WeightedMSD, 
