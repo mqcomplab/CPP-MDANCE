@@ -37,6 +37,12 @@ target_include_directories(mdance_helm PUBLIC
 )
 target_link_libraries(mdance_helm PUBLIC mdance_tools)
 
+# create divine library
+add_library(mdance_divine STATIC 
+    cluster/divine.cpp
+)
+target_link_libraries(mdance_divine PUBLIC mdance_tools)
+
 # create main mdance library
 add_library(mdance INTERFACE)
 target_link_libraries(mdance 
@@ -44,4 +50,5 @@ target_link_libraries(mdance
         mdance_tools 
         mdance_kmeans 
         mdance_helm
+        mdance_divine
 )
