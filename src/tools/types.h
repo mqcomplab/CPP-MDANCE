@@ -52,10 +52,6 @@ namespace MD {
     */
     enum class KinitType {StratAll, StratReduced, CompSim, DivSelect, KmeansPP, Random, VanillaKmeansPP};
 
-    enum class DivineSplit {MSD, Radius, WeightedMSD};
-
-    enum class DivineAnchors{NANI, OutlierPair, SplinterPair};
-
     enum class StartSeed {Medoid, Outlier, Random};
 
     enum class AlignMethod {Kron, Uni, None};
