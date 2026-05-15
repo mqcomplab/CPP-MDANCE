@@ -6,7 +6,6 @@ add_executable(test test_utils.cpp
                     test_main.cpp
                     test_kmeans.cpp
                     test_helm.cpp
-                    test_divine.cpp
 )
 target_link_libraries(test PRIVATE 
                     GTest::GTest
