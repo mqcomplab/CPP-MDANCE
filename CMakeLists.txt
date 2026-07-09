@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 project(MDance VERSION 1.0 LANGUAGES CXX)
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+find_package(pybind11 REQUIRED CONFIG)
+
 
 set(default_build_type "Release")
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)

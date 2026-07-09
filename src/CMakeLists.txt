@@ -4,6 +4,7 @@ enable_language(C CXX)
 
 find_package(Eigen3 3.3 REQUIRED)
 
+
 # Create library for tools
 add_library(mdance_tools STATIC
     tools/bts.cpp 
@@ -42,6 +43,34 @@ add_library(mdance_divine STATIC
     cluster/divine.cpp
 )
 target_link_libraries(mdance_divine PUBLIC mdance_tools)
+
+# add pybind
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+message(STATUS "Python3_EXECUTABLE = ${Python3_EXECUTABLE}")
+message(STATUS "Python3_INCLUDE_DIRS = ${Python3_INCLUDE_DIRS}")
+message(STATUS "Python3_LIBRARIES = ${Python3_LIBRARIES}")
+find_package(pybind11 REQUIRED CONFIG)
+
+target_include_directories(mdance_divine PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+add_library(python_bridge STATIC
+    cluster/pybind.cpp
+)
+
+target_include_directories(python_bridge PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+)
+
+target_link_libraries(python_bridge PUBLIC
+    pybind11::embed
+    ${Python3_LIBRARIES}    
+    Eigen3::Eigen
+)
+
+target_link_libraries(mdance_divine PUBLIC python_bridge)
 
 # create main mdance library
 add_library(mdance INTERFACE)

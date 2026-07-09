@@ -1,4 +1,5 @@
 #include "divine.h"
+#include "pybind.h"
 
 
 //ready for testing
@@ -125,6 +126,10 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
         //merge the two newly split clusters to clusters vector
         clusters[clusterToSplit] = cluster1;
         clusters.push_back(cluster2);
+        
+        if(clusters.size()>=6001){
+            std::cout<<clusters.size()<<std::endl;
+        }
     } else if (anchorType == MD::DivineAnchors::OutlierPair) {
         Index outlierIdx = calculateOutlier(subdata, nAtoms, mt);
         Vec anchorA = subdata.row(outlierIdx);
@@ -244,8 +249,10 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
             initiators.row(0) = groupA.row(medoidA);
             initiators.row(1) = groupB.row(medoidB);
 
-            KmeansNANI kmeans(subdata, 2, mt, initiators, nAtoms);
-            Veci sublabels = kmeans.getLabels();
+            //KmeansNANI kmeans(subdata, 2, mt, initiators, nAtoms);
+            //Veci sublabels = kmeans.getLabels();
+
+            Veci sublabels=wrapperKmeans(subdata, initiators);
 
             vector<Index> cluster1, cluster2;
             for (Index i = 0; i < sublabels.size(); ++i) {
@@ -286,12 +293,18 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
     }
     return true;
 };
+
+Veci Divine::wrapperKmeans(Mat X, Mat initiators) {
+    return runKmeans(X, initiators);
+}
+
 Divine::Divine(Mat data, MD::DivineSplit splitType, 
     MD::DivineAnchors anchorType, MD::KinitType kinit, 
     int end, int k, bool refine, int nAtoms, double threshold, int percentage): 
     data(data), splitType(splitType), anchorType(anchorType), kinit(kinit), 
     refine(refine), nAtoms(nAtoms), threshold(threshold), percentage(percentage), 
     mt(MD::Metric::MSD), end(end) {
+
     if (k == 0) {
         kClusters = data.rows();
     } else {
