@@ -27,7 +27,7 @@ class Divine{
 
     void divisiveAlgorithm();
     Index selectClusterToSplit(vector<bool>& failedSplits);
-    bool splitCluster(Index clusterToSplit, int minFrames);
+    bool splitCluster(Index clusterToSplit, int minFrames, int counter);
     Veci wrapperKmeans(Mat X, Mat initiators);
 
 public:

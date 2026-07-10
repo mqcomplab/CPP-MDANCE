@@ -1,6 +1,7 @@
 #include "divine.h"
 #include "pybind.h"
-
+#include <fstream>
+#include <string>
 
 //ready for testing
 void Divine::divisiveAlgorithm() {
@@ -39,7 +40,7 @@ void Divine::divisiveAlgorithm() {
                 break;
             } 
             //split the selected cluster into sub-clusters
-            didSplit = splitCluster(clusterToSplit, minFrames);
+            didSplit = splitCluster(clusterToSplit, minFrames, counter);
             //update failedSplits
             failedSplits[clusterToSplit] = !didSplit;
         }
@@ -86,7 +87,7 @@ Index Divine::selectClusterToSplit(vector<bool>& failedSplits) {
     }
     return topCluster;
 };
-bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
+bool Divine::splitCluster(Index clusterToSplit, int minFrames, int counter) {
     /*
         This functioni splits the specified cluster into two subclusters.
 
@@ -220,7 +221,8 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
         Vec medoidPoint = subdata.row(medoidIdx);
 
         //split cluster indices into splinterGroup and mainGroup
-        vector<Index> splinterGroup = {subdataIndices[splinterIdx]};
+        //vector<Index> splinterGroup = {subdataIndices[splinterIdx]};
+        vector<Index> splinterGroup = {splinterIdx};
         vector<Index> mainGroup;
         splinterGroup.reserve(subdata.rows() - 1);
         mainGroup.reserve(subdata.rows() - 1);
@@ -233,9 +235,11 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
             double dM = (subdata.row(i).transpose() - medoidPoint).square().sum() / nAtoms;
 
             if (dS < dM) {
-                splinterGroup.push_back(subdataIndices[i]);
+                //splinterGroup.push_back(subdataIndices[i]);
+                 splinterGroup.push_back(i);
             } else {
-                mainGroup.push_back(subdataIndices[i]);
+                //mainGroup.push_back(subdataIndices[i]);
+                mainGroup.push_back(i);
             }
         }
         if (refine) {
@@ -261,6 +265,19 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
                 } else {
                     cluster2.push_back(clusters[clusterToSplit][i]);
                 }
+            }
+
+            //output cluster indices
+            std::string name="cluster1-" + std::to_string(counter) + ".csv";
+            std::ofstream outFile(name);
+            for (const auto& element:cluster1){
+                outFile<<element<<"\n";
+            }
+
+            std::string name2="cluster2-" + std::to_string(counter) + ".csv";
+            std::ofstream outFile2(name2);
+            for (const auto& element:cluster2){
+                outFile2<<element<<"\n";
             }
 
             //find number of unique labels
@@ -293,6 +310,18 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
     }
     return true;
 };
+
+/*
+save python mdance labels results for each iteration and use it for C++ mdance
+    see if it fixes stuff, if it does then kmeans is the issue
+    if it not then c++ divine is the issue
+pdb and gdb: compare kmeans labels**
+   
+compare divine iteration between python and c++
+
+error: add termination condition if divine cannot find two split clusters then it should stop
+    
+*/
 
 Veci Divine::wrapperKmeans(Mat X, Mat initiators) {
     return runKmeans(X, initiators);
