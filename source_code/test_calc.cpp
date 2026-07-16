@@ -115,6 +115,72 @@ int main(){
     } else {
         std::cerr << "Unable to open file for writing: test_calc/assign_screen_outlierPair_refine_false.csv" << std::endl;
     }
+
+    std::cout<<"heehee2"<<std::endl;
+    path = std::filesystem::current_path();
+    path = path/"make_blobs_divine.csv";
+    data = readCSVtoEigen_process(path.string());
+    vector<MD::DivineSplit> splits={
+        MD::DivineSplit::MSD,
+        MD::DivineSplit::Radius,
+        MD::DivineSplit::WeightedMSD
+    };
+    vector<MD::DivineAnchors> anchors={
+        MD::DivineAnchors::NANI,
+        MD::DivineAnchors::OutlierPair,
+        MD::DivineAnchors::SplinterPair
+    };
+    vector<bool> refines={
+        true,
+        false
+    };
+
+    nAtoms = 1;
+    end = 0;        //end = 0 means 'k'
+    for(auto s:splits){
+        std::cout<<"0"<<std::endl;
+        for(auto a:anchors){
+            std::cout<<"A"<<std::endl;
+            for(auto r:refines){
+                std::cout<<"a"<<std::endl;
+                Divine model=Divine(
+                    data,
+                    s,
+                    a,
+                    MD::KinitType::CompSim,
+                    end,
+                    3,
+                    r,
+                    nAtoms
+                );
+                labels = model.getLabels();
+                clusters = model.getClusters();
+
+                set<int> uniqueLabels;
+                for(auto i:labels){
+                    uniqueLabels.insert(i);
+                }
+                
+                //assert #1
+                //asserst #2
+                if (clusters.size()!=3){
+                    std::cout<<"not equal to 3"<<std::endl;
+                }
+                //assert isinstance
+                if(labels.size()!=data.rows()){
+                    std::cout<<"label size not equal to data rows"<<std::endl;
+                }
+                if(uniqueLabels.size()!=3){
+                    for(int i: uniqueLabels){
+                        if(i==-1){
+                            std::cout<<"-1"<<std::endl;
+                        }
+                    }
+                    std::cout<<uniqueLabels.size()<<"unique label not equal to 3"<<std::endl;
+                }
+            }
+        }
+    } 
     return 0;
 }
 

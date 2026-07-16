@@ -115,6 +115,7 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames, int counter) {
     if (anchorType == MD::DivineAnchors::NANI) {
         KmeansNANI kmeans(subdata, 2, mt, kinit, nAtoms, percentage);
         ArrayXi sublabels = kmeans.getLabels();
+
         vector<Index> cluster1, cluster2;
         for (Index i = 0; i < sublabels.size(); ++i) {
             if (sublabels[i] == 0) {
@@ -169,8 +170,9 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames, int counter) {
             initiators.row(0) = groupA.row(medoidA);
             initiators.row(1) = groupB.row(medoidB);
 
-            KmeansNANI kmeans(subdata, 2, mt, initiators, nAtoms);
-            Veci sublabels = kmeans.getLabels();
+            //KmeansNANI kmeans(subdata, 2, mt, initiators, nAtoms);
+            //Veci sublabels = kmeans.getLabels();
+            Veci sublabels=wrapperKmeans(subdata, initiators);
 
             vector<Index> cluster1, cluster2;
             for (Index i = 0; i < sublabels.size(); ++i) {
@@ -229,6 +231,7 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames, int counter) {
 
         for (Index i = 0; i < subdata.rows(); ++i) {
             if (i == splinterIdx){
+            //if (subdataIndices[i]==splinterIdx){
                 continue;
             }
             double dS = (subdata.row(i).transpose() - splinterPoint).square().sum() / nAtoms;
@@ -261,10 +264,26 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames, int counter) {
             vector<Index> cluster1, cluster2;
             for (Index i = 0; i < sublabels.size(); ++i) {
                 if (sublabels[i] == 0) {
-                    cluster1.push_back(clusters[clusterToSplit][i]);
+                    cluster1.push_back(subdataIndices[i]);
                 } else {
-                    cluster2.push_back(clusters[clusterToSplit][i]);
+                    cluster2.push_back(subdataIndices[i]);
                 }
+            }
+            
+            //find number of unique labels
+            set<int> uniqueLabels;
+            for(auto i:sublabels){
+                uniqueLabels.insert(i);
+            }
+
+            if(uniqueLabels.size() < 2){
+                std::cerr<<"K-Means refinement failed to find two distinct clusters."<<std::endl;
+                clusters[clusterToSplit] = mainGroup;
+                clusters.push_back(splinterGroup);
+            }
+            else{
+                clusters[clusterToSplit] = cluster1;
+                clusters.push_back(cluster2);
             }
 
             //output cluster indices
@@ -280,32 +299,26 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames, int counter) {
                 outFile2<<element<<"\n";
             }
 
-            //find number of unique labels
-            set<int> uniqueLabels;
-            for(auto i:sublabels){
-                uniqueLabels.insert(i);
-            }
             if(mainGroup.size()<minFrames || splinterGroup.size()<minFrames){
                 return false;
-            }
-
-            if(uniqueLabels.size() < 2){
-                std::cerr<<"K-Means refinement failed to find two distinct clusters."<<std::endl;
-                clusters[clusterToSplit] = cluster1;
-                clusters.push_back(cluster2);
-            }
-            else{
-                clusters[clusterToSplit] = cluster1;
-                clusters.push_back(cluster2);
             }
 
         } else {
             if(mainGroup.size()<minFrames || splinterGroup.size()<minFrames){
                 return false;
             }
-
-            clusters[clusterToSplit] = mainGroup;
-            clusters.push_back(splinterGroup);   
+            
+            clusters[clusterToSplit]={};
+            for(auto i: mainGroup){
+                clusters[clusterToSplit].push_back(subdataIndices[i]);
+            }
+            clusters.push_back({});
+            for(auto i: splinterGroup){
+                clusters.back().push_back(subdataIndices[i]);
+            }
+            //clusters[clusterToSplit] = mainGroup;
+            //clusters.push_back(splinterGroup);   
+            std::cout<<"cluster size "<<clusters.size()<<std::endl;
         }
     }
     return true;

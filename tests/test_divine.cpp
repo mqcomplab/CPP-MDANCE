@@ -5,6 +5,7 @@
 
 #include "../../src/cluster/divine.cpp"
 
+
 DivineTest::DivineTest(){
     std::filesystem::path path = std::filesystem::current_path();
     path = path.parent_path().parent_path();
@@ -50,55 +51,59 @@ TEST_F(DivineTest, TestRefine){
 //     }
 // }
 
-// TEST_F(DivineTest, TestCombinations){
-//     vector<MD::DivineSplit> split={
-//         MD::DivineSplit::MSD,
-//         MD::DivineSplit::Radius,
-//         MD::DivineSplit::WeightedMSD
-//     };
-//     vector<MD::DivineAnchors> anchor={
-//         MD::DivineAnchors::NANI,
-//         MD::DivineAnchors::OutlierPair,
-//         MD::DivineAnchors::SplinterPair
-//     };
-//     vector<bool> refine={
-//         true,
-//         false
-//     };
+TEST_F(DivineTest, TestCombinations){
 
-//     int nAtoms = 1;
-//     int end = 0;        //end = 0 means 'k'
-//     for(auto s:split){
-//         for(auto a:anchor){
-//             for(auto r:refine){
-//                 Divine model=Divine(
-//                     data,
-//                     s,
-//                     a,
-//                     MD::KinitType::CompSim,
-//                     end,
-//                     3,
-//                     r,
-//                     nAtoms
-//                 );
-//                 labels = model.getLabels();
-//                 clusters = model.getClusters();
+    vector<MD::DivineSplit> split={
+        MD::DivineSplit::MSD,
+        MD::DivineSplit::Radius,
+        MD::DivineSplit::WeightedMSD
+    };
+    vector<MD::DivineAnchors> anchor={
+        MD::DivineAnchors::NANI,
+        MD::DivineAnchors::OutlierPair,
+        MD::DivineAnchors::SplinterPair
+    };
+    vector<bool> refine={
+        true,
+        false
+    };
 
-//                 set<int> uniqueLabels;
-//                 for(auto i:labels){
-//                     uniqueLabels.insert(i);
-//                 }
+    int nAtoms = 1;
+    int end = 0;        //end = 0 means 'k'
+    for(auto s:split){
+        std::cout<<"0"<<std::endl;
+        for(auto a:anchor){
+            std::cout<<"A"<<std::endl;
+            for(auto r:refine){
+                std::cout<<"a"<<std::endl;
+                Divine model=Divine(
+                    data,
+                    s,
+                    a,
+                    MD::KinitType::CompSim,
+                    end,
+                    3,
+                    r,
+                    nAtoms
+                );
+                labels = model.getLabels();
+                clusters = model.getClusters();
+
+                set<int> uniqueLabels;
+                for(auto i:labels){
+                    uniqueLabels.insert(i);
+                }
                 
-//                 //assert #1
-//                 //asserst #2
-//                 EXPECT_EQ(clusters.size(), 3);
-//                 //assert isinstance
-//                 EXPECT_EQ(labels.size(), data.rows());
-//                 EXPECT_EQ(uniqueLabels.size(), 3);
-//             }
-//         }
-//     }
-// }
+                //assert #1
+                //asserst #2
+                EXPECT_EQ(clusters.size(), 3);
+                //assert isinstance
+                EXPECT_EQ(labels.size(), data.rows());
+                EXPECT_EQ(uniqueLabels.size(), 3);
+            }
+        }
+    }
+}
 
 
 // TEST_F(DivineTest, TestPoint){

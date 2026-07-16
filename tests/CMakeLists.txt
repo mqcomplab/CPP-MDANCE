@@ -11,7 +11,8 @@ add_executable(test test_utils.cpp
 target_link_libraries(test PRIVATE 
                     GTest::GTest
                     GTest::Main
-                    mdance)
+                    mdance
+                    )
                     
 enable_testing()
 add_test(NAME mdance_tests COMMAND test)

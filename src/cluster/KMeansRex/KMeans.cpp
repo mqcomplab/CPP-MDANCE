@@ -254,9 +254,9 @@ void KmeansNANI::run_lloyd(int Niter, float tol)  {
     for (int iter=0; iter<Niter; iter++) {
         totalDist = assignClosest(iter);
         double centerShift = calcMu();
-        std::cout<<centerShift<<std::endl;
+        //std::cout<<centerShift<<std::endl;
         if (centerShift <= tol) {
-            std::cout<<centerShift<<tol<<std::endl;
+            //std::cout<<centerShift<<tol<<std::endl;
             break;
         }
         prevDist = totalDist;
