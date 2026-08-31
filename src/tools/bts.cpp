@@ -299,7 +299,7 @@ vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metri
         switch(start) {
             case MD::StartSeed::Medoid: seed.push_back(calculateMedoid(data, nAtoms, mt)); break;
             case MD::StartSeed::Outlier: seed.push_back(calculateOutlier(data, nAtoms, mt)); break;
-            case MD::StartSeed::Random: seed.emplace_back(rand() % data.row(0).size()); break;
+            case MD::StartSeed::Random: seed.emplace_back(rand() % data.rows()); break;
         }
         return diversitySelection(data, percentage, mt, nAtoms, seed);
     }
