@@ -42,10 +42,7 @@ void KmeansNANI::set_vectorization_threshold(int threshold){
     if (threshold < 1){
         throw std::invalid_argument("Threshold must be at least 1");
     }
-    if (threshold == std::numeric_limits<int>::infinity()) {
-        throw std::invalid_argument("Threshold must be finite");
-    }
-    threshold = threshold;
+    vectorizationThreshold = threshold;
 }
 
 /*
