@@ -339,7 +339,7 @@ vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metri
 
     set<Index> selectFromN;
     set<Index> selectedSet;
-    for (int i=0; i<indices.size(); ++i) {
+    for (size_t i=0; i<indices.size(); ++i) {
         selectedSet.insert(indices[i]);
     }
     for (int i=0; i<nTotal; ++i) {
@@ -533,6 +533,8 @@ ArrayXXd alignTraj(const ArrayXXd& data, int nAtoms, MD::AlignMethod alignMeth){
         .. _"Size-and-Shape Space Gaussian Mixture Models for Structural Clustering of Molecular Dynamics Trajectories":
         https://pubs.acs.org/doi/abs/10.1021/acs.jctc.1c01290
     */
+
+    (void)nAtoms;  // stub: unused until the alignment methods are implemented
 
     if(alignMeth == MD::AlignMethod::None){
         return data;

@@ -196,19 +196,18 @@ void KmeansNANI::init_Mu() {
 
 // ======================================================= Update Assignments Z
 void KmeansNANI::pairwise_distance( Mat &X, Mat &Mu, Mat &Dist ) {
-    int N = data.rows();
-    int D = data.cols();
-    int K = centers.rows();
+    int D = X.cols();
+    int K = Mu.rows();
 
     // For small dims D, for loop is noticeably faster than fully vectorized.
-    // Odd but true.  So we do fastest thing 
+    // Odd but true.  So we do fastest thing
     if ( D <= vectorizationThreshold ) {
         for (int kk=0; kk<K; kk++) {
-            Dist.col(kk) = (data.rowwise() - centers.row(kk)).square().rowwise().sum();
-        }    
+            Dist.col(kk) = (X.rowwise() - Mu.row(kk)).square().rowwise().sum();
+        }
     } else {
-        Dist = -2*(data.matrix() * centers.transpose().matrix());
-        Dist.rowwise() += centers.square().rowwise().sum().transpose().row(0);
+        Dist = -2*(X.matrix() * Mu.transpose().matrix());
+        Dist.rowwise() += Mu.square().rowwise().sum().transpose().row(0);
     }
 }
 
@@ -259,7 +258,7 @@ void KmeansNANI::run_lloyd(int Niter )  {
 }
 
 
-KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(kinit), seed(0), percentage(percentage) {
+KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold) : data(data), kinit(kinit), seed(0), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
     if (kClusters < 1 || kClusters > this->data.rows()) {
         throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
     }
@@ -271,7 +270,7 @@ KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitTyp
     init_Mu();
     run_lloyd(300);
 }
-KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, Mat centers, int nAtoms, int percentage, int vectThreshold) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(MD::KinitType::StratAll), seed(0), percentage(percentage), centers(centers) {
+KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, Mat centers, int nAtoms, int percentage, int vectThreshold) : data(data), centers(centers), kinit(MD::KinitType::StratAll), seed(0), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
     if (kClusters < 1 || kClusters > this->data.rows()) {
         throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
     }
