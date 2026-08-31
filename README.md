@@ -3,7 +3,10 @@ A c++ implementation of MDANCE, a flexible n-ary clustering package for all appl
 
 ## Getting Started with MDance
 
-Before you begin, make sure you have **Eigen** installed.
+Before you begin, make sure you have:
+- **Eigen** >= 3.4 (the code uses the Eigen 3.4 slicing API)
+- **GoogleTest** (only needed to build the test suite)
+- **CMake** >= 3.15 and a C++17 compiler
 
 ### Step 1: get source code
 
@@ -35,12 +38,9 @@ Compile MDance by running:
 cmake --build build
 ```
 ### Step 4: Run Tests
-Navigate to `build/tests/` folder:
+Use `ctest` from the build directory to execute the tests:
 ```shell
-cd build/tests/
-```
-Use `ctest` to execute the tests:
-```shell
+cd build
 ctest
 ```
 An example output is:
@@ -56,9 +56,8 @@ Total Test time (real) =   2.71 sec
 <span style="color:red">TODO:</span> add instructions for installation and figure out how to make CPP-MDANCE easily portable.
 
 ## Important files
-- `src/cluster/KmeansRex/KmeansRexCore.cpp`: Has **NANI** implementation
+- `src/cluster/KMeansRex/KMeans.cpp`: Has the **NANI** implementation (adapted from KMeansRex)
+- `src/cluster/helm.cpp`: Has the **HELM** implementation
 - `src/tools`: Has supporting functions, such as BTS, type definitions, and score calculations.
-- <span style="color:red">TODO:</span> implement HELM
-- `tests/runTests.sh`: Bash script for testing code by comoparing output to that of the Python library
-   - `tests/data`: stores datasets
-   - `tests/results`: Stores the results of the test. The results themselves are stored in the `*Results.txt` files, while the time and any error messages are stored in `*Time.txt` files
+- `tests`: GoogleTest suite comparing the output against the Python MDANCE library
+   - `tests/data`: stores the datasets used by the tests
