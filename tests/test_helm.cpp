@@ -277,6 +277,11 @@ TEST_F(TestHelm, TestEps){
     pair<double, double> scoreRes = helm.computeScores(clusters, selectedData);
     EXPECT_NEAR(scoreRes.first, 302.7012989347063, 1e-5);
     EXPECT_NEAR(scoreRes.second, 1.755325543510106, 1e-5);
+
+    // the Z matrix must contain exactly one row per applied merge; the
+    // rejected merge that terminates an eps run must not be recorded
+    Mat Z = helm.getZMatrix();
+    EXPECT_EQ(Z.rows(), (Index)(clusterTree.size() - clusters.size()));
 }
 
 TEST_F(TestHelm, TestTrimVal){

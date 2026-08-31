@@ -8,6 +8,7 @@ add_executable(mdance_gtests test_utils.cpp
                     test_main.cpp
                     test_kmeans.cpp
                     test_helm.cpp
+                    test_bts.cpp
 )
 target_link_libraries(mdance_gtests PRIVATE
                     GTest::GTest
