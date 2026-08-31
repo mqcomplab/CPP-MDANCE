@@ -306,7 +306,7 @@ vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metri
     Index N = data.rows();
     int nMax = N * percentage / 100;
     if (nMax > N) {
-        std::runtime_error("Percentage is too high for the given matrix size");
+        throw std::runtime_error("Percentage is too high for the given matrix size");
     }
     vector<Index> indices (nMax);
     if (nMax == 1)
@@ -354,7 +354,7 @@ vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metri
     }
 
     indices.reserve(nMax);
-    while (indices.size() < nMax) {
+    while ((int)indices.size() < nMax && !selectFromN.empty()) {
         Index newIndexN = getNewIndexN(data, mt, selected, indices.size(), selectFromN, nAtoms);
 
         selected.row(0) += data.row(newIndexN);
