@@ -426,48 +426,66 @@ Index getNewIndexN(const ArrayXXd& data, MD::Metric mt, ArrayXXd& selectedConden
  * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L652
 */
 ArrayXi repSample(const ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, double nSamples, bool hardCap) {
+    // nSamples in (0,1) is a fraction of the data; anything >= 1 is a count.
     if (nSamples < 1) {
-        return repSample(data, mt, nAtoms, nBins, std::round(nSamples * data.rows()), hardCap);
+        return repSample(data, mt, nAtoms, nBins, (int)(data.rows() * nSamples), hardCap);
     }
-    std::cerr << "Cannot sample more than 100\% of the data" << std::endl;
-    return ArrayXi();
+    return repSample(data, mt, nAtoms, nBins, (int)nSamples, hardCap);
 }
 ArrayXi repSample(const ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, int nSamples, bool hardCap) {
+    Index N = data.rows();
+    if (nSamples <= 0 || N == 0) {
+        return ArrayXi();
+    }
+    if (nBins < 1) {
+        throw std::invalid_argument("nBins must be at least 1");
+    }
+
     ArrayXd compSims = calculateCompSim(data, nAtoms, mt);
+    // (compSim value, original index), sorted by value
     vector<pair<double,int>> compSimArray;
-    compSimArray.reserve(compSims.size());
-    for (int i=0; i<compSims.size(); ++i){
-        compSimArray.emplace_back(compSims[i],i);
+    compSimArray.reserve(N);
+    for (int i=0; i<N; ++i){
+        compSimArray.emplace_back(compSims[i], i);
     }
     std::sort(compSimArray.begin(), compSimArray.end());
-    double mi = compSimArray[0].first;
-    double ma = compSimArray[compSims.size()-1].first;
 
+    double mi = compSimArray.front().first;
+    double ma = compSimArray.back().first;
+    double binWidth = (ma - mi) / nBins;
 
-    int step = std::floor((ma - mi) / nBins);
+    // Distribute the objects across nBins bins of equal compSim width. When
+    // every value is identical the reference puts everything in the last bin.
     vector<vector<int>> bins(nBins);
-    int idx=0;
-    for (int i=0; i<compSims.size(); ++i) {
-        if (compSimArray[i].first - mi >= (idx+1)*step) {
-            ++idx;
-        }
-        bins[idx].push_back(compSimArray[i].second);
+    for (auto& p : compSimArray) {
+        int b = binWidth > 0 ? (int)((p.first - mi) / binWidth) : nBins - 1;
+        if (b < 0) b = 0;
+        if (b >= nBins) b = nBins - 1;  // the maximum value lands in the last bin
+        bins[b].push_back(p.second);
     }
-    VectorXi sampledMols(nSamples);
-    int i=0;
-    int cnt=0;
-    while (sampledMols.size() < nSamples) {
-        for (int b=0; b<bins.size(); ++b) {
-            if (bins[b].size() > i) {
-                sampledMols[cnt] = bins[b][i];
-                ++cnt;
-                if (hardCap && cnt >= nSamples)
+
+    // Round-robin over the bins, taking the next unused object of each bin per
+    // pass. With hardCap the collection stops exactly at nSamples; otherwise
+    // the current pass is completed first (so slightly more than nSamples may
+    // be returned), as in the Python reference.
+    vector<int> sampled;
+    sampled.reserve(nSamples);
+    for (int depth = 0; (int)sampled.size() < nSamples; ++depth) {
+        bool added = false;
+        for (int b = 0; b < nBins; ++b) {
+            if ((int)bins[b].size() > depth) {
+                sampled.push_back(bins[b][depth]);
+                added = true;
+                if (hardCap && (int)sampled.size() >= nSamples)
                     break;
             }
         }
-        ++i;
+        if (!added) {
+            break;  // every bin is exhausted: fewer than nSamples objects exist
+        }
     }
-    return sampledMols;
+
+    return Eigen::Map<ArrayXi>(sampled.data(), sampled.size());
 }
 
 /* Refine a distance matrix by setting the diagonal to zero and symmetrizing the matrix
