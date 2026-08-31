@@ -198,72 +198,67 @@ Index calculateOutlier(const ArrayXd& data) {
 */
 ArrayXXd trimOutliers(const ArrayXXd& data, int nTrimmed, int nAtoms, bool isMedoid, MD::Metric mt) {
     Index N = data.rows();
+    if (nTrimmed <= 0) {
+        return data;
+    }
+    if (nTrimmed >= N) {
+        return ArrayXXd(0, data.cols());
+    }
+
+    Index medoidIdx = -1;
     ArrayXd cSum;
     ArrayXd sqSumTotal;
-    Index idx;
     if (isMedoid) {
-        idx = calculateMedoid(data, nAtoms, mt);
-        cSum = data.row(idx);
+        medoidIdx = calculateMedoid(data, nAtoms, mt);
     } else {
         cSum = data.colwise().sum();
         sqSumTotal = data.square().colwise().sum();
     }
 
-
-    // We will find our outliers by performing a heapSort using a maxHeap of size nTrimmed
-    vector<pair<double, int>> compSims;
-    compSims.reserve(nTrimmed);
-    ArrayXXd compData (2,data.row(0).size());
-
-    for (Index i=0; i<nTrimmed; ++i) {
+    ArrayXXd compData(2, data.cols());
+    auto trimValue = [&](Index i) {
         if (isMedoid) {
-            if (i != idx){
-                compData.row(0) = data.row(i);
-                compData.row(1) = cSum;
-                compSims.emplace_back(pair<double,int>(extendedComparison(compData, N-1, nAtoms, false, mt), i));
-            } else{
-                continue;
-            }
-        } else {
-            compData.row(0) = cSum.transpose() - data.row(i);
-            compData.row(1) = sqSumTotal.transpose() - data.row(i).square();
+            // Dissimilarity between frame i and the medoid (a 2-object
+            // comparison; the medoid itself scores 0 and is never trimmed).
+            compData.row(0) = data.row(i);
+            compData.row(1) = data.row(medoidIdx);
+            return extendedComparison(compData, 2, nAtoms, false, mt);
+        }
+        // Complementary similarity: dissimilarity of the data without frame i.
+        compData.row(0) = cSum.transpose() - data.row(i);
+        compData.row(1) = sqSumTotal.transpose() - data.row(i).square();
+        return extendedComparison(compData, N - 1, nAtoms, true, mt);
+    };
 
-            compSims.emplace_back(pair<double,int>(extendedComparison(compData, N-1, nAtoms, true, mt), i));
+    // Select the nTrimmed outliers in O(N log nTrimmed) with a bounded heap.
+    // comp_sim trims the LOWEST complementary similarities (a max-heap keeps
+    // the nTrimmed smallest values); sim_to_medoid trims the HIGHEST
+    // distances to the medoid (a min-heap keeps the nTrimmed largest).
+    vector<pair<double, Index>> heap;
+    heap.reserve(nTrimmed);
+    auto cmp = [isMedoid](const pair<double, Index>& a, const pair<double, Index>& b) {
+        return isMedoid ? a.first > b.first : a.first < b.first;
+    };
+    for (Index i = 0; i < N; ++i) {
+        double val = trimValue(i);
+        if ((Index)heap.size() < nTrimmed) {
+            heap.emplace_back(val, i);
+            std::push_heap(heap.begin(), heap.end(), cmp);
+        } else if (isMedoid ? (val > heap.front().first) : (val < heap.front().first)) {
+            std::pop_heap(heap.begin(), heap.end(), cmp);
+            heap.back() = pair<double, Index>(val, i);
+            std::push_heap(heap.begin(), heap.end(), cmp);
         }
     }
-    std::make_heap(compSims.begin(),compSims.end());
-    for (Index i=nTrimmed; i<N; ++i) {
-        double simVal;
-        if (isMedoid) {
-            if (i != idx){
-                compData.row(0) = data.row(i);
-                compData.row(1) = cSum;
-                simVal = extendedComparison(compData, N-1, nAtoms, false, mt);
-            } else {
-                continue;
-            }
-        } else {
-            compData.row(0) = cSum.transpose() - data.row(i);
-            compData.row(1) = sqSumTotal.transpose() - data.row(i).square();
 
-            simVal = extendedComparison(compData, N-1, nAtoms, true, mt);
-        }
-
-        if (simVal < compSims[0].first) {
-            std::pop_heap(compSims.begin(), compSims.end());
-            compSims.pop_back();
-            compSims.emplace_back(pair<double,int>(simVal,i));
-            std::push_heap(compSims.begin(), compSims.end());
-        }
-    }
-    vector<bool> isInHeap(N, false);
-    for (Index i=0; i<nTrimmed; ++i){
-        isInHeap[compSims[i].second] = true;
+    vector<bool> trimmed(N, false);
+    for (auto& p : heap) {
+        trimmed[p.second] = true;
     }
     vector<Index> indices;
     indices.reserve(N - nTrimmed);
-    for (Index i=0; i<N; ++i) {
-        if(!isInHeap[i]){
+    for (Index i = 0; i < N; ++i) {
+        if (!trimmed[i]) {
             indices.push_back(i);
         }
     }
