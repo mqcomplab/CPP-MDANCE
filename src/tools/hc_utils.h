@@ -3,6 +3,7 @@
 
 #include <Eigen/Dense>
 #include <list>
+#include <memory>
 
 #include "types.h"
 
@@ -13,7 +14,10 @@ class HCTreeNode{
     //     sqSum: columnwise sum of squares of the data for the molecules in the
     //     clusterIndices: indices of the initial clusters in the cluster
     //     n_objects: number of molecules in the cluster
-    // in addition to pointers to the left and right child nodes. 
+    // in addition to pointers to the left and right child nodes.
+    //
+    // Nodes are shared between trees (a merged tree points at the roots of the
+    // two trees it was built from), so they are held by std::shared_ptr.
 
     friend class HCTree;
 
@@ -23,9 +27,9 @@ class HCTreeNode{
         Vec cSum; // columnwise sum of data
         Vec sqSum; // columnwise sum of squares of data
         std::list<int> clusterIndices; // list of indices of initial clusters in the cluster
-        HCTreeNode* leftPtr; // pointer to left child node
-        HCTreeNode* rightPtr; // pointer to right child node
-        
+        std::shared_ptr<HCTreeNode> leftPtr; // pointer to left child node
+        std::shared_ptr<HCTreeNode> rightPtr; // pointer to right child node
+
     public:
         HCTreeNode(std::list<int> idx, Vec cSum, Vec sqsum, int nObjects, int z_ind);
 
@@ -37,13 +41,13 @@ class HCTreeNode{
 
         void setSQSum(Vec sqSum);
 
-        HCTreeNode* getLeftPtr();
+        std::shared_ptr<HCTreeNode> getLeftPtr();
 
-        void setLeftPtr(HCTreeNode* input_left);
+        void setLeftPtr(std::shared_ptr<HCTreeNode> input_left);
 
-        HCTreeNode* getRightPtr();
+        std::shared_ptr<HCTreeNode> getRightPtr();
 
-        void setRightPtr(HCTreeNode* input_right);
+        void setRightPtr(std::shared_ptr<HCTreeNode> input_right);
 
         void setNObjects(int n_mol);
 
@@ -60,13 +64,13 @@ class HCTreeNode{
 
 class HCTree{
     private:
-        HCTreeNode* rootPtr;
+        std::shared_ptr<HCTreeNode> rootPtr;
     public:
-        HCTree(); // constructor that sets root ptr to NULL
+        HCTree(); // constructor that sets root ptr to null
 
-        HCTreeNode* getRoot();
+        std::shared_ptr<HCTreeNode> getRoot();
 
-        void setRoot(HCTreeNode* input_root);
+        void setRoot(std::shared_ptr<HCTreeNode> input_root);
 
         Vec getRootCSum();
 
