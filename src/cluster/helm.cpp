@@ -114,10 +114,18 @@ vector<HCTree> Helm::genNewClusters(int ZIdx){
     Index minRow, minCol;       //minRow and minCol refer to two different clusters
     
     float mergeDist = clusterDists.minCoeff(&minRow, &minCol);
-    // add check for minRow and minCol being same. This can cause UB or crash. 
+    // add check for minRow and minCol being same. This can cause UB or crash.
     if (minRow == minCol){
         throw std::runtime_error("Got same cluster idx for the two most similar clusters.");
     }
+
+    // eps termination: if the best merge is not similar enough, discard it
+    // before it is recorded anywhere. Bailing out down here used to leave a
+    // phantom row for the rejected merge in the Z matrix.
+    if (eps != -1 && !(mergeDist < eps)) {
+        return vector<HCTree>();
+    }
+
     //Merge the two most similar clusters
     Vec cSum, sqSum;
     cSum = previousClusters[minRow].getRootCSum() + previousClusters[minCol].getRootCSum();
@@ -159,10 +167,7 @@ vector<HCTree> Helm::genNewClusters(int ZIdx){
     Mat clusterDists_temp2 = clusterDists_temp1(clustersToKeep, Eigen::placeholders::all);
     clusterDists = clusterDists_temp2;
 
-    if(eps==-1 || mergeDist < eps){
-        return newClusters;
-    }
-    return vector<HCTree>();
+    return newClusters;
 }
 
 void Helm::updateZMatrix(int idxA, int idxB, int mergedClusts){
