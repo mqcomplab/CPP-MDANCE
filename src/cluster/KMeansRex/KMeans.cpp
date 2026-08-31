@@ -143,9 +143,9 @@ void KmeansNANI::reduced_init_Mu(bool isComp) {
     for (int i=nTotal - nMax; i<nTotal; ++i){
         topIndices.push_back(compSimArray[i].second);
     }
-    Mat topCCdata = data(topIndices, Eigen::placeholders::all);
+    Mat topCCdata = data(topIndices, Eigen::all);
     vector<Index> idx = diversitySelection(topCCdata, 100, mt, nAtoms, isComp);
-    centers = topCCdata(idx,Eigen::placeholders::all);
+    centers = topCCdata(idx,Eigen::all);
 }
 
 void KmeansNANI::init_Mu() {
@@ -174,17 +174,17 @@ void KmeansNANI::init_Mu() {
 
     case MD::KinitType::StratAll:
         idx = diversitySelection(data, percentage, mt, nAtoms);
-        centers = data(idx,Eigen::placeholders::all);
+        centers = data(idx,Eigen::all);
         break;
 
     case MD::KinitType::DivSelect:
         idx = diversitySelection(data, percentage, mt, nAtoms, true);
-        centers = data(idx,Eigen::placeholders::all);
+        centers = data(idx,Eigen::all);
         break;
     }
     // only take first kClusters centers
     if (centers.rows() > kClusters){
-        centers = centers(Eigen::seq(0, kClusters-1), Eigen::placeholders::all).eval();
+        centers = centers(Eigen::seq(0, kClusters-1), Eigen::all).eval();
     }
     // The percentage-based initializations can select fewer than kClusters
     // candidates; catching it here beats silently clustering with fewer

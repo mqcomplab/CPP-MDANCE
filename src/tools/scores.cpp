@@ -27,7 +27,7 @@ double calinskiHarabaszScore(const ArrayXXd data, VectorXi labels) {
     ArrayXd mean = data.colwise().sum() / data.rows();
     
     for (auto k=clusters.begin(); k != clusters.end(); ++k) {
-        ArrayXXd cluster = data(k->second,Eigen::placeholders::all);
+        ArrayXXd cluster = data(k->second,Eigen::all);
         ArrayXd clusterMean = cluster.colwise().sum() / cluster.rows();
 
         extraDisp += cluster.rows() * (clusterMean - mean).square().sum();
@@ -72,7 +72,7 @@ double daviesBouldinScore(const ArrayXXd data, VectorXi labels) {
     int c=0;
 
     for (auto k=clusters.begin(); k != clusters.end(); ++k) {
-        ArrayXXd cluster = data(k->second,Eigen::placeholders::all);
+        ArrayXXd cluster = data(k->second,Eigen::all);
         centroids.row(c) = cluster.colwise().sum() / cluster.rows();
         intraDists[c] = 0;
         for (int i=0; i<cluster.rows(); ++i) {

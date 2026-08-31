@@ -163,8 +163,8 @@ vector<HCTree> Helm::genNewClusters(int ZIdx){
         }
         
     }
-    Mat clusterDists_temp1 = clusterDists(Eigen::placeholders::all, clustersToKeep);
-    Mat clusterDists_temp2 = clusterDists_temp1(clustersToKeep, Eigen::placeholders::all);
+    Mat clusterDists_temp1 = clusterDists(Eigen::all, clustersToKeep);
+    Mat clusterDists_temp2 = clusterDists_temp1(clustersToKeep, Eigen::all);
     clusterDists = clusterDists_temp2;
 
     return newClusters;

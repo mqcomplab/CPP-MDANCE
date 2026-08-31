@@ -82,7 +82,7 @@ Mat TestHelm::getSelectedData(vector<HCTree> clusters){
             }
         }
     }
-    Mat selectedData = data(selectedFrameIndices, Eigen::placeholders::all);
+    Mat selectedData = data(selectedFrameIndices, Eigen::all);
     return selectedData;
 }
 
