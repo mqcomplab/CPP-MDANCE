@@ -186,6 +186,12 @@ void KmeansNANI::init_Mu() {
     if (centers.rows() > kClusters){
         centers = centers(Eigen::seq(0, kClusters-1), Eigen::placeholders::all).eval();
     }
+    // The percentage-based initializations can select fewer than kClusters
+    // candidates; catching it here beats silently clustering with fewer
+    // centers than requested (labels would never reach kClusters-1).
+    if (centers.rows() < kClusters){
+        throw std::runtime_error("Initialization produced fewer centers than kClusters; increase percentage or reduce kClusters.");
+    }
 }
 
 // ======================================================= Update Assignments Z
@@ -254,6 +260,9 @@ void KmeansNANI::run_lloyd(int Niter )  {
 
 
 KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(kinit), seed(0), percentage(percentage) {
+    if (kClusters < 1 || kClusters > this->data.rows()) {
+        throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
+    }
     centers = Mat::Zero(kClusters, data.cols());
     dist = Mat::Zero(data.rows(), kClusters);
     labels = Veci::Zero(data.rows());
@@ -263,6 +272,12 @@ KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitTyp
     run_lloyd(300);
 }
 KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, Mat centers, int nAtoms, int percentage, int vectThreshold) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(MD::KinitType::StratAll), seed(0), percentage(percentage), centers(centers) {
+    if (kClusters < 1 || kClusters > this->data.rows()) {
+        throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
+    }
+    if (this->centers.rows() != kClusters || this->centers.cols() != this->data.cols()) {
+        throw std::invalid_argument("centers must have shape (kClusters, nFeatures).");
+    }
     dist = Mat::Zero(data.rows(), kClusters);
     labels = Veci::Zero(data.rows());
     set_vectorization_threshold(vectThreshold);
