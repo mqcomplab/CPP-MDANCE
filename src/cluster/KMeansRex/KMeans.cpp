@@ -156,6 +156,10 @@ void KmeansNANI::init_Mu() {
         sampleRowsRandom();
         break;
     
+    // The greedy k-means++ variant is not implemented yet; fall back to the
+    // vanilla k-means++ sampling rather than silently leaving the centers at
+    // their zero-initialized values.
+    case MD::KinitType::KmeansPP:
     case MD::KinitType::VanillaKmeansPP:
         sampleRowsPlusPlus();
         break;
