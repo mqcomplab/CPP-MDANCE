@@ -232,7 +232,10 @@ void KmeansNANI::calcMu() {
 
 // ======================================================= Overall Lloyd Alg.
 void KmeansNANI::run_lloyd(int Niter )  {
-    double prevDist,totalDist = 0;
+    // prevDist must start at a value assignClosest() can never return so the
+    // convergence check cannot fire on the first iteration.
+    double prevDist = std::numeric_limits<double>::infinity();
+    double totalDist = 0;
 
     // TODO: store the labels at each frame
     for (int iter=0; iter<Niter; iter++) {
