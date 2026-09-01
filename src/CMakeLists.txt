@@ -2,19 +2,21 @@ cmake_minimum_required(VERSION 3.15)
 
 enable_language(C CXX)
 
-find_package(Eigen3 3.3 REQUIRED)
+# The code uses the Eigen 3.4 slicing API (Eigen::all, Eigen::seq), so 3.3 is
+# not enough even though it used to configure successfully.
+find_package(Eigen3 3.4 REQUIRED)
 
 # Create library for tools
 add_library(mdance_tools STATIC
-    tools/bts.cpp 
-    tools/cluster.cpp 
+    tools/bts.cpp
+    tools/cluster.cpp
     tools/hc_utils.cpp
-    tools/esim.cpp 
+    tools/esim.cpp
     tools/scores.cpp
 )
-target_include_directories(mdance_tools PUBLIC 
-    tools
-    ${EIGEN3_INCLUDE_DIRS})
+target_include_directories(mdance_tools PUBLIC
+    tools)
+target_link_libraries(mdance_tools PUBLIC Eigen3::Eigen)
 
 # create library for kmeans
 add_library(mdance_kmeans STATIC 

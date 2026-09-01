@@ -4,9 +4,9 @@
 #include "test_helm.h"
 #include "test_utils.h"
 
-#include "../../src/cluster/helm.h"
-#include "../../tools/bts.h"
-#include "../../tools/scores.cpp"
+#include "../src/cluster/helm.h"
+#include "../src/tools/bts.h"
+#include "../src/tools/scores.h"
 
 TestHelm::TestHelm() {
     // read in data:
@@ -82,7 +82,7 @@ Mat TestHelm::getSelectedData(vector<HCTree> clusters){
             }
         }
     }
-    Mat selectedData = data(selectedFrameIndices, Eigen::placeholders::all);
+    Mat selectedData = data(selectedFrameIndices, Eigen::all);
     return selectedData;
 }
 
@@ -277,6 +277,11 @@ TEST_F(TestHelm, TestEps){
     pair<double, double> scoreRes = helm.computeScores(clusters, selectedData);
     EXPECT_NEAR(scoreRes.first, 302.7012989347063, 1e-5);
     EXPECT_NEAR(scoreRes.second, 1.755325543510106, 1e-5);
+
+    // the Z matrix must contain exactly one row per applied merge; the
+    // rejected merge that terminates an eps run must not be recorded
+    Mat Z = helm.getZMatrix();
+    EXPECT_EQ(Z.rows(), (Index)(clusterTree.size() - clusters.size()));
 }
 
 TEST_F(TestHelm, TestTrimVal){

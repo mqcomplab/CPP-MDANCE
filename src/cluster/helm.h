@@ -1,5 +1,4 @@
 #include "../tools/types.h"
-#include "../tools/cluster.h"
 #include "../tools/hc_utils.h"
 
 class Helm{
@@ -27,7 +26,6 @@ class Helm{
         MD::Metric mt;
         MD::MergeScheme mergeScheme;
         Mat clusterDists;
-        Mat linkMatrix;
         int totalIncoming;
         bool savePairwiseSum;
         string inputTop;
@@ -41,6 +39,4 @@ class Helm{
         float calcHelmSim(HCTree& firstTree, HCTree& secondTree);
         void genClusterDists(vector<HCTree>& previousClusters);
         void updateZMatrix(int idxA, int idxB, int mergedClusts);
-        Mat initialPairwiseMatrix(vector<Cluster>& previousClusters);
-        map<int, vector<Cluster>> linkMatrixToClusterMap();
 };

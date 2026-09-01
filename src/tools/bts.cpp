@@ -198,76 +198,71 @@ Index calculateOutlier(const ArrayXd& data) {
 */
 ArrayXXd trimOutliers(const ArrayXXd& data, int nTrimmed, int nAtoms, bool isMedoid, MD::Metric mt) {
     Index N = data.rows();
+    if (nTrimmed <= 0) {
+        return data;
+    }
+    if (nTrimmed >= N) {
+        return ArrayXXd(0, data.cols());
+    }
+
+    Index medoidIdx = -1;
     ArrayXd cSum;
     ArrayXd sqSumTotal;
-    Index idx;
     if (isMedoid) {
-        idx = calculateMedoid(data, nAtoms, mt);
-        cSum = data.row(idx);
+        medoidIdx = calculateMedoid(data, nAtoms, mt);
     } else {
         cSum = data.colwise().sum();
         sqSumTotal = data.square().colwise().sum();
     }
 
-
-    // We will find our outliers by performing a heapSort using a maxHeap of size nTrimmed
-    vector<pair<double, int>> compSims;
-    compSims.reserve(nTrimmed);
-    ArrayXXd compData (2,data.row(0).size());
-
-    for (Index i=0; i<nTrimmed; ++i) {
+    ArrayXXd compData(2, data.cols());
+    auto trimValue = [&](Index i) {
         if (isMedoid) {
-            if (i != idx){
-                compData.row(0) = data.row(i);
-                compData.row(1) = cSum;
-                compSims.emplace_back(pair<double,int>(extendedComparison(compData, N-1, nAtoms, false, mt), i));
-            } else{
-                continue;
-            }
-        } else {
-            compData.row(0) = cSum.transpose() - data.row(i);
-            compData.row(1) = sqSumTotal.transpose() - data.row(i).square();
+            // Dissimilarity between frame i and the medoid (a 2-object
+            // comparison; the medoid itself scores 0 and is never trimmed).
+            compData.row(0) = data.row(i);
+            compData.row(1) = data.row(medoidIdx);
+            return extendedComparison(compData, 2, nAtoms, false, mt);
+        }
+        // Complementary similarity: dissimilarity of the data without frame i.
+        compData.row(0) = cSum.transpose() - data.row(i);
+        compData.row(1) = sqSumTotal.transpose() - data.row(i).square();
+        return extendedComparison(compData, N - 1, nAtoms, true, mt);
+    };
 
-            compSims.emplace_back(pair<double,int>(extendedComparison(compData, N-1, nAtoms, true, mt), i));
+    // Select the nTrimmed outliers in O(N log nTrimmed) with a bounded heap.
+    // comp_sim trims the LOWEST complementary similarities (a max-heap keeps
+    // the nTrimmed smallest values); sim_to_medoid trims the HIGHEST
+    // distances to the medoid (a min-heap keeps the nTrimmed largest).
+    vector<pair<double, Index>> heap;
+    heap.reserve(nTrimmed);
+    auto cmp = [isMedoid](const pair<double, Index>& a, const pair<double, Index>& b) {
+        return isMedoid ? a.first > b.first : a.first < b.first;
+    };
+    for (Index i = 0; i < N; ++i) {
+        double val = trimValue(i);
+        if ((Index)heap.size() < nTrimmed) {
+            heap.emplace_back(val, i);
+            std::push_heap(heap.begin(), heap.end(), cmp);
+        } else if (isMedoid ? (val > heap.front().first) : (val < heap.front().first)) {
+            std::pop_heap(heap.begin(), heap.end(), cmp);
+            heap.back() = pair<double, Index>(val, i);
+            std::push_heap(heap.begin(), heap.end(), cmp);
         }
     }
-    std::make_heap(compSims.begin(),compSims.end());
-    for (Index i=nTrimmed; i<N; ++i) {
-        double simVal;
-        if (isMedoid) {
-            if (i != idx){
-                compData.row(0) = data.row(i);
-                compData.row(1) = cSum;
-                simVal = extendedComparison(compData, N-1, nAtoms, false, mt);
-            } else {
-                continue;
-            }
-        } else {
-            compData.row(0) = cSum.transpose() - data.row(i);
-            compData.row(1) = sqSumTotal.transpose() - data.row(i).square();
 
-            simVal = extendedComparison(compData, N-1, nAtoms, true, mt);
-        }
-
-        if (simVal < compSims[0].first) {
-            std::pop_heap(compSims.begin(), compSims.end());
-            compSims.pop_back();
-            compSims.emplace_back(pair<double,int>(simVal,i));
-            std::push_heap(compSims.begin(), compSims.end());
-        }
-    }
-    vector<bool> isInHeap(N, false);
-    for (Index i=0; i<nTrimmed; ++i){
-        isInHeap[compSims[i].second] = true;
+    vector<bool> trimmed(N, false);
+    for (auto& p : heap) {
+        trimmed[p.second] = true;
     }
     vector<Index> indices;
     indices.reserve(N - nTrimmed);
-    for (Index i=0; i<N; ++i) {
-        if(!isInHeap[i]){
+    for (Index i = 0; i < N; ++i) {
+        if (!trimmed[i]) {
             indices.push_back(i);
         }
     }
-    return data(indices, Eigen::placeholders::all);
+    return data(indices, Eigen::all);
 }
 ArrayXXd trimOutliers(const ArrayXXd& data, float nTrimmed, int nAtoms, bool isMedoid, MD::Metric mt) {
     int num = std::floor(data.rows() * nTrimmed);
@@ -299,14 +294,14 @@ vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metri
         switch(start) {
             case MD::StartSeed::Medoid: seed.push_back(calculateMedoid(data, nAtoms, mt)); break;
             case MD::StartSeed::Outlier: seed.push_back(calculateOutlier(data, nAtoms, mt)); break;
-            case MD::StartSeed::Random: seed.emplace_back(rand() % data.row(0).size()); break;
+            case MD::StartSeed::Random: seed.emplace_back(rand() % data.rows()); break;
         }
         return diversitySelection(data, percentage, mt, nAtoms, seed);
     }
     Index N = data.rows();
     int nMax = N * percentage / 100;
     if (nMax > N) {
-        std::runtime_error("Percentage is too high for the given matrix size");
+        throw std::runtime_error("Percentage is too high for the given matrix size");
     }
     vector<Index> indices (nMax);
     if (nMax == 1)
@@ -332,7 +327,7 @@ vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metri
 
 }
 vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metric mt, int nAtoms, vector<Index>& indices){
-    ArrayXXd selection = data(indices, Eigen::placeholders::all);
+    ArrayXXd selection = data(indices, Eigen::all);
     ArrayXXd selected (mt == MD::Metric::MSD ? 2 : 1, data.row(0).cols());
     selected.row(0) = selection.colwise().sum();
     if (mt == MD::Metric::MSD) {
@@ -344,7 +339,7 @@ vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metri
 
     set<Index> selectFromN;
     set<Index> selectedSet;
-    for (int i=0; i<indices.size(); ++i) {
+    for (size_t i=0; i<indices.size(); ++i) {
         selectedSet.insert(indices[i]);
     }
     for (int i=0; i<nTotal; ++i) {
@@ -354,7 +349,7 @@ vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metri
     }
 
     indices.reserve(nMax);
-    while (indices.size() < nMax) {
+    while ((int)indices.size() < nMax && !selectFromN.empty()) {
         Index newIndexN = getNewIndexN(data, mt, selected, indices.size(), selectFromN, nAtoms);
 
         selected.row(0) += data.row(newIndexN);
@@ -426,48 +421,66 @@ Index getNewIndexN(const ArrayXXd& data, MD::Metric mt, ArrayXXd& selectedConden
  * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L652
 */
 ArrayXi repSample(const ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, double nSamples, bool hardCap) {
+    // nSamples in (0,1) is a fraction of the data; anything >= 1 is a count.
     if (nSamples < 1) {
-        return repSample(data, mt, nAtoms, nBins, std::round(nSamples * data.rows()), hardCap);
+        return repSample(data, mt, nAtoms, nBins, (int)(data.rows() * nSamples), hardCap);
     }
-    std::cerr << "Cannot sample more than 100\% of the data" << std::endl;
-    return ArrayXi();
+    return repSample(data, mt, nAtoms, nBins, (int)nSamples, hardCap);
 }
 ArrayXi repSample(const ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, int nSamples, bool hardCap) {
+    Index N = data.rows();
+    if (nSamples <= 0 || N == 0) {
+        return ArrayXi();
+    }
+    if (nBins < 1) {
+        throw std::invalid_argument("nBins must be at least 1");
+    }
+
     ArrayXd compSims = calculateCompSim(data, nAtoms, mt);
+    // (compSim value, original index), sorted by value
     vector<pair<double,int>> compSimArray;
-    compSimArray.reserve(compSims.size());
-    for (int i=0; i<compSims.size(); ++i){
-        compSimArray.emplace_back(compSims[i],i);
+    compSimArray.reserve(N);
+    for (int i=0; i<N; ++i){
+        compSimArray.emplace_back(compSims[i], i);
     }
     std::sort(compSimArray.begin(), compSimArray.end());
-    double mi = compSimArray[0].first;
-    double ma = compSimArray[compSims.size()-1].first;
 
+    double mi = compSimArray.front().first;
+    double ma = compSimArray.back().first;
+    double binWidth = (ma - mi) / nBins;
 
-    int step = std::floor((ma - mi) / nBins);
+    // Distribute the objects across nBins bins of equal compSim width. When
+    // every value is identical the reference puts everything in the last bin.
     vector<vector<int>> bins(nBins);
-    int idx=0;
-    for (int i=0; i<compSims.size(); ++i) {
-        if (compSimArray[i].first - mi >= (idx+1)*step) {
-            ++idx;
-        }
-        bins[idx].push_back(compSimArray[i].second);
+    for (auto& p : compSimArray) {
+        int b = binWidth > 0 ? (int)((p.first - mi) / binWidth) : nBins - 1;
+        if (b < 0) b = 0;
+        if (b >= nBins) b = nBins - 1;  // the maximum value lands in the last bin
+        bins[b].push_back(p.second);
     }
-    VectorXi sampledMols(nSamples);
-    int i=0;
-    int cnt=0;
-    while (sampledMols.size() < nSamples) {
-        for (int b=0; b<bins.size(); ++b) {
-            if (bins[b].size() > i) {
-                sampledMols[cnt] = bins[b][i];
-                ++cnt;
-                if (hardCap && cnt >= nSamples)
+
+    // Round-robin over the bins, taking the next unused object of each bin per
+    // pass. With hardCap the collection stops exactly at nSamples; otherwise
+    // the current pass is completed first (so slightly more than nSamples may
+    // be returned), as in the Python reference.
+    vector<int> sampled;
+    sampled.reserve(nSamples);
+    for (int depth = 0; (int)sampled.size() < nSamples; ++depth) {
+        bool added = false;
+        for (int b = 0; b < nBins; ++b) {
+            if ((int)bins[b].size() > depth) {
+                sampled.push_back(bins[b][depth]);
+                added = true;
+                if (hardCap && (int)sampled.size() >= nSamples)
                     break;
             }
         }
-        ++i;
+        if (!added) {
+            break;  // every bin is exhausted: fewer than nSamples objects exist
+        }
     }
-    return sampledMols;
+
+    return Eigen::Map<ArrayXi>(sampled.data(), sampled.size());
 }
 
 /* Refine a distance matrix by setting the diagonal to zero and symmetrizing the matrix
@@ -520,6 +533,8 @@ ArrayXXd alignTraj(const ArrayXXd& data, int nAtoms, MD::AlignMethod alignMeth){
         .. _"Size-and-Shape Space Gaussian Mixture Models for Structural Clustering of Molecular Dynamics Trajectories":
         https://pubs.acs.org/doi/abs/10.1021/acs.jctc.1c01290
     */
+
+    (void)nAtoms;  // stub: unused until the alignment methods are implemented
 
     if(alignMeth == MD::AlignMethod::None){
         return data;
