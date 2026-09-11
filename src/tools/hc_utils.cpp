@@ -13,8 +13,8 @@ HCTreeNode::HCTreeNode(std::list<int> clusterIdx, Vec cSumIn, Vec sqsum, int nOb
     setSQSum(sqsum);
     setClusterIndices(clusterIdx);
     setNObjects(nObjects);
-    setLeftPtr(NULL);
-    setRightPtr(NULL);
+    setLeftPtr(nullptr);
+    setRightPtr(nullptr);
     setZIdx(z_ind);
 };
 
@@ -59,7 +59,7 @@ void HCTreeNode::setZIdx(int z_ind){
  * @brief Get the left pointer for this node.
  * @return HCTreeNode* A pointer to the left child node.
  */
-HCTreeNode* HCTreeNode::getLeftPtr(){
+std::shared_ptr<HCTreeNode> HCTreeNode::getLeftPtr(){
     return leftPtr;
 }
 
@@ -67,15 +67,15 @@ HCTreeNode* HCTreeNode::getLeftPtr(){
  * @brief Set the left pointer for this node.
  * @param input_left A pointer to the left child node.
  */
-void HCTreeNode::setLeftPtr(HCTreeNode* input_left){
+void HCTreeNode::setLeftPtr(std::shared_ptr<HCTreeNode> input_left){
     leftPtr = input_left;
 }
 
 /**
  * @brief Get the right pointer for this node.
- * @return HCTreeNode* A pointer to the right child node.
+ * @return std::shared_ptr<HCTreeNode> A pointer to the right child node.
  */
-HCTreeNode* HCTreeNode::getRightPtr(){
+std::shared_ptr<HCTreeNode> HCTreeNode::getRightPtr(){
     return rightPtr;
 }
 
@@ -83,7 +83,7 @@ HCTreeNode* HCTreeNode::getRightPtr(){
  * @brief Set the right pointer for this node.
  * @param input_right A pointer to the right child node.
  */
-void HCTreeNode::setRightPtr(HCTreeNode* input_right){
+void HCTreeNode::setRightPtr(std::shared_ptr<HCTreeNode> input_right){
     rightPtr = input_right;
 }
 
@@ -129,25 +129,25 @@ void HCTreeNode::setClusterIndices(std::list<int> idx){
  * of the tree, which is an instance of the HCTreeNode class.
  * 
  */
-HCTree::HCTree(){ 
-    rootPtr = NULL;
+HCTree::HCTree(){
+    rootPtr = nullptr;
 }
 
 /**
  * @brief Get the root node of the hierarchical clustering tree.
- * 
- * @return HCTreeNode* A pointer to the root node of the tree.
+ *
+ * @return std::shared_ptr<HCTreeNode> A pointer to the root node of the tree.
  */
-HCTreeNode* HCTree::getRoot(){
+std::shared_ptr<HCTreeNode> HCTree::getRoot(){
     return rootPtr;
 }
 
 /**
  * @brief Set the root node of the hierarchical clustering tree.
- * 
+ *
  * @param input_root A pointer to the new root node of the tree.
  */
-void HCTree::setRoot(HCTreeNode* input_root){
+void HCTree::setRoot(std::shared_ptr<HCTreeNode> input_root){
     rootPtr = input_root;
 }
 
@@ -201,7 +201,7 @@ int HCTree::getRootZIdx(){ //z_index
  * @param z_ind An integer representing the z_index for the new root node.
  */
 void HCTree::insertRoot(std::list<int> idx, Vec cSum, Vec sqsum, int nObjects, int z_ind){
-    rootPtr = new HCTreeNode(idx, cSum, sqsum, nObjects, z_ind);
+    rootPtr = std::make_shared<HCTreeNode>(idx, cSum, sqsum, nObjects, z_ind);
 }
 
 /**
@@ -226,7 +226,7 @@ void HCTree::mergeTree(HCTree other_tree, int new_z_ind){
     idx.sort();
     int nObjectsNew = other_tree.getRootNObjects() + getRootNObjects();
     //create new root node
-    HCTreeNode* new_root = new HCTreeNode(idx, csum_new, sqsum_new, nObjectsNew, new_z_ind);
+    std::shared_ptr<HCTreeNode> new_root = std::make_shared<HCTreeNode>(idx, csum_new, sqsum_new, nObjectsNew, new_z_ind);
 
     // set left and right pointers so that z_left < z_right
     int z_other_tree = other_tree.getRootZIdx();

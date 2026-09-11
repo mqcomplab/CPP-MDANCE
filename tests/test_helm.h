@@ -1,8 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "../src/tools/types.h"
-#include "../../../src/tools/cluster.h"
-#include "../../tools/hc_utils.h"
+#include "../src/tools/hc_utils.h"
 
 // test fixture for helm
 class TestHelm : public ::testing::Test {

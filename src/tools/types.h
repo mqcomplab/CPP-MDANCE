@@ -109,6 +109,7 @@ namespace MD {
             bub(bub), fai(fai), gle(gle), ja(ja), jt(jt), rt(rt), rr(rr), sm(sm), ss1(ss1), ss2(ss2) {}; 
         double getIndex(Metric mt){
             switch(mt) {
+                case Metric::MSD: return 0;  // MSD is not a similarity index
                 case Metric::BUB: return bub;
                 case Metric::Fai: return fai;
                 case Metric::Gle: return gle;

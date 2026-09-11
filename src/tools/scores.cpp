@@ -10,7 +10,7 @@
  * 
  * Reference: This code does not include any of the parameter checking: https://github.com/scikit-learn/scikit-learn/blob/c5497b7f7eacfaff061cf68e09bcd48aa93d4d6b/sklearn/metrics/cluster/_unsupervised.py#L325
 */
-double calinskiHarabaszScore(const ArrayXXd data, VectorXi labels) {
+double calinskiHarabaszScore(const ArrayXXd& data, const VectorXi& labels) {
     std::map<int, vector<int>> clusters;
 
     for (int i=0; i<labels.size(); ++i) {
@@ -22,12 +22,18 @@ double calinskiHarabaszScore(const ArrayXXd data, VectorXi labels) {
         }
     }
 
+    // With a single cluster there is no between-cluster dispersion and the
+    // ratio below is 0/0. sklearn rejects k < 2 outright; returning 0 keeps the
+    // score a real number for callers that serialize it.
+    if (clusters.size() < 2)
+        return 0;
+
     double extraDisp = 0;
     double intraDisp = 0;
     ArrayXd mean = data.colwise().sum() / data.rows();
     
     for (auto k=clusters.begin(); k != clusters.end(); ++k) {
-        ArrayXXd cluster = data(k->second,Eigen::placeholders::all);
+        ArrayXXd cluster = data(k->second,Eigen::all);
         ArrayXd clusterMean = cluster.colwise().sum() / cluster.rows();
 
         extraDisp += cluster.rows() * (clusterMean - mean).square().sum();
@@ -53,7 +59,7 @@ double calinskiHarabaszScore(const ArrayXXd data, VectorXi labels) {
  * 
  * Reference: This code does not include any of the parameter checking: https://github.com/scikit-learn/scikit-learn/blob/c5497b7f7eacfaff061cf68e09bcd48aa93d4d6b/sklearn/metrics/cluster/_unsupervised.py#L396
 */
-double daviesBouldinScore(const ArrayXXd data, VectorXi labels) {
+double daviesBouldinScore(const ArrayXXd& data, const VectorXi& labels) {
     std::map<int, vector<int>> clusters;
 
     for (int i=0; i<labels.size(); ++i) {
@@ -72,7 +78,7 @@ double daviesBouldinScore(const ArrayXXd data, VectorXi labels) {
     int c=0;
 
     for (auto k=clusters.begin(); k != clusters.end(); ++k) {
-        ArrayXXd cluster = data(k->second,Eigen::placeholders::all);
+        ArrayXXd cluster = data(k->second,Eigen::all);
         centroids.row(c) = cluster.colwise().sum() / cluster.rows();
         intraDists[c] = 0;
         for (int i=0; i<cluster.rows(); ++i) {

@@ -1,10 +1,6 @@
 #include "cluster.h"
 
-Cluster::Cluster(){
-    this->indices;
-    this->cSum;
-    this->sqSum;
-    this->n;
+Cluster::Cluster() : n(0) {
 }
 Cluster::Cluster(Veci indices, Vec cSum, Vec sqSum, int n){
     this->indices = indices;

@@ -23,8 +23,7 @@ vector<HCTree> Helm::trimClusters(){
         new cluster tree after trimming (vector<HCTree>)
     */
     vector<pair<double, int>> clusterMsds;
-    int i=0;
-    for(int i=0; i<clusterTree.size(); i++){
+    for(size_t i=0; i<clusterTree.size(); i++){
         Vec cSum = clusterTree.at(i).getRootCSum();
         Vec sqSum = clusterTree.at(i).getRootSQSum();
         int Nik = clusterTree.at(i).getRootNObjects();
@@ -43,20 +42,21 @@ vector<HCTree> Helm::trimClusters(){
     vector<HCTree> newClusterTree;
     if(trimK){
         this->trimIncoming = clusterMsds.size()-trimK;
-        if (trimK >= clusterMsds.size()-1){
+        // compare in double so an empty clusterMsds does not wrap around
+        if (trimK >= (double)clusterMsds.size()-1){
             throw std::runtime_error("trimK is too large!");
         }
-        else if(trimK >= clusterMsds.size()/2){
+        else if(trimK >= clusterMsds.size()/2.0){
             std::cerr<<"trimK is more than 50% of the clusters. This may lead to poor clustering"<<std::endl;
         }
-        for(int i=0; i<clusterMsds.size()-trimK; i++){
+        for(int i=0; i<(double)clusterMsds.size()-trimK; i++){
             int index = clusterMsds[i].second;
-            if (index < 0 || index >= clusterTree.size()) {
+            if (index < 0 || index >= (int)clusterTree.size()) {
                 throw std::runtime_error("Index out of bounds when trimming clusters.");
             }
             newClusterTree.emplace_back(clusterTree[index]);
         }
-    } 
+    }
     else if(trimVal){
         this->trimIncoming = 0;
         for(auto i:clusterMsds){
@@ -114,21 +114,23 @@ vector<HCTree> Helm::genNewClusters(int ZIdx){
     Index minRow, minCol;       //minRow and minCol refer to two different clusters
     
     float mergeDist = clusterDists.minCoeff(&minRow, &minCol);
-    // add check for minRow and minCol being same. This can cause UB or crash. 
+    // add check for minRow and minCol being same. This can cause UB or crash.
     if (minRow == minCol){
         throw std::runtime_error("Got same cluster idx for the two most similar clusters.");
     }
-    //Merge the two most similar clusters
-    Vec cSum, sqSum;
-    cSum = previousClusters[minRow].getRootCSum() + previousClusters[minCol].getRootCSum();
-    sqSum = previousClusters[minRow].getRootSQSum() + previousClusters[minCol].getRootSQSum();
 
-    int Nik = previousClusters[minRow].getRootNObjects() + previousClusters[minCol].getRootNObjects();
+    // eps termination: if the best merge is not similar enough, discard it
+    // before it is recorded anywhere. Bailing out down here used to leave a
+    // phantom row for the rejected merge in the Z matrix.
+    if (eps != -1 && !(mergeDist < eps)) {
+        return vector<HCTree>();
+    }
 
-    //Save the new clusters after mergin
+    //Save the new clusters after merging (mergeTree computes the combined
+    //cSum/sqSum/nObjects itself)
     vector<HCTree> newClusters;
     newClusters.reserve(previousClusters.size()+1);
-    for(int i=0; i<previousClusters.size(); i++){
+    for(Index i=0; i<(Index)previousClusters.size(); i++){
         if(i==minRow || i==minCol){;}
         else{
             newClusters.emplace_back(previousClusters[i]);
@@ -155,14 +157,11 @@ vector<HCTree> Helm::genNewClusters(int ZIdx){
         }
         
     }
-    Mat clusterDists_temp1 = clusterDists(Eigen::placeholders::all, clustersToKeep);
-    Mat clusterDists_temp2 = clusterDists_temp1(clustersToKeep, Eigen::placeholders::all);
+    Mat clusterDists_temp1 = clusterDists(Eigen::all, clustersToKeep);
+    Mat clusterDists_temp2 = clusterDists_temp1(clustersToKeep, Eigen::all);
     clusterDists = clusterDists_temp2;
 
-    if(eps==-1 || mergeDist < eps){
-        return newClusters;
-    }
-    return vector<HCTree>();
+    return newClusters;
 }
 
 void Helm::updateZMatrix(int idxA, int idxB, int mergedClusts){
@@ -220,7 +219,7 @@ float Helm::calcHelmSim(HCTree& firstTree, HCTree& secondTree){
     double sim = extendedComparison(data, n, nAtoms, true, mt);
 
     //Different merging schemes for determining which clusters to merge
-    float helmSim;
+    float helmSim = 0;
     if (mergeScheme == MD::MergeScheme::Intra){
         helmSim = sim;
     }
@@ -248,8 +247,8 @@ void Helm::genClusterDists(vector<HCTree>& previousClusters){
     */
 
     clusterDists = Mat::Zero(previousClusters.size(), previousClusters.size()) + INFINITY;
-    for(int i=0; i<previousClusters.size(); i++){
-        for(int j=i+1; j<previousClusters.size(); j++){
+    for(size_t i=0; i<previousClusters.size(); i++){
+        for(size_t j=i+1; j<previousClusters.size(); j++){
             float helmSim = calcHelmSim(previousClusters[i], previousClusters[j]);
             clusterDists(i, j) = helmSim;
         }
