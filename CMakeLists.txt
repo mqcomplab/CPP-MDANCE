@@ -25,6 +25,16 @@ if(BUILD_CLI)
     add_subdirectory(cli)
 endif()
 
+option(BUILD_SHARED "Build shared library with C API" ON)
+if(BUILD_SHARED)
+    add_subdirectory(capi)
+endif()
+
+option(BUILD_TCL "Build Tcl extension for VMD" OFF)
+if(BUILD_TCL)
+    add_subdirectory(tcl)
+endif()
+
 # eQUAL / PRIME / frame-selection validation. It drives the built CLI and
 # cross-checks against an independent NumPy reference, so it is registered here
 # rather than in tests/, where the mdance-cli target does not exist yet.

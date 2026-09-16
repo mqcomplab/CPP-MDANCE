@@ -46,7 +46,9 @@ non-negative, so a partition containing eQUAL's `-1` frames can be fed straight 
 
 ## 3. The five modes
 
-Mode is chosen by a flag; only clustering takes `--algorithm`.
+Mode is chosen by a flag; only clustering takes `--algorithm`. The same five modes are
+reachable from the [C API](c-api.md) and the [VMD/Tcl extension](vmd-tcl.md) without going
+through files.
 
 | Mode | Selected by | Purpose |
 |---|---|---|

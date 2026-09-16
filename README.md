@@ -69,6 +69,10 @@ similarity analysis, representative-frame prediction, and frame selection:
 See **[docs/mdance-cli-quickstart.md](docs/mdance-cli-quickstart.md)** for the input
 format, all five modes, the output schema, and common pitfalls.
 
+The same algorithms are reachable without files: **[docs/c-api.md](docs/c-api.md)** covers
+the `libmdance` C interface, and **[docs/vmd-tcl.md](docs/vmd-tcl.md)** covers the Tcl
+extension that runs MDANCE inside a VMD session against the loaded trajectory.
+
 ## Important files
 
 ### Algorithms
@@ -82,10 +86,13 @@ format, all five modes, the output schema, and common pitfalls.
 ### Supporting code
 - `src/tools/`: BTS, extended-similarity (esim), type definitions and cluster scores
 - `cli/`: the `mdance-cli` front end (argument parsing, CSV input, JSON output)
+- `capi/`: C API for the shared library, used by the VMD/Tcl integration
+- `tcl/`: Tcl extension for VMD
 
 ### Tests and docs
 - `tests/*.cpp`: GoogleTest suite; run everything with `ctest` from `build/`
 - `tests/validate_equal_prime.py`: drives `mdance-cli` and cross-checks eQUAL, PRIME and
   frame selection against an independent NumPy reference (skipped if NumPy is missing)
 - `tests/data/`: datasets used by both suites
-- `docs/`: Sphinx documentation sources (`make -C docs html`)
+- `docs/`: Sphinx documentation sources (`make -C docs html`) — CLI quickstart, C API
+  reference, VMD/Tcl guide

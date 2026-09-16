@@ -2,6 +2,10 @@ cmake_minimum_required(VERSION 3.15)
 
 enable_language(C CXX)
 
+# The static libraries below are linked into the shared library in capi/, which
+# requires every object in them to be position independent.
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # The code uses the Eigen 3.4 slicing API (Eigen::all, Eigen::seq), so 3.3 is
 # not enough even though it used to configure successfully.
 #
