@@ -54,6 +54,10 @@ namespace MD {
 
     enum class StartSeed {Medoid, Outlier, Random};
 
+    // eQUAL seed selection (only the deterministic, pure-coordinate methods are
+    // ported; the sklearn-backed greedy/vanilla/mini_batch_kmeans are not).
+    enum class EqualSeed {CompSim, Medoid};
+
     enum class AlignMethod {Kron, Uni, None};
 
     enum class MergeScheme {Intra, Inter, Half};

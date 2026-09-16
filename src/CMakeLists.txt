@@ -76,11 +76,25 @@ target_include_directories(mdance_helm PUBLIC
 )
 target_link_libraries(mdance_helm PUBLIC mdance_tools)
 
+# create equal library
+add_library(mdance_equal STATIC
+    cluster/equal.cpp
+)
+target_link_libraries(mdance_equal PUBLIC mdance_tools)
+
+# create prime library
+add_library(mdance_prime STATIC
+    cluster/prime.cpp
+)
+target_link_libraries(mdance_prime PUBLIC mdance_tools)
+
 # create main mdance library
 add_library(mdance INTERFACE)
 target_link_libraries(mdance 
     INTERFACE 
-        mdance_tools 
-        mdance_kmeans 
+        mdance_tools
+        mdance_kmeans
         mdance_helm
+        mdance_equal
+        mdance_prime
 )
