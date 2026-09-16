@@ -50,6 +50,7 @@ add_library(mdance_tools STATIC
     tools/hc_utils.cpp
     tools/esim.cpp
     tools/scores.cpp
+    tools/result_utils.cpp
 )
 target_include_directories(mdance_tools PUBLIC
     tools)
@@ -76,6 +77,24 @@ target_include_directories(mdance_helm PUBLIC
 )
 target_link_libraries(mdance_helm PUBLIC mdance_tools)
 
+# create divine library (only when the DIVINE sources are present in the tree;
+# they live on the divine dev branch rather than main -- see #44)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cluster/divine.cpp")
+    set(_mdance_divine_default ON)
+else()
+    set(_mdance_divine_default OFF)
+endif()
+option(BUILD_DIVINE "Build the DIVINE divisive clustering algorithm" ${_mdance_divine_default})
+if(BUILD_DIVINE AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/cluster/divine.cpp")
+    message(FATAL_ERROR "BUILD_DIVINE=ON but src/cluster/divine.cpp is not present in this tree.")
+endif()
+if(BUILD_DIVINE)
+    add_library(mdance_divine STATIC
+        cluster/divine.cpp
+    )
+    target_link_libraries(mdance_divine PUBLIC mdance_tools)
+endif()
+
 # create equal library
 add_library(mdance_equal STATIC
     cluster/equal.cpp
@@ -98,3 +117,8 @@ target_link_libraries(mdance
         mdance_equal
         mdance_prime
 )
+
+if(BUILD_DIVINE)
+    target_link_libraries(mdance INTERFACE mdance_divine)
+    target_compile_definitions(mdance INTERFACE MDANCE_HAS_DIVINE=1)
+endif()

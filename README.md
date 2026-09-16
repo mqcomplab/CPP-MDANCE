@@ -3,10 +3,7 @@ A c++ implementation of MDANCE, a flexible n-ary clustering package for all appl
 
 ## Getting Started with MDance
 
-Before you begin, make sure you have:
-- **Eigen** >= 3.4 (the code uses the Eigen 3.4 slicing API)
-- **GoogleTest** (only needed to build the test suite)
-- **CMake** >= 3.15 and a C++17 compiler
+Before you begin, make sure you have **Eigen** installed.
 
 ### Step 1: get source code
 
@@ -38,9 +35,12 @@ Compile MDance by running:
 cmake --build build
 ```
 ### Step 4: Run Tests
-Use `ctest` from the build directory to execute the tests:
+Navigate to `build/tests/` folder:
 ```shell
-cd build
+cd build/tests/
+```
+Use `ctest` to execute the tests:
+```shell
 ctest
 ```
 An example output is:
@@ -55,9 +55,37 @@ Total Test time (real) =   2.71 sec
 
 <span style="color:red">TODO:</span> add instructions for installation and figure out how to make CPP-MDANCE easily portable.
 
+### Step 5: Run a clustering job
+
+The build produces `build/cli/mdance-cli`, a command-line front end covering clustering,
+similarity analysis, representative-frame prediction, and frame selection:
+
+```shell
+./build/cli/mdance-cli --algorithm kmeans \
+                       --input tests/data/sim.csv --output result.json \
+                       --natoms 50 --nclusters 10
+```
+
+See **[docs/mdance-cli-quickstart.md](docs/mdance-cli-quickstart.md)** for the input
+format, all five modes, the output schema, and common pitfalls.
+
 ## Important files
-- `src/cluster/KMeansRex/KMeans.cpp`: Has the **NANI** implementation (adapted from KMeansRex)
-- `src/cluster/helm.cpp`: Has the **HELM** implementation
-- `src/tools`: Has supporting functions, such as BTS, type definitions, and score calculations.
-- `tests`: GoogleTest suite comparing the output against the Python MDANCE library
-   - `tests/data`: stores the datasets used by the tests
+
+### Algorithms
+- `src/cluster/KMeansRex/KMeans.cpp`: **NANI** (k-means with n-ary initialization)
+- `src/cluster/helm.cpp`: **HELM** hierarchical merging
+- `src/cluster/equal.cpp`: **eQUAL** radial/threshold clustering
+- `src/cluster/prime.cpp`: **PRIME** representative-frame prediction
+- DIVINE lives on a separate dev branch; `BUILD_DIVINE` auto-detects whether
+  `src/cluster/divine.cpp` is present and stays off when it is not.
+
+### Supporting code
+- `src/tools/`: BTS, extended-similarity (esim), type definitions and cluster scores
+- `cli/`: the `mdance-cli` front end (argument parsing, CSV input, JSON output)
+
+### Tests and docs
+- `tests/*.cpp`: GoogleTest suite; run everything with `ctest` from `build/`
+- `tests/validate_equal_prime.py`: drives `mdance-cli` and cross-checks eQUAL, PRIME and
+  frame selection against an independent NumPy reference (skipped if NumPy is missing)
+- `tests/data/`: datasets used by both suites
+- `docs/`: Sphinx documentation sources (`make -C docs html`)

@@ -52,6 +52,10 @@ namespace MD {
     */
     enum class KinitType {StratAll, StratReduced, CompSim, DivSelect, KmeansPP, Random, VanillaKmeansPP};
 
+    // DIVINE split criterion and anchor-selection strategy.
+    enum class DivineSplit {MSD, Radius, WeightedMSD};
+    enum class DivineAnchors{NANI, OutlierPair, SplinterPair};
+
     enum class StartSeed {Medoid, Outlier, Random};
 
     // eQUAL seed selection (only the deterministic, pure-coordinate methods are

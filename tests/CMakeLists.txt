@@ -45,7 +45,11 @@ add_executable(mdance_gtests test_utils.cpp
                     test_tools.cpp
                     test_equal.cpp
                     test_prime.cpp
+                    test_result_utils.cpp
 )
+if(BUILD_DIVINE)
+    target_sources(mdance_gtests PRIVATE test_divine.cpp)
+endif()
 target_link_libraries(mdance_gtests PRIVATE
                     ${MDANCE_GTEST_LIBS}
                     mdance)
