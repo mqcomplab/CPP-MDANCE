@@ -65,7 +65,7 @@ Index Divine::selectClusterToSplit(vector<bool>& failedSplits) {
         }
 
         double score = -1;
-        Mat subdata = data(clusters[i], Eigen::placeholders::all);
+        Mat subdata = data(clusters[i], Eigen::all);
         if (splitType == MD::DivineSplit::MSD) {
             score = extendedComparison(subdata, 0, nAtoms, false, mt);
         } else if (splitType == MD::DivineSplit::Radius) {
@@ -108,7 +108,7 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
     for(int i=0; i<clusters[clusterToSplit].size(); i++){
         subdataIndices[i]=clusters[clusterToSplit][i];
     }
-    Mat subdata = data(subdataIndices, Eigen::placeholders::all);
+    Mat subdata = data(subdataIndices, Eigen::all);
     
     if (anchorType == MD::DivineAnchors::NANI) {
         KmeansNANI kmeans(subdata, 2, mt, kinit, nAtoms, percentage);
@@ -153,8 +153,8 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
         }
 
         if (refine) {
-            Mat groupA = subdata(initialMask, Eigen::placeholders::all);
-            Mat groupB = subdata(notInitialMask, Eigen::placeholders::all);
+            Mat groupA = subdata(initialMask, Eigen::all);
+            Mat groupB = subdata(notInitialMask, Eigen::all);
 
             Index medoidA = groupA.size() <= 2 ? 0 : calculateMedoid(groupA, nAtoms, mt);
             Index medoidB = groupB.size() <= 2 ? 0 : calculateMedoid(groupB, nAtoms, mt);
@@ -234,8 +234,8 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
             }
         }
         if (refine) {
-            Mat groupA = subdata(mainGroup, Eigen::placeholders::all);
-            Mat groupB = subdata(splinterGroup, Eigen::placeholders::all);
+            Mat groupA = subdata(mainGroup, Eigen::all);
+            Mat groupB = subdata(splinterGroup, Eigen::all);
 
             Index medoidA = splinterGroup.size() <= 2 ? 0 : calculateMedoid(groupA, nAtoms, mt);
             Index medoidB = groupB.size() <= 2 ? 0 : calculateMedoid(groupB, nAtoms, mt);

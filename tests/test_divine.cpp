@@ -77,7 +77,7 @@ TEST_F(DivineTest, TestCombinations){
 
 
 TEST_F(DivineTest, TestPoint){
-    Mat smallData = data(Eigen::seq(0,4), Eigen::placeholders::all);
+    Mat smallData = data(Eigen::seq(0,4), Eigen::all);
     int end=1;
     int k=0;
     bool refine=false;
