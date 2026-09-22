@@ -42,10 +42,7 @@ void KmeansNANI::set_vectorization_threshold(int threshold){
     if (threshold < 1){
         throw std::invalid_argument("Threshold must be at least 1");
     }
-    if (threshold == std::numeric_limits<int>::infinity()) {
-        throw std::invalid_argument("Threshold must be finite");
-    }
-    threshold = threshold;
+    vectorizationThreshold = threshold;
 }
 
 /*
@@ -146,9 +143,9 @@ void KmeansNANI::reduced_init_Mu(bool isComp) {
     for (int i=nTotal - nMax; i<nTotal; ++i){
         topIndices.push_back(compSimArray[i].second);
     }
-    Mat topCCdata = data(topIndices, Eigen::placeholders::all);
+    Mat topCCdata = data(topIndices, Eigen::all);
     vector<Index> idx = diversitySelection(topCCdata, 100, mt, nAtoms, isComp);
-    centers = topCCdata(idx,Eigen::placeholders::all);
+    centers = topCCdata(idx,Eigen::all);
 }
 
 void KmeansNANI::init_Mu() {
@@ -159,6 +156,10 @@ void KmeansNANI::init_Mu() {
         sampleRowsRandom();
         break;
     
+    // The greedy k-means++ variant is not implemented yet; fall back to the
+    // vanilla k-means++ sampling rather than silently leaving the centers at
+    // their zero-initialized values.
+    case MD::KinitType::KmeansPP:
     case MD::KinitType::VanillaKmeansPP:
         sampleRowsPlusPlus();
         break;
@@ -173,35 +174,40 @@ void KmeansNANI::init_Mu() {
 
     case MD::KinitType::StratAll:
         idx = diversitySelection(data, percentage, mt, nAtoms);
-        centers = data(idx,Eigen::placeholders::all);
+        centers = data(idx,Eigen::all);
         break;
 
     case MD::KinitType::DivSelect:
         idx = diversitySelection(data, percentage, mt, nAtoms, true);
-        centers = data(idx,Eigen::placeholders::all);
+        centers = data(idx,Eigen::all);
         break;
     }
     // only take first kClusters centers
     if (centers.rows() > kClusters){
-        centers = centers(Eigen::seq(0, kClusters-1), Eigen::placeholders::all).eval();
+        centers = centers(Eigen::seq(0, kClusters-1), Eigen::all).eval();
+    }
+    // The percentage-based initializations can select fewer than kClusters
+    // candidates; catching it here beats silently clustering with fewer
+    // centers than requested (labels would never reach kClusters-1).
+    if (centers.rows() < kClusters){
+        throw std::runtime_error("Initialization produced fewer centers than kClusters; increase percentage or reduce kClusters.");
     }
 }
 
 // ======================================================= Update Assignments Z
 void KmeansNANI::pairwise_distance( Mat &X, Mat &Mu, Mat &Dist ) {
-    int N = data.rows();
-    int D = data.cols();
-    int K = centers.rows();
+    int D = X.cols();
+    int K = Mu.rows();
 
     // For small dims D, for loop is noticeably faster than fully vectorized.
-    // Odd but true.  So we do fastest thing 
+    // Odd but true.  So we do fastest thing
     if ( D <= vectorizationThreshold ) {
         for (int kk=0; kk<K; kk++) {
-            Dist.col(kk) = (data.rowwise() - centers.row(kk)).square().rowwise().sum();
-        }    
+            Dist.col(kk) = (X.rowwise() - Mu.row(kk)).square().rowwise().sum();
+        }
     } else {
-        Dist = -2*(data.matrix() * centers.transpose().matrix());
-        Dist.rowwise() += centers.square().rowwise().sum().transpose().row(0);
+        Dist = -2*(X.matrix() * Mu.transpose().matrix());
+        Dist.rowwise() += Mu.square().rowwise().sum().transpose().row(0);
     }
 }
 
@@ -235,7 +241,10 @@ void KmeansNANI::calcMu() {
 
 // ======================================================= Overall Lloyd Alg.
 void KmeansNANI::run_lloyd(int Niter )  {
-    double prevDist,totalDist = 0;
+    // prevDist must start at a value assignClosest() can never return so the
+    // convergence check cannot fire on the first iteration.
+    double prevDist = std::numeric_limits<double>::infinity();
+    double totalDist = 0;
 
     // TODO: store the labels at each frame
     for (int iter=0; iter<Niter; iter++) {
@@ -249,7 +258,10 @@ void KmeansNANI::run_lloyd(int Niter )  {
 }
 
 
-KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(kinit), seed(seed), percentage(percentage) {
+KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold) : data(data), kinit(kinit), seed(0), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
+    if (kClusters < 1 || kClusters > this->data.rows()) {
+        throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
+    }
     centers = Mat::Zero(kClusters, data.cols());
     dist = Mat::Zero(data.rows(), kClusters);
     labels = Veci::Zero(data.rows());
@@ -258,7 +270,13 @@ KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitTyp
     init_Mu();
     run_lloyd(300);
 }
-KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, Mat centers, int nAtoms, int percentage, int vectThreshold) : data(data), kClusters(kClusters), mt(mt), nAtoms(nAtoms), kinit(kinit), seed(seed), percentage(percentage), centers(centers) {
+KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, Mat centers, int nAtoms, int percentage, int vectThreshold) : data(data), centers(centers), kinit(MD::KinitType::StratAll), seed(0), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
+    if (kClusters < 1 || kClusters > this->data.rows()) {
+        throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
+    }
+    if (this->centers.rows() != kClusters || this->centers.cols() != this->data.cols()) {
+        throw std::invalid_argument("centers must have shape (kClusters, nFeatures).");
+    }
     dist = Mat::Zero(data.rows(), kClusters);
     labels = Veci::Zero(data.rows());
     set_vectorization_threshold(vectThreshold);

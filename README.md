@@ -55,11 +55,44 @@ Total Test time (real) =   2.71 sec
 
 <span style="color:red">TODO:</span> add instructions for installation and figure out how to make CPP-MDANCE easily portable.
 
+### Step 5: Run a clustering job
+
+The build produces `build/cli/mdance-cli`, a command-line front end covering clustering,
+similarity analysis, representative-frame prediction, and frame selection:
+
+```shell
+./build/cli/mdance-cli --algorithm kmeans \
+                       --input tests/data/sim.csv --output result.json \
+                       --natoms 50 --nclusters 10
+```
+
+See **[docs/mdance-cli-quickstart.md](docs/mdance-cli-quickstart.md)** for the input
+format, all five modes, the output schema, and common pitfalls.
+
+The same algorithms are reachable without files: **[docs/c-api.md](docs/c-api.md)** covers
+the `libmdance` C interface, and **[docs/vmd-tcl.md](docs/vmd-tcl.md)** covers the Tcl
+extension that runs MDANCE inside a VMD session against the loaded trajectory.
+
 ## Important files
-- `src/cluster/KmeansRex/KmeansRexCore.cpp`: Has **NANI** implementation
-- `src/cluster/divine.cpp`: Has **DIVINE** implementation
-- `src/tools`: Has supporting functions, such as BTS, type definitions, and score calculations.
-- <span style="color:red">TODO:</span> implement HELM
-- `tests/runTests.sh`: Bash script for testing code by comoparing output to that of the Python library
-   - `tests/data`: stores datasets
-   - `tests/results`: Stores the results of the test. The results themselves are stored in the `*Results.txt` files, while the time and any error messages are stored in `*Time.txt` files
+
+### Algorithms
+- `src/cluster/KMeansRex/KMeans.cpp`: **NANI** (k-means with n-ary initialization)
+- `src/cluster/helm.cpp`: **HELM** hierarchical merging
+- `src/cluster/equal.cpp`: **eQUAL** radial/threshold clustering
+- `src/cluster/prime.cpp`: **PRIME** representative-frame prediction
+- DIVINE lives on a separate dev branch; `BUILD_DIVINE` auto-detects whether
+  `src/cluster/divine.cpp` is present and stays off when it is not.
+
+### Supporting code
+- `src/tools/`: BTS, extended-similarity (esim), type definitions and cluster scores
+- `cli/`: the `mdance-cli` front end (argument parsing, CSV input, JSON output)
+- `capi/`: C API for the shared library, used by the VMD/Tcl integration
+- `tcl/`: Tcl extension for VMD
+
+### Tests and docs
+- `tests/*.cpp`: GoogleTest suite; run everything with `ctest` from `build/`
+- `tests/validate_equal_prime.py`: drives `mdance-cli` and cross-checks eQUAL, PRIME and
+  frame selection against an independent NumPy reference (skipped if NumPy is missing)
+- `tests/data/`: datasets used by both suites
+- `docs/`: Sphinx documentation sources (`make -C docs html`) — CLI quickstart, C API
+  reference, VMD/Tcl guide

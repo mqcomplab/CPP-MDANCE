@@ -52,11 +52,15 @@ namespace MD {
     */
     enum class KinitType {StratAll, StratReduced, CompSim, DivSelect, KmeansPP, Random, VanillaKmeansPP};
 
+    // DIVINE split criterion and anchor-selection strategy.
     enum class DivineSplit {MSD, Radius, WeightedMSD};
-
     enum class DivineAnchors{NANI, OutlierPair, SplinterPair};
 
     enum class StartSeed {Medoid, Outlier, Random};
+
+    // eQUAL seed selection (only the deterministic, pure-coordinate methods are
+    // ported; the sklearn-backed greedy/vanilla/mini_batch_kmeans are not).
+    enum class EqualSeed {CompSim, Medoid};
 
     enum class AlignMethod {Kron, Uni, None};
 
@@ -113,6 +117,7 @@ namespace MD {
             bub(bub), fai(fai), gle(gle), ja(ja), jt(jt), rt(rt), rr(rr), sm(sm), ss1(ss1), ss2(ss2) {}; 
         double getIndex(Metric mt){
             switch(mt) {
+                case Metric::MSD: return 0;  // MSD is not a similarity index
                 case Metric::BUB: return bub;
                 case Metric::Fai: return fai;
                 case Metric::Gle: return gle;

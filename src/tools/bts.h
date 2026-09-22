@@ -18,6 +18,7 @@ ArrayXXd trimOutliers(const ArrayXXd& data, float nTrimmed, int nAtoms = 1, bool
 vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metric mt = MD::Metric::MSD, int nAtoms = 1, bool isCompSim = false, MD::StartSeed start = MD::StartSeed::Medoid);
 vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metric mt, int nAtoms, vector<Index>& start);
 Index getNewIndexN(const ArrayXXd& data, MD::Metric mt, ArrayXXd& selectedCondensed, int N, set<Index>& selectFromN, int nAtoms);
-ArrayXi repSample(const ArrayXXd& data, MD::Metric mt = MD::Metric::MSD, int nAtoms = 1, int nBins = 10, int nSamples = 100, bool hardCap = false);
+ArrayXi repSample(const ArrayXXd& data, MD::Metric mt = MD::Metric::MSD, int nAtoms = 1, int nBins = 10, int nSamples = 100, bool hardCap = true);
+ArrayXi repSample(const ArrayXXd& data, MD::Metric mt, int nAtoms, int nBins, double nSamples, bool hardCap = true);
 ArrayXXd refineDisMatrix(const ArrayXXd& data);
 ArrayXXd alignTraj(const ArrayXXd& data, int nAtoms, MD::AlignMethod = MD::AlignMethod::None);

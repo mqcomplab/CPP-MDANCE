@@ -37,3 +37,9 @@
 # clangd / tooling caches
 .cache/
 .clangd/
+
+# Sphinx generated documentation
+docs/_build/
+
+# Local virtualenv used to build the docs
+.venv/
