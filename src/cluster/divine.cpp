@@ -215,7 +215,7 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
         Vec medoidPoint = subdata.row(medoidIdx);
 
         //split cluster indices into splinterGroup and mainGroup
-        vector<Index> splinterGroup = {subdataIndices[splinterIdx]};
+        vector<Index> splinterGroup = {splinterIdx};
         vector<Index> mainGroup;
         splinterGroup.reserve(subdata.rows() - 1);
         mainGroup.reserve(subdata.rows() - 1);
@@ -228,9 +228,9 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
             double dM = (subdata.row(i).transpose() - medoidPoint).square().sum() / nAtoms;
 
             if (dS < dM) {
-                splinterGroup.push_back(subdataIndices[i]);
+                splinterGroup.push_back(i);
             } else {
-                mainGroup.push_back(subdataIndices[i]);
+                mainGroup.push_back(i);
             }
         }
         if (refine) {
@@ -247,41 +247,62 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
             KmeansNANI kmeans(subdata, 2, mt, initiators, nAtoms);
             Veci sublabels = kmeans.getLabels();
 
-            vector<Index> cluster1, cluster2;
-            for (Index i = 0; i < sublabels.size(); ++i) {
-                if (sublabels[i] == 0) {
-                    cluster1.push_back(clusters[clusterToSplit][i]);
-                } else {
-                    cluster2.push_back(clusters[clusterToSplit][i]);
-                }
-            }
-
             //find number of unique labels
             set<int> uniqueLabels;
             for(auto i:sublabels){
                 uniqueLabels.insert(i);
             }
-            if(mainGroup.size()<minFrames || splinterGroup.size()<minFrames){
-                return false;
-            }
-
+            vector<Index> cluster1, cluster2;
             if(uniqueLabels.size() < 2){
                 std::cerr<<"K-Means refinement failed to find two distinct clusters."<<std::endl;
+                // use mainGroup and splinterGroup before refinement as the new clusters
+                
+                if(mainGroup.size()<minFrames || splinterGroup.size()<minFrames){
+                    return false;
+                }
+                for (Index i : mainGroup){
+                    cluster1.push_back(subdataIndices[i]);
+                }
+                for (Index i : splinterGroup){
+                    cluster2.push_back(subdataIndices[i]);
+                }
                 clusters[clusterToSplit] = cluster1;
                 clusters.push_back(cluster2);
             }
             else{
+                for (Index i = 0; i < sublabels.size(); ++i) {
+                    if (sublabels[i] == 0) {
+                        cluster1.push_back(clusters[clusterToSplit][i]);
+                    } else {
+                        cluster2.push_back(clusters[clusterToSplit][i]);
+                    }
+                }
                 clusters[clusterToSplit] = cluster1;
                 clusters.push_back(cluster2);
             }
+            
 
-        } else {
+            
             if(mainGroup.size()<minFrames || splinterGroup.size()<minFrames){
                 return false;
             }
 
-            clusters[clusterToSplit] = mainGroup;
-            clusters.push_back(splinterGroup);   
+            
+
+        } else {
+            vector<Index> cluster1, cluster2;
+            if(mainGroup.size()<minFrames || splinterGroup.size()<minFrames){
+                return false;
+            }
+            for (Index i : mainGroup){
+                cluster1.push_back(subdataIndices[i]);
+            }
+            for (Index i : splinterGroup){
+                cluster2.push_back(subdataIndices[i]);
+            }
+
+            clusters[clusterToSplit] = cluster1;
+            clusters.push_back(cluster2);   
         }
     }
     return true;
