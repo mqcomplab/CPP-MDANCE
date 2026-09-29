@@ -13,6 +13,8 @@ void Divine::divisiveAlgorithm() {
     bool done=true;
     while (done) {
         //stopping conditions
+        std::cout << "Divine iteration: " << counter << ", Number of clusters: " << clusters.size() << std::endl;
+        std::cout << "-------------------------------------------" << std::endl;
         if(counter>maxIter)   break;
         counter++;
         if(end==0){
@@ -146,9 +148,9 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
         notInitialMask.reserve(subdata.rows());
         for (Index i = 0; i < dA.size(); ++i) {
             if (dA[i] < dB[i]) {
-                initialMask.push_back(clusters[clusterToSplit][i]);
+                initialMask.push_back(i);
             } else {
-                notInitialMask.push_back(clusters[clusterToSplit][i]);
+                notInitialMask.push_back(i);
             }
         }
 
@@ -165,31 +167,43 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
 
             KmeansNANI kmeans(subdata, 2, mt, initiators, nAtoms);
             Veci sublabels = kmeans.getLabels();
-
-            vector<Index> cluster1, cluster2;
-            for (Index i = 0; i < sublabels.size(); ++i) {
-                if (sublabels[i] == 0) {
-                    cluster1.push_back(clusters[clusterToSplit][i]);
-                } else {
-                    cluster2.push_back(clusters[clusterToSplit][i]);
-                }
-            }
-
+            
             //find number of unique labels
             set<int> uniqueLabels;
             for(auto i:sublabels){
                 uniqueLabels.insert(i);
             }
-            if(initialMask.size()<minFrames || notInitialMask.size()<minFrames){
-                return false;
-            }
-
             if(uniqueLabels.size() < 2){
                 std::cerr<<"K-Means refinement failed to find two distinct clusters."<<std::endl;
-                clusters[clusterToSplit] = initialMask;
-                clusters.push_back(notInitialMask);
+                vector<Index> cluster1, cluster2;
+                for (auto i : initialMask){
+                    cluster1.push_back(subdataIndices[i]);
+                }
+                for (auto i : notInitialMask){
+                    cluster2.push_back(subdataIndices[i]);
+                }
+                // check if min frame condition is satisfied
+                if(cluster1.size()<minFrames || cluster2.size()<minFrames){
+                    return false;
+                }
+                // add new clusters to the clusters vector
+                clusters[clusterToSplit] = cluster1;
+                clusters.push_back(cluster2);
             }
             else{
+                vector<Index> cluster1, cluster2;
+                for (Index i = 0; i < sublabels.size(); ++i) {
+                    if (sublabels[i] == 0) {
+                        cluster1.push_back(clusters[clusterToSplit][i]);
+                    } else {
+                        cluster2.push_back(clusters[clusterToSplit][i]);
+                    }
+                }
+                // check if min frame condition is satisfied
+                if(cluster1.size()<minFrames || cluster2.size()<minFrames){
+                    return false;
+                }
+                // add new clusters to the clusters vector
                 clusters[clusterToSplit] = cluster1;
                 clusters.push_back(cluster2);
             }
@@ -198,9 +212,16 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
             if(initialMask.size()<minFrames || notInitialMask.size()<minFrames){
                 return false;
             }
-
-            clusters[clusterToSplit] = initialMask;
-            clusters.push_back(notInitialMask);
+            
+            vector<Index> cluster1, cluster2;
+            for (auto i : initialMask){
+                cluster1.push_back(subdataIndices[i]);
+            }
+            for (auto i : notInitialMask){
+                cluster2.push_back(subdataIndices[i]);
+            }
+            clusters[clusterToSplit] = cluster1;
+            clusters.push_back(cluster2);
             
         }
     } else if (anchorType == MD::DivineAnchors::SplinterPair) {
