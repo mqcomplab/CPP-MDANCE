@@ -262,7 +262,7 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
             Mat groupA = subdata(mainGroup, Eigen::all);
             Mat groupB = subdata(splinterGroup, Eigen::all);
 
-            Index medoidA = splinterGroup.size() <= 2 ? 0 : calculateMedoid(groupA, nAtoms, mt);
+            Index medoidA = groupA.size() <= 2 ? 0 : calculateMedoid(groupA, nAtoms, mt);
             Index medoidB = groupB.size() <= 2 ? 0 : calculateMedoid(groupB, nAtoms, mt);
 
             Mat initiators = Mat::Zero(2, data.row(0).size());
