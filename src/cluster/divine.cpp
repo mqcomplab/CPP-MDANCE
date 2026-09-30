@@ -302,20 +302,18 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
                         cluster2.push_back(clusters[clusterToSplit][i]);
                     }
                 }
+                // check if min frame condition is satisfied
+                if(cluster1.size()<minFrames || cluster2.size()<minFrames){
+                    return false;
+                }
                 clusters[clusterToSplit] = cluster1;
                 clusters.push_back(cluster2);
             }
             
 
-            
-            if(mainGroup.size()<minFrames || splinterGroup.size()<minFrames){
-                return false;
-            }
-
-            
-
         } else {
             vector<Index> cluster1, cluster2;
+            // check if min frame condition is satisfied
             if(mainGroup.size()<minFrames || splinterGroup.size()<minFrames){
                 return false;
             }
@@ -325,7 +323,7 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
             for (Index i : splinterGroup){
                 cluster2.push_back(subdataIndices[i]);
             }
-
+            // add cluster1 and cluster2 to the clusters vector
             clusters[clusterToSplit] = cluster1;
             clusters.push_back(cluster2);   
         }
