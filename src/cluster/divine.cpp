@@ -6,7 +6,7 @@ void Divine::divisiveAlgorithm() {
     /* 
         Main loop for recursively splitting clusters.
     */
-    int minFrames = std::max(1, (int)round(threshold * data.rows()));
+    int minFrames = std::max(1, (int)std::floor(threshold * data.rows()));
 
     int maxIter=data.rows()+1;
     int counter=1;
