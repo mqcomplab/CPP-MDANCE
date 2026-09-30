@@ -123,6 +123,10 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
                 cluster2.push_back(clusters[clusterToSplit][i]);
             }
         }
+        // check if min frame condition is satisfied
+        if(cluster1.size()<minFrames || cluster2.size()<minFrames){
+            return false;
+        }
 
         //merge the two newly split clusters to clusters vector
         clusters[clusterToSplit] = cluster1;
