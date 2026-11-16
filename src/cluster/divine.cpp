@@ -113,7 +113,14 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
     Mat subdata = data(subdataIndices, Eigen::all);
     
     if (anchorType == MD::DivineAnchors::NANI) {
-        KmeansNANI kmeans(subdata, 2, mt, kinit, nAtoms, percentage);
+        // calculate the minimum percentage so that at least two points are selected. 
+        int minPercentage = std::ceil(2 / subdata.rows() * 100); 
+        int percentageNani = percentage; // create a local copy of percentage to modify if needed
+        if (percentage < minPercentage) {
+            std::cerr << "Percentage is too low to select at least two points. Adjusting to " << minPercentage << "%." << std::endl;
+            percentageNani = minPercentage;
+        }
+        KmeansNANI kmeans(subdata, 2, mt, kinit, nAtoms, percentageNani);
         ArrayXi sublabels = kmeans.getLabels();
         vector<Index> cluster1, cluster2;
         for (Index i = 0; i < sublabels.size(); ++i) {
