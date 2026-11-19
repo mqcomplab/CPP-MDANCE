@@ -457,13 +457,23 @@ int main(int argc, char* argv[]) {
             result.nClusters = finalClusters.size();
             result.labels = labelsFromHelmClusters(finalClusters, initLabels, (int)data.rows());
 
-            // Compute scores
-            VectorXi scoreLabels(result.labels.size());
+            // compute scores over clustered frames only (exclude -1 noise)
+            std::vector<Eigen::Index> keep;
+
+            keep.reserve(result.labels.size());
             for (size_t i = 0; i < result.labels.size(); ++i) {
-                scoreLabels(i) = result.labels[i];
+                if (result.labels[i] >= 0) keep.push_back((Eigen::Index)i);
             }
-            result.chScore = calinskiHarabaszScore(data, scoreLabels);
-            result.dbScore = daviesBouldinScore(data, scoreLabels);
+
+            ArrayXXd subData(keep.size(), data.cols()); // Only keep frames that are assigned to a cluster
+            VectorXi subLabels(keep.size());
+            for (size_t i = 0; i < keep.size(); ++i) {
+                subData.row(i) = data.row(keep[i]);
+                subLabels(i) = result.labels[keep[i]];
+            }
+
+            result.chScore = calinskiHarabaszScore(subData, subLabels);
+            result.dbScore = daviesBouldinScore(subData, subLabels);
 
             // Z-matrix
             Mat zMat = helm.getZMatrix();
