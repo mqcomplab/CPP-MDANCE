@@ -31,9 +31,20 @@ Date:   2 April 2013
 
 #include "KMeans.h"
 #include "mersenneTwister2002.h"
+#include <chrono>
+#include <cstdint>
 
 // ====================================================== Utility Functions
 void KmeansNANI::set_seed() {
+    // Note: if seed is -1, we will generate a random seed. 
+    // This is in line with scikit-learns random_state=None, which we use in the python version 
+    if (seed == -1){
+        // generate random seed
+        uint64_t t = static_cast<uint64_t>(
+            std::chrono::high_resolution_clock::now().time_since_epoch().count());
+        seed = t^(t >> 32);
+    }
+    std::cout << "Initializing random number generator with: " << seed << std::endl;
     init_genrand( seed );
 }
 
@@ -310,8 +321,11 @@ void KmeansNANI::run_lloyd(int Niter )  {
     }
 }
 
+// Note: if seed is -1, we will generate a random seed. 
+// This is in line with scikit-learns random_state=None, which we use in the python version 
+// set seed to any other number if we need deterministic random numbers for debugging purposes. 
 
-KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold) : data(data), kinit(kinit), seed(0), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
+KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold) : data(data), kinit(kinit), seed(-1), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
     if (kClusters < 1 || kClusters > this->data.rows()) {
         throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
     }
@@ -323,7 +337,12 @@ KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitTyp
     init_Mu();
     run_lloyd(300);
 }
-KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, Mat centers, int nAtoms, int percentage, int vectThreshold) : data(data), centers(centers), kinit(MD::KinitType::StratAll), seed(0), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
+
+// Note: if seed is -1, we will generate a random seed. 
+// This is in line with scikit-learns random_state=None, which we use in the python version 
+// set seed to any other number if we need deterministic random numbers for debugging purposes. 
+
+KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, Mat centers, int nAtoms, int percentage, int vectThreshold) : data(data), centers(centers), kinit(MD::KinitType::StratAll), seed(-1), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
     if (kClusters < 1 || kClusters > this->data.rows()) {
         throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
     }
