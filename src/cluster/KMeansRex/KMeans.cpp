@@ -217,10 +217,61 @@ double KmeansNANI::assignClosest() {
 
     pairwise_distance( data, centers, dist );
 
+    // check if there are empty clusters
+    Vec best_dists; // storing this so it can be sorted from worst fitting point to best
+    best_dists.resize(data.rows());
+    Veci populations = Eigen::ArrayXi::Zero(kClusters);
+
     for (int nn=0; nn<data.rows(); nn++) {
         totalDist += dist.row(nn).minCoeff( &minRowID );
         labels(nn,0) = minRowID;
+        best_dists[nn] = data(nn, minRowID);
+        populations[minRowID] += 1; // increase population of given cluster by 1
     }
+
+    if ((populations == 0).any()){
+        // there are empty clusters
+        std::cerr << "There are some empty clusters."  << std::endl;
+        // call function here to reassign clusters?
+        std::vector<int> order(best_dists.size());
+        std::iota(order.begin(), order.end(), 0);
+        std::sort(order.begin(), order.end(), 
+                        [&](int a, int b) {return best_dists[a] > best_dists[b];});
+
+        vector<int> emptyClusters;
+        for (int k =0; k < populations.size(); ++k){
+            if (populations[k] ==0){
+                emptyClusters.push_back(k);
+            }
+        }
+        size_t e = 0; // cluster to fill
+        for (int p : order){
+            if (e == emptyClusters.size()){ // filled all the clusters
+                break;
+            }
+            if (best_dists[p] <= 0.0){
+                std::cerr<< "All remaining points fit perfectly. Could not reassign clusters. There may be empty clusters. " << std::endl;
+                break;
+            }
+            int old_k = labels[p];
+            // I don't think this would get triggerd, since the best_distance would be 0 in this case, but better to leave it here for safety
+            if (populations[old_k] <=1){
+                continue;
+            }
+
+            // found suitable point
+            int new_k = emptyClusters[e];
+            labels(p, 0) = new_k;
+            // update populations
+            populations[old_k] = populations[old_k] - 1;
+            populations[new_k] = populations[new_k] + 1;
+            ++e;
+            // update total distance: point gets assigned to new cluster
+            // distance to centroid is 0 in that case.
+            totalDist -= dist(p, old_k);
+        }
+    }
+
     return totalDist;
 }
 
