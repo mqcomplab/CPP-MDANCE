@@ -3,6 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <limits>
+#include <numeric>
 
 
 #include "../../tools/bts.h"

@@ -211,16 +211,69 @@ void KmeansNANI::pairwise_distance( Mat &X, Mat &Mu, Mat &Dist ) {
     }
 }
 
+// todo: this function got fairly long, may be useful to extract the reallocation of empty clusters. 
 double KmeansNANI::assignClosest() {
     double totalDist = 0;
-    int minRowID;
+    int minColID;
 
     pairwise_distance( data, centers, dist );
 
+    // check if there are empty clusters
+    Vec best_dists; // storing this so it can be sorted from worst fitting point to best
+    best_dists.resize(data.rows());
+    Veci populations = Eigen::ArrayXi::Zero(kClusters);
+
     for (int nn=0; nn<data.rows(); nn++) {
-        totalDist += dist.row(nn).minCoeff( &minRowID );
-        labels(nn,0) = minRowID;
+        double d = dist.row(nn).minCoeff( &minColID );
+        totalDist += d; 
+        labels(nn,0) = minColID;
+        best_dists[nn] = d + data.row(nn).square().sum(); // add x^2 into distance so it is comparable across points 
+        // todo: check if adding x^2 to the pairwise_distance would be faster
+        populations[minColID] += 1; // increase population of given cluster by 1
     }
+
+    if ((populations == 0).any()){
+        // there are empty clusters
+        std::cerr << "There are some empty clusters."  << std::endl;
+        // call function here to reassign clusters?
+        std::vector<int> order(best_dists.size());
+        std::iota(order.begin(), order.end(), 0);
+        std::sort(order.begin(), order.end(), 
+                        [&](int a, int b) {return best_dists[a] > best_dists[b];});
+
+        vector<int> emptyClusters;
+        for (int k =0; k < populations.size(); ++k){
+            if (populations[k] ==0){
+                emptyClusters.push_back(k);
+            }
+        }
+        size_t e = 0; // cluster to fill
+        for (int p : order){
+            if (e == emptyClusters.size()){ // filled all the clusters
+                break;
+            }
+            if (best_dists[p] <= 0.0){
+                std::cerr<< "All remaining points fit perfectly. Could not reassign clusters. There may be empty clusters. " << std::endl;
+                break;
+            }
+            int old_k = labels(p,0);
+            if (populations[old_k] <=1){
+                continue;
+            }
+
+            // found suitable point
+            int new_k = emptyClusters[e];
+            labels(p, 0) = new_k;
+            // update populations
+            populations[old_k] = populations[old_k] - 1;
+            populations[new_k] = populations[new_k] + 1;
+            ++e;
+            // update total distance: point gets assigned to new cluster
+            // distance to centroid is 0 in that case.
+            totalDist -= dist(p, old_k);
+        }
+    }
+
     return totalDist;
 }
 
