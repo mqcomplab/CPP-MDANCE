@@ -211,9 +211,10 @@ void KmeansNANI::pairwise_distance( Mat &X, Mat &Mu, Mat &Dist ) {
     }
 }
 
+// todo: this function got fairly long, may be useful to extract the reallocation of empty clusters. 
 double KmeansNANI::assignClosest() {
     double totalDist = 0;
-    int minRowID;
+    int minColID;
 
     pairwise_distance( data, centers, dist );
 
@@ -223,10 +224,12 @@ double KmeansNANI::assignClosest() {
     Veci populations = Eigen::ArrayXi::Zero(kClusters);
 
     for (int nn=0; nn<data.rows(); nn++) {
-        totalDist += dist.row(nn).minCoeff( &minRowID );
-        labels(nn,0) = minRowID;
-        best_dists[nn] = data(nn, minRowID);
-        populations[minRowID] += 1; // increase population of given cluster by 1
+        double d = dist.row(nn).minCoeff( &minColID );
+        totalDist += d; 
+        labels(nn,0) = minColID;
+        best_dists[nn] = d + data.row(nn).square().sum(); // add x^2 into distance so it is comparable across points 
+        // todo: check if adding x^2 to the pairwise_distance would be faster
+        populations[minColID] += 1; // increase population of given cluster by 1
     }
 
     if ((populations == 0).any()){
@@ -253,8 +256,7 @@ double KmeansNANI::assignClosest() {
                 std::cerr<< "All remaining points fit perfectly. Could not reassign clusters. There may be empty clusters. " << std::endl;
                 break;
             }
-            int old_k = labels[p];
-            // I don't think this would get triggerd, since the best_distance would be 0 in this case, but better to leave it here for safety
+            int old_k = labels(p,0);
             if (populations[old_k] <=1){
                 continue;
             }
