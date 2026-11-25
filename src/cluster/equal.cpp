@@ -1,7 +1,10 @@
 #include "equal.h"
 
 #include <algorithm>
+#include <cmath>
+#include <limits>
 #include <set>
+#include <stdexcept>
 
 #include "../tools/scores.h"
 
@@ -9,11 +12,27 @@ Equal::Equal(Mat data, MD::Metric mt, double threshold, int nAtoms,
              MD::EqualSeed seedMethod, double nSeeds, bool checkSim,
              double simThreshold, bool rejectLowd, double minSamples,
              int percentage, MD::AlignMethod alignMethod)
-    : data(data), mt(mt), seedMethod(seedMethod), threshold(threshold),
+    : data(data), bufC(data.cols()), bufS(data.cols()), mt(mt), seedMethod(seedMethod), threshold(threshold),
       nAtoms(nAtoms), checkSim(checkSim), simThreshold(simThreshold),
       rejectLowd(rejectLowd), percentage(percentage), alignMethod(alignMethod)
 {
-    nTotal = (int)data.rows();
+    nTotal = (int)this->data.rows();
+    if (nTotal == 0) {
+        createLabels();
+        return;
+    }
+    if (nAtoms <= 0) {
+        throw std::invalid_argument("eQUAL: nAtoms must be positive.");
+    }
+    if (!std::isfinite(threshold) || threshold < 0) {
+        throw std::invalid_argument("eQUAL: the threshold must be a number >= 0.");
+    }
+    if (!std::isfinite(nSeeds) || !std::isfinite(minSamples)) {
+        throw std::invalid_argument("eQUAL: n_seeds and min_samples must be numbers.");
+    }
+    // (clamped before the casts: a double past INT_MAX cast to int is undefined)
+    nSeeds = std::min(std::max(nSeeds, 0.0), (double)nTotal);
+    minSamples = std::min(std::max(minSamples, 0.0), (double)nTotal + 1);
 
     // n_seeds / min_samples dual typing: value in (0,1) is a fraction of nTotal,
     // a value >= 1 is a literal count.
@@ -26,6 +45,25 @@ Equal::Equal(Mat data, MD::Metric mt, double threshold, int nAtoms,
 
     growClusters();
     createLabels();
+}
+
+// The radial comparison of two frames, extendedComparison of the two rows
+// as it computed it (their column sums, then the MSD or the index of those),
+// in two buffers made once: it allocated a 2-row matrix and two vectors for
+// every pair, the bulk of eQual's time.
+double Equal::pairDistance(Index a, Index b) {
+    const Index D = data.cols();
+    Eigen::Map<const ArrayXd> x(data.row(a).data(), D);
+    Eigen::Map<const ArrayXd> y(data.row(b).data(), D);
+    bufC = x + y;
+    if (mt == MD::Metric::MSD) {
+        bufS = x.square() + y.square();
+        return msdCondensed(bufC, bufS, 2, nAtoms);
+    }
+    MD::Threshold th(MD::ThresholdType::None, 1);
+    th.value = 0;   // 2 % 2
+    MD::Indices idx = genSimIdx(bufC, 2, th, 0);
+    return 1 - idx.getIndex(mt);
 }
 
 double Equal::intraSim(const vector<Index>& members) {
@@ -41,14 +79,11 @@ vector<Index> Equal::chooseSeeds(const ArrayXXd& work, const vector<Index>& acti
 
     // complementary similarity over the current active set; in this codebase
     // (bts.cpp) HIGHER comp_sim == more central, so the medoid is the argmax.
-    ArrayXd cs = calculateCompSim(work, nAtoms, mt);
-
-    vector<int> order(na);
-    for (int i = 0; i < na; ++i) order[i] = i;
-    std::sort(order.begin(), order.end(), [&](int a, int b) { return cs[a] > cs[b]; });
-
+    // Only the first rows of the order are used: topCompSimOrder gives them
+    // without sorting every row (the first rows a full sort gives).
     if (seedMethod == MD::EqualSeed::Medoid) {
         int take = std::min(nSeedsInt, na);
+        vector<int> order = topCompSimOrder(work, take, nAtoms, mt);
         for (int i = 0; i < take; ++i) seeds.push_back(activeVec[order[i]]);
         return seeds;
     }
@@ -59,6 +94,7 @@ vector<Index> Equal::chooseSeeds(const ArrayXXd& work, const vector<Index>& acti
     int nMax = (int)(percentage * (double)nTotal / 100.0);
     if (nMax > na) nMax = na;
     if (nMax < 1) nMax = 1;
+    vector<int> order = topCompSimOrder(work, nMax, nAtoms, mt);
 
     ArrayXXd subset(nMax, work.cols());
     vector<Index> subToActive(nMax);
@@ -85,8 +121,12 @@ void Equal::growClusters() {
     std::set<Index> active;
     for (int i = 0; i < nTotal; ++i) active.insert((Index)i);
     clusters.clear();
+    // each frame's |x|^2, for the radial step's algebra
+    ArrayXd xsq(nTotal);
+    for (int i = 0; i < nTotal; ++i) xsq[i] = data.row(i).square().sum();
 
     while ((int)active.size() > 2 && (int)active.size() > nSeedsInt) {
+        MD::progress(1.0 - (double)active.size() / nTotal, "eQUAL");
         vector<Index> activeVec(active.begin(), active.end());
 
         ArrayXXd work((Index)activeVec.size(), cols);
@@ -97,20 +137,55 @@ void Equal::growClusters() {
 
         // Propose one cluster per seed: every active point within the radial
         // threshold (extendedComparison(seed, candidate) <= threshold).
-        vector<vector<Index>> cand;
-        cand.reserve(seeds.size());
+        //
+        // With the MSD the pairs are sorted out by algebra first: the sum
+        // pairDistance computes is |x - y|^2 = |x|^2 + |y|^2 - 2 x.y, the dot
+        // products of a block of seeds with every active frame one matrix
+        // product. A pair whose value is clear of the threshold by more than
+        // the rounding error of both computations is decided so; the others
+        // (near the threshold, or not finite) are computed by pairDistance as
+        // before. The clusters are the same, in the same order.
+        vector<vector<Index>> cand(seeds.size());
         size_t maxLen = 0;
-        ArrayXXd pair(2, cols);
-        for (Index s : seeds) {
-            pair.row(0) = data.row(s);
-            vector<Index> cl;
-            for (Index c : activeVec) {
-                pair.row(1) = data.row(c);
-                double dval = extendedComparison(pair, 2, nAtoms, false, mt);
-                if (dval <= threshold) cl.push_back(c);
+        const Index na = (Index)activeVec.size();
+        if (mt == MD::Metric::MSD && na > 16) {
+            const double thr = threshold * 2.0 * nAtoms;     // pairDistance = sum / (2 nAtoms)
+            const double gam = 8.0 * (double)(cols + 16) * std::numeric_limits<double>::epsilon();
+            const double lo = thr * (1 - 8 * std::numeric_limits<double>::epsilon());
+            const double hi = thr * (1 + 8 * std::numeric_limits<double>::epsilon());
+            const Index B = 64;
+            for (size_t b0 = 0; b0 < seeds.size(); b0 += B) {
+                Index nb = (Index)std::min<size_t>(B, seeds.size() - b0);
+                ArrayXXd sb(nb, cols);
+                for (Index q = 0; q < nb; ++q) sb.row(q) = data.row(seeds[b0 + q]);
+                Eigen::MatrixXd dots = work.matrix() * sb.matrix().transpose();   // na x nb
+                for (Index q = 0; q < nb; ++q) {
+                    Index s = seeds[b0 + q];
+                    vector<Index>& cl = cand[b0 + q];
+                    for (Index r = 0; r < na; ++r) {
+                        Index c = activeVec[r];
+                        double m = xsq[s] + xsq[c];
+                        double a = m - 2 * dots(r, q);
+                        double e = gam * m;
+                        bool in;
+                        if (std::isfinite(a) && std::isfinite(e) && a + e < lo) in = true;
+                        else if (std::isfinite(a) && std::isfinite(e) && a - e > hi) in = false;
+                        else in = pairDistance(s, c) <= threshold;
+                        if (in) cl.push_back(c);
+                    }
+                    if (cl.size() > maxLen) maxLen = cl.size();
+                }
             }
-            if (cl.size() > maxLen) maxLen = cl.size();
-            cand.push_back(std::move(cl));
+        } else {
+            for (size_t q = 0; q < seeds.size(); ++q) {
+                Index s = seeds[q];
+                vector<Index>& cl = cand[q];
+                for (Index c : activeVec) {
+                    double dval = pairDistance(s, c);
+                    if (dval <= threshold) cl.push_back(c);
+                }
+                if (cl.size() > maxLen) maxLen = cl.size();
+            }
         }
         if (maxLen == 0) break;
 

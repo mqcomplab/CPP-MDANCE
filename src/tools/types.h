@@ -11,6 +11,8 @@
 
 #include <Eigen/Dense>
 
+#include "control.h"
+
 using Eigen::ArrayXXd, Eigen::ArrayXd, Eigen::ArrayXi, Eigen::VectorXi, Eigen::Index, std::vector, std::pair, std::set, std::map, std::string;
 
 typedef ArrayXXd Mat;

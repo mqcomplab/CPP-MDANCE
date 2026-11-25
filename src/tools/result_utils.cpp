@@ -84,14 +84,25 @@ std::vector<int> labelsFromHelmClusters(const std::vector<HCTree>& finalClusters
     return labels;
 }
 
+// The frames of each cluster 0..nClusters-1, in frame order, in one pass
+// (each cluster's scan of every label made this O(k N)). Labels outside
+// 0..nClusters-1 are no cluster's, as before.
+static std::vector<std::vector<int>> membersOf(const std::vector<int>& labels, int nClusters) {
+    std::vector<std::vector<int>> members(nClusters > 0 ? nClusters : 0);
+    for (size_t i = 0; i < labels.size(); ++i) {
+        int l = labels[i];
+        if (l >= 0 && l < nClusters) members[l].push_back((int)i);
+    }
+    return members;
+}
+
 std::vector<int> computeRepresentatives(const ArrayXXd& data, const std::vector<int>& labels,
                                          int nClusters, int nAtoms, MD::Metric mt) {
     std::vector<int> reps;
+    std::vector<std::vector<int>> members = membersOf(labels, nClusters);
     for (int c = 0; c < nClusters; ++c) {
-        std::vector<int> memberIndices;
-        for (size_t i = 0; i < labels.size(); ++i) {
-            if (labels[i] == c) memberIndices.push_back(i);
-        }
+        MD::checkCancel();
+        const std::vector<int>& memberIndices = members[c];
         if (memberIndices.empty()) {
             reps.push_back(-1);
             continue;
@@ -117,11 +128,9 @@ std::vector<int> computeClusterSizes(const std::vector<int>& labels, int nCluste
 std::vector<double> computeClusterMSD(const ArrayXXd& data, const std::vector<int>& labels,
                                        int nClusters, int nAtoms) {
     std::vector<double> msds;
+    std::vector<std::vector<int>> all = membersOf(labels, nClusters);
     for (int c = 0; c < nClusters; ++c) {
-        std::vector<int> members;
-        for (size_t i = 0; i < labels.size(); ++i) {
-            if (labels[i] == c) members.push_back(i);
-        }
+        const std::vector<int>& members = all[c];
         if (members.size() < 2) {
             msds.push_back(0.0);
             continue;

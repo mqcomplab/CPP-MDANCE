@@ -1,5 +1,8 @@
 #include "bts.h"
 
+#include <cmath>
+#include <functional>
+
 
 /* O(N) Mean square deviation(MSD) calculation for n-ary objects.
  *  
@@ -45,12 +48,11 @@ double msdCondensed(const ArrayXd& cSum, const ArrayXd& sqSum, Index N, int nAto
     if (nAtoms <= 0) {
         throw std::invalid_argument("nAtoms must be positive and non-zero.");
     }
-    if (N > 46340){
-        return (double)2.0 * (sqSum * N - cSum.square()).sum() / ((double)N * N * nAtoms);
-    }
-    else{
-        return (double)2.0 * (sqSum * N - cSum.square()).sum() / (N * N * nAtoms);
-    }
+    // The denominator is formed in double: N * N * nAtoms in int overflowed
+    // well below N = 46340 once nAtoms > 1 (10 000 frames of 22 atoms), and
+    // gave a negative or garbage MSD. Where the int product did not overflow
+    // it was exact, and so is the double one: the values are unchanged.
+    return (double)2.0 * (sqSum * N - cSum.square()).sum() / ((double)N * (double)N * (double)nAtoms);
 }
 
 /* O(N) Extended comparison function for n-ary objects.
@@ -74,6 +76,13 @@ double msdCondensed(const ArrayXd& cSum, const ArrayXd& sqSum, Index N, int nAto
  * Reference: https://github.com/mqcomplab/MDANCE/blob/main/src/mdance/tools/bts.py#L96
 */
 double extendedComparison(const ArrayXXd& data, Index N, int nAtoms, bool isCondensed, MD::Metric mt, MD::Threshold cThreshold, int wPower) {
+    // N = 0 (the default) means the rows of the data. The similarity indices
+    // were computed with N = 0 objects then (-inf for RR on any data); only
+    // the MSD, which counts the rows itself, was right.
+    if (!isCondensed && N <= 0)
+        N = data.rows();
+    if (isCondensed && N <= 0)
+        throw std::invalid_argument("extendedComparison: condensed data needs the number of objects N.");
     // Handle default initialization of MD::Threshold
     if (cThreshold.type == MD::ThresholdType::None)
         cThreshold.value = N % 2;
@@ -115,27 +124,126 @@ double extendedComparison(const ArrayXXd& data, Index N, int nAtoms, bool isCond
 */
 ArrayXd calculateCompSim(const ArrayXXd& data, int nAtoms, MD::Metric mt) {
     Index N = data.rows();
+    if (N == 0) {
+        return ArrayXd();
+    }
+    if (nAtoms <= 0) {
+        throw std::invalid_argument("nAtoms must be positive and non-zero.");
+    }
 
-    ArrayXXd sqData = data.square();
     ArrayXd cSum = data.colwise().sum();
-    ArrayXd sqSum = sqData.colwise().sum();
+    ArrayXd sqSum = data.square().colwise().sum();
 
     ArrayXd compSims(N);
 
     if (mt == MD::Metric::MSD){
-        ArrayXXd compC = ((-data).rowwise()+cSum.transpose()) / (N-1);
-        ArrayXXd compSq = ((-sqData).rowwise()+sqSum.transpose()) / (N-1);
-        compSims = (2 * (compSq - compC.square())/ nAtoms).rowwise().sum();
+        // Each row's value is summed over the columns in order, one column
+        // of the data at a time (contiguous), into one accumulator per row:
+        // no temporary the size of the data (the expression this replaces
+        // made three: 2 GB for 100 000 frames of 300 atoms), and a row's
+        // value does not depend on where the row is (Eigen's row-wise sum
+        // grouped rows into packets and summed the last rows otherwise).
+        // compSimMSDRow computes one row's value the same way.
+        compSims.setZero();
+        const double n1 = (double)(N-1);
+        for (Index j = 0; j < data.cols(); ++j) {
+            const double* col = data.col(j).data();
+            const double cj = cSum[j], sj = sqSum[j];
+            for (Index i = 0; i < N; ++i) {
+                const double x = col[i];
+                const double cc = (cj - x) / n1;
+                const double sq = (sj - x * x) / n1;
+                compSims[i] += 2 * (sq - cc * cc) / nAtoms;
+            }
+        }
     } else {
-        for (int i=0; i<N; ++i){
-            ArrayXXd compData (2,data.cols());
-            compData.row(0) = cSum.transpose() - data.row(i);
-            compData.row(1) = sqSum - sqData.row(i);
-            compSims[i] = extendedComparison(compData, N-1, nAtoms, true, mt);
+        // (one buffer for every row, not two rows allocated per row)
+        ArrayXd comp(data.cols());
+        for (Index i=0; i<N; ++i){
+            comp = cSum - data.row(i).transpose();
+            MD::Threshold th(MD::ThresholdType::None, 1);
+            th.value = (N-1) % 2;
+            MD::Indices idx = genSimIdx(comp, N-1, th, 0);
+            compSims[i] = 1 - idx.getIndex(mt);
         }
     }
 
    return compSims;
+}
+
+// One row's MSD complementary similarity, as calculateCompSim sums it.
+double compSimMSDRow(const ArrayXXd& data, Index i, const ArrayXd& cSum, const ArrayXd& sqSum, int nAtoms) {
+    const double n1 = (double)(data.rows() - 1);
+    double acc = 0;
+    for (Index j = 0; j < data.cols(); ++j) {
+        const double x = data(i, j);
+        const double cc = (cSum[j] - x) / n1;
+        const double sq = (sqSum[j] - x * x) / n1;
+        acc += 2 * (sq - cc * cc) / nAtoms;
+    }
+    return acc;
+}
+
+/* The first m rows in decreasing order of complementary similarity: what
+ * sorting every row by it (std::sort, cs[a] > cs[b]) puts first.
+ *
+ * With the MSD, each row's value is written by algebra first,
+ * (2/nAtoms) [(SQ - |x|^2)/n - (|c|^2 - 2 c.x + |x|^2)/n^2], n = N - 1, one
+ * matrix-vector product for every row, and bounded with its rounding error
+ * and calculateCompSim's. Only the rows whose bound reaches the m-th best
+ * are computed exactly. Where their exact values leave no tie in the first
+ * m + 1, the order is the one the sort gives; else (and for the other
+ * metrics) every row is computed and sorted, as before.
+ */
+vector<int> topCompSimOrder(const ArrayXXd& data, int m, int nAtoms, MD::Metric mt) {
+    const Index N = data.rows();
+    if (m > N) m = (int)N;
+    if (m <= 0) return vector<int>();
+    auto full = [&]() {
+        ArrayXd cs = calculateCompSim(data, nAtoms, mt);
+        vector<int> order(N);
+        for (Index i = 0; i < N; ++i) order[i] = (int)i;
+        std::sort(order.begin(), order.end(), [&](int a, int b) { return cs[a] > cs[b]; });
+        order.resize(m);
+        return order;
+    };
+    if (mt != MD::Metric::MSD || N < 64 || (Index)m * 4 > N || nAtoms <= 0) {
+        return full();
+    }
+    ArrayXd cSum = data.colwise().sum();
+    ArrayXd sqSum = data.square().colwise().sum();
+    const double n1 = (double)(N - 1);
+    const double SQ = sqSum.sum();
+    const double cc = cSum.square().sum();
+    ArrayXd xsq = data.square().rowwise().sum();
+    ArrayXd cx = (data.matrix() * cSum.matrix()).array();
+    const double gam = 8.0 * (double)(data.cols() + 16) * std::numeric_limits<double>::epsilon();
+    const double k = 2.0 / nAtoms;
+    ArrayXd approx(N), err(N);
+    for (Index i = 0; i < N; ++i) {
+        approx[i] = k * ((SQ - xsq[i]) / n1 - (cc - 2 * cx[i] + xsq[i]) / (n1 * n1));
+        err[i] = gam * k * ((SQ + xsq[i]) / n1 + (cc + 2 * std::sqrt(cc * xsq[i]) + xsq[i]) / (n1 * n1));
+        if (!std::isfinite(approx[i]) || !std::isfinite(err[i])) return full();
+    }
+    // the m-th largest lower bound
+    vector<double> lower(N);
+    for (Index i = 0; i < N; ++i) lower[i] = approx[i] - err[i];
+    std::nth_element(lower.begin(), lower.begin() + (m - 1), lower.end(), std::greater<double>());
+    const double L = lower[m - 1];
+    vector<pair<double, int>> near;
+    for (Index i = 0; i < N; ++i) {
+        if (approx[i] + err[i] >= L) near.emplace_back(compSimMSDRow(data, i, cSum, sqSum, nAtoms), (int)i);
+    }
+    std::sort(near.begin(), near.end(), [](const pair<double, int>& x, const pair<double, int>& y) {
+        return x.first > y.first;
+    });
+    // no tie among the first m, nor between the m-th and the next
+    for (int q = 0; q < m && q + 1 < (int)near.size(); ++q) {
+        if (!(near[q].first > near[q + 1].first)) return full();
+    }
+    vector<int> order(m);
+    for (int q = 0; q < m; ++q) order[q] = near[q].second;
+    return order;
 }
 
 /* O(N) medoid calculation for n-ary objects.
@@ -155,6 +263,9 @@ Index calculateMedoid(const ArrayXXd& data, int nAtoms, MD::Metric mt) {
     return calculateMedoid(compSims);
 }
 Index calculateMedoid(const ArrayXd& data) {
+    if (data.size() == 0) {
+        throw std::invalid_argument("medoid of an empty set of frames.");
+    }
     Index maxIdx;
     data.maxCoeff(&maxIdx);
     return maxIdx;
@@ -177,6 +288,9 @@ Index calculateOutlier(const ArrayXXd& data, int nAtoms, MD::Metric mt) {
     return calculateOutlier(compSims);
 }
 Index calculateOutlier(const ArrayXd& data) {
+    if (data.size() == 0) {
+        throw std::invalid_argument("outlier of an empty set of frames.");
+    }
     Index minIdx;
     data.minCoeff(&minIdx);
     return minIdx;
@@ -289,19 +403,29 @@ ArrayXXd trimOutliers(const ArrayXXd& data, float nTrimmed, int nAtoms, bool isM
  * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L376
 */
 vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metric mt, int nAtoms, bool isCompSim, MD::StartSeed start){
+    if (data.rows() == 0) {
+        return vector<Index>();
+    }
+    if (percentage < 0) {
+        throw std::invalid_argument("diversity selection: the percentage must not be negative.");
+    }
     if (isCompSim) {
         vector<Index> seed;
         switch(start) {
             case MD::StartSeed::Medoid: seed.push_back(calculateMedoid(data, nAtoms, mt)); break;
             case MD::StartSeed::Outlier: seed.push_back(calculateOutlier(data, nAtoms, mt)); break;
-            case MD::StartSeed::Random: seed.emplace_back(rand() % data.rows()); break;
+            case MD::StartSeed::Random: seed.emplace_back(rand() % data.rows()); break;  // (not reachable from the C API: rand() is global)
         }
         return diversitySelection(data, percentage, mt, nAtoms, seed);
     }
     Index N = data.rows();
-    int nMax = N * percentage / 100;
-    if (nMax > N) {
+    long long nMaxL = (long long)N * percentage / 100;
+    if (nMaxL > N) {
         throw std::runtime_error("Percentage is too high for the given matrix size");
+    }
+    int nMax = (int)nMaxL;
+    if (nMax == 0) {
+        return vector<Index>();
     }
     vector<Index> indices (nMax);
     if (nMax == 1)
@@ -327,36 +451,104 @@ vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metri
 
 }
 vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metric mt, int nAtoms, vector<Index>& indices){
+    Index nTotalI = data.rows();
+    if (nTotalI == 0) {
+        return indices;
+    }
+    for (Index i : indices) {
+        if (i < 0 || i >= nTotalI) {
+            throw std::out_of_range("diversity selection: seed index out of range.");
+        }
+    }
     ArrayXXd selection = data(indices, Eigen::all);
-    ArrayXXd selected (mt == MD::Metric::MSD ? 2 : 1, data.row(0).cols());
+    ArrayXXd selected (mt == MD::Metric::MSD ? 2 : 1, data.cols());
     selected.row(0) = selection.colwise().sum();
     if (mt == MD::Metric::MSD) {
         selected.row(1) = selection.square().colwise().sum();
     }
-    
-    int nTotal = data.rows();
-    int nMax = nTotal * percentage / 100;
 
-    set<Index> selectFromN;
-    set<Index> selectedSet;
-    for (size_t i=0; i<indices.size(); ++i) {
-        selectedSet.insert(indices[i]);
-    }
+    int nTotal = (int)nTotalI;
+    // (in 64 bits: 100 000 frames times a percentage overflowed an int)
+    int nMax = (int)std::min<long long>((long long)nTotal * percentage / 100, nTotal);
+
+    // The candidates, in increasing order (the set this replaces iterated
+    // them so, and the first of equal values wins).
+    vector<char> taken(nTotal, 0);
+    for (Index i : indices) taken[i] = 1;
+    vector<Index> selectFrom;
+    selectFrom.reserve(nTotal);
     for (int i=0; i<nTotal; ++i) {
-        if (selectedSet.find(i) == selectedSet.end()){
-            selectFromN.insert(i);
-        }
+        if (!taken[i]) selectFrom.push_back(i);
     }
+
+    // Each candidate's row is read at every step: a row of the column-major
+    // data is strided by nTotal doubles, a cache miss per value. One
+    // row-major copy, made once.
+    using RowMat = Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+    RowMat rows = data;
+    DiversityScratch scratch(data.cols());
+
+    // With the MSD, each step is narrowed first: every candidate's MSD with
+    // the selection is written by algebra, n S + n |x|^2 - |c|^2 - 2 c.x -
+    // |x|^2 (S the selection's sum of squares, c its column sums), one
+    // matrix-vector product for all of them, and bounded with its rounding
+    // error and the exact sum's. Only the candidates whose bound reaches the
+    // best one's are then computed exactly, as getNewIndexN always did, in
+    // the same order: the frame chosen is the same, the work a fraction.
+    const bool narrow = (mt == MD::Metric::MSD);
+    ArrayXd xsq, approx, cx;
+    vector<Index> near;
+    if (narrow) {
+        xsq.resize(nTotal);
+        for (int i = 0; i < nTotal; ++i) xsq[i] = rows.row(i).square().sum();
+        near.reserve(nTotal);
+    }
+    const double gam = 4.0 * (double)(data.cols() + 16) * std::numeric_limits<double>::epsilon();
 
     indices.reserve(nMax);
-    while ((int)indices.size() < nMax && !selectFromN.empty()) {
-        Index newIndexN = getNewIndexN(data, mt, selected, indices.size(), selectFromN, nAtoms);
+    while ((int)indices.size() < nMax && !selectFrom.empty()) {
+        MD::checkCancel();
+        const vector<Index>* cands = &selectFrom;
+        if (narrow && selectFrom.size() > 8) {
+            const double n = (double)indices.size() + 1;
+            ArrayXd c = selected.row(0).transpose();
+            const double S = selected.row(1).sum();
+            const double cc = c.square().sum();
+            cx = (rows.matrix() * c.matrix()).array();
+            double lo = -std::numeric_limits<double>::infinity();
+            bool finite = std::isfinite(S) && std::isfinite(cc);
+            approx.resize(selectFrom.size());
+            ArrayXd err(selectFrom.size());
+            for (size_t q = 0; q < selectFrom.size() && finite; ++q) {
+                Index i = selectFrom[q];
+                double a = n * S + n * xsq[i] - cc - 2 * cx[i] - xsq[i];
+                double t = n * S + n * xsq[i] + cc + 2 * std::sqrt(cc * xsq[i]) + xsq[i];
+                double e = gam * t;
+                if (!std::isfinite(a) || !std::isfinite(e)) { finite = false; break; }
+                approx[q] = a;
+                err[q] = e;
+                lo = std::max(lo, a - e);
+            }
+            if (finite) {
+                near.clear();
+                for (size_t q = 0; q < selectFrom.size(); ++q) {
+                    if (approx[q] + err[q] >= lo) near.push_back(selectFrom[q]);
+                }
+                cands = &near;
+            }
+        }
+        Index newIndexN = getNewIndexN(rows, mt, selected, (int)indices.size(), *cands, nAtoms, scratch);
+        if (newIndexN < 0) {
+            // every candidate scored NaN: the coordinates are not finite.
+            // (This used to pick "frame" ncols, past the end of the data.)
+            throw std::runtime_error("diversity selection: the similarity of every candidate is not a number (coordinates that are not finite?).");
+        }
 
         selected.row(0) += data.row(newIndexN);
         if (mt == MD::Metric::MSD)
             selected.row(1) = selected.row(1) + data.row(newIndexN).square();
 
-        selectFromN.erase(newIndexN);
+        selectFrom.erase(std::lower_bound(selectFrom.begin(), selectFrom.end(), newIndexN));
         indices.push_back(newIndexN);
     }
 
@@ -366,41 +558,55 @@ vector<Index> diversitySelection(const ArrayXXd& data, int percentage, MD::Metri
 /* Extract the new index to add to the list of selected indices.
  *
  * Parameters:
- *  - data: A feature array of shape (nSamples, nFeatures).
+ *  - rows: the feature array (nSamples, nFeatures), row-major.
  *  - mt: The metric to use when calculating distance between n objects in an array
  *  - selectedCondensed: A fingerprint feature array that can take on multiple shapes:
  *     --> if (mt == MSD): a ArrayXXd with 2 rows (cSum, sqSum)
  *     --> else: a ArrayXXd with 1 row (cSum)
  *  - N: number of selected objects
- *  - selectFromN: Array of indices to select from
+ *  - selectFrom: indices to select from, in increasing order
  *  - nAtoms: Number of atoms in the Molecular Dynamics (MD) system. nAtoms=1 for non-MD systems.
- * 
- * Returns: index of the new fingerprint to add to the selected indices.
- * 
+ *
+ * Returns: index of the new fingerprint to add to the selected indices, or
+ * -1 when no candidate's value is a number.
+ *
+ * The value of each candidate is computed as extendedComparison computed it
+ * (the same sums, in the same buffers' order), without allocating: a 2-row
+ * matrix and two vectors per candidate made this the slowest step of k-means
+ * seeding, eQual and the diversity pick.
+ *
  * Reference: https://github.com/mqcomplab/MDANCE/blob/016bd9aff30d1c2add26b36bfcf64aa665a34a1d/src/mdance/tools/bts.py#L489
 */
-Index getNewIndexN(const ArrayXXd& data, MD::Metric mt, ArrayXXd& selectedCondensed, int N, set<Index>& selectFromN, int nAtoms) {
+Index getNewIndexN(const Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>& rows,
+                   MD::Metric mt, const ArrayXXd& selectedCondensed, int N,
+                   const vector<Index>& selectFrom, int nAtoms, DiversityScratch& sc) {
     // Number of fingerprints already selected and the new one to add
     int nTotal = N + 1;
 
-    double maxVal = -1;
-    Index idx = data.row(0).size();
+    double maxVal = -std::numeric_limits<double>::infinity();
+    Index idx = -1;
 
-    ArrayXXd temp = selectedCondensed;
+    const Index D = rows.cols();
+    sc.c = selectedCondensed.row(0).transpose();
+    if (mt == MD::Metric::MSD) sc.s = selectedCondensed.row(1).transpose();
+    MD::Threshold th(MD::ThresholdType::None, 1);
+    th.value = nTotal % 2;
 
-    for (auto i=selectFromN.begin(); i!=selectFromN.end(); ++i){
-        temp.row(0) = selectedCondensed.row(0) + data.row(*i);
+    for (Index i : selectFrom){
+        Eigen::Map<const ArrayXd> x(rows.row(i).data(), D);
         double simIdx;
+        sc.tc = sc.c + x;
         if (mt == MD::Metric::MSD) {
-            temp.row(1) = selectedCondensed.row(1) + data.row(*i).square();
-            simIdx = extendedComparison(temp, nTotal, nAtoms, true, mt);
+            sc.ts = sc.s + x.square();
+            simIdx = msdCondensed(sc.tc, sc.ts, nTotal, nAtoms);
         } else {
-            simIdx = extendedComparison(temp, nTotal, nAtoms, true, mt);
+            MD::Indices ix = genSimIdx(sc.tc, nTotal, th, 0);
+            simIdx = 1 - ix.getIndex(mt);
         }
 
         if (simIdx > maxVal){
             maxVal = simIdx;
-            idx = *i;
+            idx = i;
         }
     }
     return idx;

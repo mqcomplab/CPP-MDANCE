@@ -28,6 +28,8 @@ TEST(Scores, FiniteForASingleCluster) {
     double db = daviesBouldinScore(data, labels);
     EXPECT_TRUE(std::isfinite(ch)) << "calinskiHarabasz = " << ch;
     EXPECT_TRUE(std::isfinite(db)) << "daviesBouldin = " << db;
+    EXPECT_EQ(ch, 0.0);
+    EXPECT_EQ(db, 0.0);
 }
 
 TEST(Scores, StillDiscriminatesBetweenPartitions) {
@@ -38,6 +40,22 @@ TEST(Scores, StillDiscriminatesBetweenPartitions) {
 
     EXPECT_GT(calinskiHarabaszScore(data, tight),
               calinskiHarabaszScore(data, scattered));
+}
+
+// The values, by hand (scikit-learn gives the same): the rows lie on a line,
+// 6 apart. Tight: centroids 18 apart, within-cluster sum 216, between 1944:
+// CH = (1944/2)/(216/6) = 27; mean distance to the centroid 4: DB = 8/18.
+// Interleaved: centroids 6 apart, within 1944, between 216: CH = 1/3;
+// mean distance 12: DB = 24/6 = 4.
+TEST(Scores, MatchHandComputedValues) {
+    ArrayXXd data = spreadOutPoints();
+    VectorXi tight(9), scattered(9);
+    tight    << 0, 0, 0, 1, 1, 1, 2, 2, 2;
+    scattered << 0, 1, 2, 0, 1, 2, 0, 1, 2;
+    EXPECT_NEAR(calinskiHarabaszScore(data, tight), 27.0, 1e-9);
+    EXPECT_NEAR(calinskiHarabaszScore(data, scattered), 1.0 / 3.0, 1e-12);
+    EXPECT_NEAR(daviesBouldinScore(data, tight), 4.0 / 9.0, 1e-12);
+    EXPECT_NEAR(daviesBouldinScore(data, scattered), 4.0, 1e-9);
 }
 
 // The default constructor's body used to be statements with no effect, leaving

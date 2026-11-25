@@ -22,6 +22,7 @@ class Divine{
     int percentage;
 
     vector<vector<Index>> clusters;
+    vector<double> scoreCache;      // each cluster's split score, -2 when not computed
     vector<pair<double, double>> scores;
     vector<int> clusterSizes;
 

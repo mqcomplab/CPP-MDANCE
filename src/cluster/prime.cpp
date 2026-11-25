@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <stdexcept>
 #include <numeric>
 #include <limits>
 
@@ -9,6 +10,20 @@ Prime::Prime(Mat data, std::vector<int> labels, MD::Metric mt,
              double trimFrac, bool weighted)
     : labels(std::move(labels)), mt(mt), trimFrac(trimFrac), weighted(weighted)
 {
+    if (data.rows() == 0 || data.cols() == 0) {
+        throw std::invalid_argument("PRIME: no frames.");
+    }
+    if (!std::isfinite(trimFrac) || trimFrac < 0 || trimFrac >= 1) {
+        throw std::invalid_argument("PRIME: trim_frac must be in [0, 1).");
+    }
+    // A label is a cluster number, -1 for none: one past the frames cannot
+    // be (it sized a vector of clusters by the largest label: 12 GB for a
+    // label of 5e8, and INT_MAX overflowed l + 1 into a write out of bounds).
+    for (int l : this->labels) {
+        if (l < -1 || l >= (int)data.rows()) {
+            throw std::invalid_argument("PRIME: a label is outside -1 .. nframes-1.");
+        }
+    }
     // v3 normalization: single scalar min/max over the WHOLE matrix.
     double mn = data.minCoeff();
     double mx = data.maxCoeff();
@@ -38,8 +53,9 @@ ArrayXd Prime::compSim(const ArrayXXd& M) const {
     ArrayXd out(N);
     if (N <= 1) { out.setZero(); return out; }
     ArrayXd cTotal = M.colwise().sum();
+    ArrayXd comp(M.cols());
     for (int i = 0; i < N; ++i) {
-        ArrayXd comp = cTotal - M.row(i).transpose();
+        comp = cTotal - M.row(i).transpose();
         out(i) = simIndex(comp, N - 1);
     }
     return out;
@@ -150,31 +166,48 @@ void Prime::run() {
     double bestPair = NEG_INF, bestUni = NEG_INF, bestMed = NEG_INF, bestOut = NEG_INF;
     int idxPair = -1, idxUni = -1, idxMed = -1, idxOut = -1;
 
+    // The pairwise scorer compares every frame of c0 with every frame of
+    // every other cluster: rows, read row-major (a row of the column-major
+    // matrices is strided), summed into one buffer. The values are the same.
+    using RowMat = Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>;
+    std::vector<RowMat> ckRows;
+    ckRows.reserve(cks.size());
+    for (const CK& ck : cks) ckRows.emplace_back(ck.mat);
+    const Index D = X.cols();
+    ArrayXd x(D), s(D);
+
     for (int fi = 0; fi < (int)c0t.size(); ++fi) {
-        ArrayXd x = c0tmat.row(fi).transpose();
+        MD::progress((double)fi / c0t.size(), "PRIME");
+        x = c0tmat.row(fi).transpose();
         int frame = c0t[fi];
-        for (const CK& ck : cks) {
+        for (size_t ci = 0; ci < cks.size(); ++ci) {
+            const CK& ck = cks[ci];
+            const RowMat& rows = ckRows[ci];
             double w = weighted ? ck.pop : 1.0;
 
             // pairwise: avg over y in ck of sim(x + y, 2)
             double tot = 0.0;
-            int m = (int)ck.mat.rows();
+            int m = (int)rows.rows();
             for (int y = 0; y < m; ++y) {
-                tot += simIndex(x + ck.mat.row(y).transpose(), 2);
+                s = x + Eigen::Map<const ArrayXd>(rows.row(y).data(), D);
+                tot += simIndex(s, 2);
             }
             double sp = (m > 0 ? tot / m : 0.0) * w;
             if (sp > bestPair) { bestPair = sp; idxPair = frame; }
 
             // union: sim(sum(ck) + x, len(ck)+1)
-            double su = simIndex(ck.colsum + x, (int)ck.pop + 1) * w;
+            s = ck.colsum + x;
+            double su = simIndex(s, (int)ck.pop + 1) * w;
             if (su > bestUni) { bestUni = su; idxUni = frame; }
 
             // medoid: sim(ck_medoid + x, 2)
-            double sm = simIndex(ck.medoidRow + x, 2) * w;
+            s = ck.medoidRow + x;
+            double sm = simIndex(s, 2) * w;
             if (sm > bestMed) { bestMed = sm; idxMed = frame; }
 
             // outlier: sim(ck_outlier + x, 2)
-            double so = simIndex(ck.outlierRow + x, 2) * w;
+            s = ck.outlierRow + x;
+            double so = simIndex(s, 2) * w;
             if (so > bestOut) { bestOut = so; idxOut = frame; }
         }
     }

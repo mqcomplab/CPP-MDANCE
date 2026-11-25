@@ -40,6 +40,7 @@ struct PrimeResult {
 
 class Prime {
     Mat X;                 // globally min-max normalized coordinates
+    mutable ArrayXd buf;   // simIndex's argument, made once (it was a new vector per call)
     std::vector<int> labels;
     MD::Metric mt;         // RR or SM only
     double trimFrac;

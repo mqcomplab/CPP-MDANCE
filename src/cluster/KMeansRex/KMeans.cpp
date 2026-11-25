@@ -30,7 +30,6 @@ Date:   2 April 2013
 
 
 #include "KMeans.h"
-#include "mersenneTwister2002.h"
 #include <chrono>
 #include <cstdint>
 
@@ -42,10 +41,16 @@ void KmeansNANI::set_seed() {
         // generate random seed
         uint64_t t = static_cast<uint64_t>(
             std::chrono::high_resolution_clock::now().time_since_epoch().count());
-        seed = t^(t >> 32);
+        seed = (int)((t ^ (t >> 32)) & 0x7fffffff);   // (not negative: a seed a caller can pass back)
     }
-    std::cout << "Initializing random number generator with: " << seed << std::endl;
-    init_genrand( seed );
+    // (one generator per instance: the global one of mersenneTwister2002.c
+    // made concurrent calls race. std::mt19937 is the same MT19937, seeded
+    // the same way as init_genrand, so a seed gives the numbers it gave.)
+    rng.seed(static_cast<uint32_t>(seed));
+}
+
+double KmeansNANI::genrand_double() {
+    return rng() * (1.0/4294967295.0);
 }
 
 void KmeansNANI::set_vectorization_threshold(int threshold){
@@ -141,7 +146,15 @@ void KmeansNANI::sampleRowsPlusPlus() {
 
 void KmeansNANI::reduced_init_Mu(bool isComp) {
     int nTotal = data.rows();
-    int nMax = nTotal * percentage / 100;
+    int nMax = (int)((long long)nTotal * percentage / 100);
+    // The seeds are drawn from the nMax frames of highest complementary
+    // similarity: with fewer than k of them the diversity selection ran on
+    // an empty matrix (a crash at 5 frames and 10%).
+    if (nMax < kClusters) {
+        throw std::runtime_error("Initialization would draw " + std::to_string(kClusters) +
+            " centers from " + std::to_string(nMax) + " frames (" + std::to_string(percentage) +
+            "% of " + std::to_string(nTotal) + "); increase percentage or reduce kClusters.");
+    }
     Vec compSims = calculateCompSim(data, nAtoms, mt);
     vector<pair<double,int>> compSimArray;
     compSimArray.reserve(compSims.size());
@@ -160,6 +173,10 @@ void KmeansNANI::reduced_init_Mu(bool isComp) {
 }
 
 void KmeansNANI::init_Mu() {
+    // (over 100, the reduced seedings started their loop at a negative index)
+    if (percentage < 0 || percentage > 100) {
+        throw std::invalid_argument("percentage must be between 0 and 100.");
+    }
     vector<Index> idx;
     switch (kinit)
     {
@@ -238,14 +255,13 @@ double KmeansNANI::assignClosest() {
         double d = dist.row(nn).minCoeff( &minColID );
         totalDist += d; 
         labels(nn,0) = minColID;
-        best_dists[nn] = d + data.row(nn).square().sum(); // add x^2 into distance so it is comparable across points 
+        best_dists[nn] = d + rowSq[nn]; // add x^2 into distance so it is comparable across points (computed once: rowSqNorms)
         // todo: check if adding x^2 to the pairwise_distance would be faster
         populations[minColID] += 1; // increase population of given cluster by 1
     }
 
     if ((populations == 0).any()){
         // there are empty clusters
-        std::cerr << "There are some empty clusters."  << std::endl;
         // call function here to reassign clusters?
         std::vector<int> order(best_dists.size());
         std::iota(order.begin(), order.end(), 0);
@@ -264,7 +280,7 @@ double KmeansNANI::assignClosest() {
                 break;
             }
             if (best_dists[p] <= 0.0){
-                std::cerr<< "All remaining points fit perfectly. Could not reassign clusters. There may be empty clusters. " << std::endl;
+                // all remaining points fit perfectly: some clusters stay empty
                 break;
             }
             int old_k = labels(p,0);
@@ -293,10 +309,19 @@ void KmeansNANI::calcMu() {
     //Mu = Mat::Zero(Mu.rows(), Mu.cols());
     centers.fill(0);
     Vec NperCluster = Vec::Zero(centers.rows());
-    for (int nn=0; nn<data.rows(); nn++) {
-        centers.row((int) labels(nn,0)) += data.row(nn);
+    // Column by column: data.row(nn) is strided by the number of frames, a
+    // cache miss per value at every iteration. Each center's value is still
+    // the sum of its frames' values in frame order: the same numbers.
+    const Index N = data.rows();
+    for (Index j=0; j<data.cols(); j++) {
+        const double* col = data.col(j).data();
+        for (Index nn=0; nn<N; nn++) {
+            centers((int) labels(nn,0), j) += col[nn];
+        }
+    }
+    for (Index nn=0; nn<N; nn++) {
         NperCluster[(int) labels(nn,0)] += 1;
-    }  
+    }
     NperCluster += MD::EPSILON_DIV; // avoid division-by-zero
     for (int k=0; k < centers.rows(); k++) {
     centers.row(k) /= NperCluster(k);
@@ -312,6 +337,7 @@ void KmeansNANI::run_lloyd(int Niter )  {
 
     // TODO: store the labels at each frame
     for (int iter=0; iter<Niter; iter++) {
+        MD::checkCancel();
         totalDist = assignClosest();
         calcMu();
         if (prevDist == totalDist) {
@@ -325,15 +351,31 @@ void KmeansNANI::run_lloyd(int Niter )  {
 // This is in line with scikit-learns random_state=None, which we use in the python version 
 // set seed to any other number if we need deterministic random numbers for debugging purposes. 
 
-KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold) : data(data), kinit(kinit), seed(-1), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
+void KmeansNANI::rowSqNorms() {
+    // Each row's sum of squares, in the order Eigen sums a row of a
+    // column-major array (one after the other), so best_dists is unchanged.
+    const Index N = data.rows();
+    rowSq.resize(N);
+    for (Index nn=0; nn<N; nn++) {
+        double r = data(nn, 0) * data(nn, 0);
+        for (Index j=1; j<data.cols(); j++) r += data(nn, j) * data(nn, j);
+        rowSq[nn] = r;
+    }
+}
+
+KmeansNANI::KmeansNANI(ArrayXXd data_, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold, int seed_) : data(std::move(data_)), kinit(kinit), seed(seed_), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
     if (kClusters < 1 || kClusters > this->data.rows()) {
         throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
     }
+    if (this->data.cols() == 0) {
+        throw std::invalid_argument("the data has no columns.");
+    }
     centers = Mat::Zero(kClusters, data.cols());
-    dist = Mat::Zero(data.rows(), kClusters);
-    labels = Veci::Zero(data.rows());
+    dist = Mat::Zero(this->data.rows(), kClusters);
+    labels = Veci::Zero(this->data.rows());
     set_vectorization_threshold(vectThreshold);
     set_seed();
+    rowSqNorms();
     init_Mu();
     run_lloyd(300);
 }
@@ -342,17 +384,18 @@ KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitTyp
 // This is in line with scikit-learns random_state=None, which we use in the python version 
 // set seed to any other number if we need deterministic random numbers for debugging purposes. 
 
-KmeansNANI::KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, Mat centers, int nAtoms, int percentage, int vectThreshold) : data(data), centers(centers), kinit(MD::KinitType::StratAll), seed(-1), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
+KmeansNANI::KmeansNANI(ArrayXXd data_, int kClusters, MD::Metric mt, Mat centers_, int nAtoms, int percentage, int vectThreshold, int seed_) : data(std::move(data_)), centers(std::move(centers_)), kinit(MD::KinitType::StratAll), seed(seed_), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
     if (kClusters < 1 || kClusters > this->data.rows()) {
         throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
     }
     if (this->centers.rows() != kClusters || this->centers.cols() != this->data.cols()) {
         throw std::invalid_argument("centers must have shape (kClusters, nFeatures).");
     }
-    dist = Mat::Zero(data.rows(), kClusters);
-    labels = Veci::Zero(data.rows());
+    dist = Mat::Zero(this->data.rows(), kClusters);
+    labels = Veci::Zero(this->data.rows());
     set_vectorization_threshold(vectThreshold);
     set_seed();
+    rowSqNorms();
     run_lloyd(300);
 }
 map<int,vector<Index>> KmeansNANI::createClusterDict() {

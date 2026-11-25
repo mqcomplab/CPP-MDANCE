@@ -61,12 +61,10 @@ target_include_directories(mdance_tools PUBLIC
 target_link_libraries(mdance_tools PUBLIC Eigen3::Eigen)
 
 # create library for kmeans
-add_library(mdance_kmeans STATIC 
+# (its random numbers come from std::mt19937, one per instance: the
+# global generator of mersenneTwister2002.c, the same MT19937, is gone)
+add_library(mdance_kmeans STATIC
     cluster/KMeansRex/KMeans.cpp
-    cluster/KMeansRex/mersenneTwister2002.c
-)
-set_source_files_properties(cluster/KMeansRex/mersenneTwister2002.c PROPERTIES 
-    LANGUAGE C
 )
 target_include_directories(mdance_kmeans PUBLIC cluster/KMeansRex)
 target_link_libraries(mdance_kmeans PUBLIC mdance_tools)

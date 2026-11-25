@@ -20,9 +20,8 @@ TEST(KMeansNani, simcsv){
 
     ArrayXi labels = test.getLabels();
     for (int i = 0; i < labels.size(); ++i){
-        if (labels[i] < 0 || labels[i] >= nClusters){
-            std::cerr << "Error: Label out of bounds: " << labels[i] << std::endl;
-        }
+        // (this only printed before: a label out of bounds failed nothing)
+        EXPECT_TRUE(labels[i] >= 0 && labels[i] < nClusters) << "label out of bounds: " << labels[i] << " at " << i;
     }
     std::filesystem::path pyLabelsFile = dataPath / "sim_py_labels_kmeans.csv";
     ArrayXXd pyLabels = readCSVtoEigen(pyLabelsFile.string());

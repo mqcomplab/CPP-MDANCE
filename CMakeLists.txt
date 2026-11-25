@@ -8,10 +8,16 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo")
 endif()
 
-# Compiler flags for different build types
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0" CACHE STRING "Debug flags" FORCE)
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -DNDEBUG" CACHE STRING "Release flags" FORCE)
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O2 -DNDEBUG" CACHE STRING "RelWithDebInfo flags" FORCE)
+# The build types keep CMake's own flags (Release: -O3 -DNDEBUG), which a
+# user can change. -march=native used to be forced into Release: a library
+# built so runs only on CPUs with the builder's instruction sets, and one
+# handed to another machine (a VMD plugin shipped with VMD) dies of an
+# illegal instruction there. It is an option now, for a build that stays on
+# the machine it was built on.
+option(MDANCE_NATIVE "Optimize for this machine's CPU (-march=native): not portable" OFF)
+if(MDANCE_NATIVE AND CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    add_compile_options(-march=native)
+endif()
 
 # Enable testing at the top level so `ctest` run from the build root discovers
 # the tests registered in subdirectories (must precede add_subdirectory).
@@ -21,16 +27,31 @@ add_subdirectory(src)
 add_subdirectory(tests)
 
 option(BUILD_CLI "Build mdance-cli command-line tool" ON)
+option(BUILD_BENCH "Build the benchmark programs in bench/" OFF)
 if(BUILD_CLI)
     add_subdirectory(cli)
 endif()
 
+# A module loaded into another program (VMD) brings its own C++ runtime
+# when built with MinGW: libstdc++, libgcc and winpthread linked in, so that
+# no DLL of another version, already loaded by the host or found first on
+# the PATH, is used in its place.
+option(MDANCE_STATIC_RUNTIME "Link the C++ runtime statically into the shared library and the Tcl extension (MinGW)" ON)
+function(mdance_static_runtime target)
+    if(MINGW AND MDANCE_STATIC_RUNTIME)
+        target_link_options(${target} PRIVATE -static-libgcc -static-libstdc++ -Wl,-Bstatic,--whole-archive -lwinpthread -Wl,--no-whole-archive,-Bdynamic)
+    endif()
+endfunction()
+
 option(BUILD_SHARED "Build shared library with C API" ON)
-if(BUILD_SHARED)
+if(BUILD_SHARED OR BUILD_TCL)
     add_subdirectory(capi)
 endif()
 
 option(BUILD_TCL "Build Tcl extension for VMD" OFF)
+if(BUILD_BENCH)
+    add_subdirectory(bench)
+endif()
 if(BUILD_TCL)
     add_subdirectory(tcl)
 endif()

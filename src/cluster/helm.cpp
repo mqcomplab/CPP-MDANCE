@@ -1,3 +1,4 @@
+#include <cmath>
 #include <stdexcept>
 
 #include "helm.h"
@@ -45,9 +46,6 @@ vector<HCTree> Helm::trimClusters(){
         // compare in double so an empty clusterMsds does not wrap around
         if (trimK >= (double)clusterMsds.size()-1){
             throw std::runtime_error("trimK is too large!");
-        }
-        else if(trimK >= clusterMsds.size()/2.0){
-            std::cerr<<"trimK is more than 50% of the clusters. This may lead to poor clustering"<<std::endl;
         }
         for(int i=0; i<(double)clusterMsds.size()-trimK; i++){
             int index = clusterMsds[i].second;
@@ -224,7 +222,7 @@ float Helm::calcHelmSim(HCTree& firstTree, HCTree& secondTree){
         helmSim = sim;
     }
     else if(mergeScheme == MD::MergeScheme::Inter){
-        helmSim = ((sim*pow(n,2)) - (simA*pow(nA,2)) - (simB*pow(nB,2)))/(nA*nB);
+        helmSim = ((sim*pow(n,2)) - (simA*pow(nA,2)) - (simB*pow(nB,2)))/((double)nA*nB);   // (nA*nB in int overflowed at two clusters of 46 341 frames)
     }
     else if(mergeScheme == MD::MergeScheme::Half){
         helmSim = sim - ((simA + simB)/2);
@@ -325,6 +323,16 @@ Helm::Helm(vector<HCTree> clusterTree, int nAtoms, MD::Metric mt,
         throw std::invalid_argument("You can only provided either trimVal or trimK, but not both.");
     }
 
+    if(this->trimK < 0 || this->trimVal < 0 || !std::isfinite(this->trimK) || !std::isfinite(this->trimVal)){
+        // (a negative trimK made the trimming loop read one past its end)
+        throw std::invalid_argument("trimK and trimVal must be numbers >= 0.");
+    }
+    if(this->trimK != std::floor(this->trimK)){
+        throw std::invalid_argument("trimK must be a whole number of clusters.");
+    }
+    if(!std::isfinite(this->minSamples) || (this->eps != -1 && !std::isfinite(this->eps))){
+        throw std::invalid_argument("minSamples and eps must be numbers.");
+    }
     if(this->minSamples < 0){
         throw std::invalid_argument("minSamples must be greater than 0.");
     }
@@ -357,11 +365,15 @@ vector<HCTree> Helm::run(){
     //perform clustering
     int n = clusterTree.size();
     int currentZInd = clusterTree.size();
-    if (nClusters == n) {
-        std::cerr << "Number of clusters is already equal to nClusters. No clustering will be performed." << std::endl;
+    // With nClusters starting clusters or fewer there is nothing to merge.
+    // (Fewer used to merge them all into one: the loop below stops only at
+    // nClusters + 1.)
+    if (nClusters >= n) {
         return clusterTree;
     }
+    const int n0 = n;
     while(n>1){
+        MD::progress(n0 > 1 ? (double)(n0 - n) / (n0 - 1) : 1.0, "HELM");
         vector<HCTree> newClusters = genNewClusters(currentZInd);
         if (!newClusters.empty()){ 
             // if new clusters are empty, clustering is stopped. In order to return the results, we cannot return the empty clusters, so we return the previous clusters.
@@ -427,7 +439,7 @@ Mat Helm::getZMatrix(){
         Z matrix (Mat)
     */
     if (zMatrix.rows() == 0 && zMatrix.cols() == 0){
-        std::cerr<<"Z matrix is empty. No clusters were merged."<<std::endl;
+        // no clusters were merged
     }
     return zMatrix;
 }

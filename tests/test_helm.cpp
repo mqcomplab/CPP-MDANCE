@@ -270,7 +270,8 @@ TEST_F(TestHelm, TestEps){
         eps // default eps value
     ); 
     vector<HCTree> clusters = helm.run();
-    std::cout << "Number of clusters: " << clusters.size() << std::endl;
+    // (printed before, never checked: the merges eps = 15 lets through)
+    EXPECT_EQ(clusters.size(), 54u);
 
     //Compute CH and DB scores
     Mat selectedData = getSelectedData(clusters);
@@ -306,7 +307,8 @@ TEST_F(TestHelm, TestTrimVal){
 
    vector<HCTree> clusters = helm.run();
     int expectedNClusters = 4;
-    EXPECT_EQ(clusters.size(), expectedNClusters);
+    // (ASSERT: the loop below reads expectedMsds.size() of them)
+    ASSERT_EQ(clusters.size(), expectedNClusters);
 
     vector<double> msds;
     for(auto c:clusters){
@@ -344,6 +346,9 @@ TEST_F(TestHelm, ZMatrix){
     vector<HCTree> clusters = helm.run();
     Mat Z = helm.getZMatrix();
     Mat expectedZ(23, 4);
+    // (the rows checked before they are read: a short Z was read past its end)
+    ASSERT_EQ(Z.rows(), 23);
+    ASSERT_EQ(Z.cols(), 4);
     expectedZ <<2, 23, 1.0, 2, 
         47, 60, 2.0, 3, 
         15, 31, 3.0, 2, 
