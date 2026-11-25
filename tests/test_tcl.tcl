@@ -60,6 +60,13 @@ proc textless {} {
 }
 check "the coordinates' list has no text after a call" [string match "*no string representation*" [textless]]
 
+# a command renamed (a caller's wrapper) is still its call
+rename ::mdance::kmeans ::mdance::kmeans_kept
+proc ::mdance::kmeans {args} { ::mdance::kmeans_kept {*}$args }
+check "a renamed call still runs" [expr {[dict get [::mdance::kmeans $co $nf 3 2 -kinit StratAll -percentage 50] labels] eq $lab}]
+rename ::mdance::kmeans {}
+rename ::mdance::kmeans_kept ::mdance::kmeans
+
 # ---------------------------------------------------------------- datasets
 set d [::mdance::data list $co $nf 3]
 check "data list makes a dataset command" [expr {[info commands $d] eq $d}]

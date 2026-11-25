@@ -668,13 +668,20 @@ int parseCall(State* st, Tcl_Interp* interp, const CallSpec& spec, int objc, Tcl
     return TCL_OK;
 }
 
+// A call's command knows which call it is (not by its name: a command
+// renamed, as a caller's wrapper does, `rename ::mdance::kmeans k0`, is the
+// same call).
+struct CallCmd {
+    State* st;
+    const CallSpec* spec;
+};
+
+void callCmdDeleted(ClientData cd) { delete static_cast<CallCmd*>(cd); }
+
 int callCmd(ClientData cd, Tcl_Interp* interp, int objc, Tcl_Obj* const objv[]) {
-    State* st = static_cast<State*>(cd);
-    std::string name = Tcl_GetString(objv[0]);
-    size_t p = name.rfind("::");
-    if (p != std::string::npos) name = name.substr(p + 2);
-    const CallSpec* spec = specOf(name);
-    if (!spec) return err(interp, "unknown call " + name);
+    CallCmd* cc = static_cast<CallCmd*>(cd);
+    State* st = cc->st;
+    const CallSpec* spec = cc->spec;
     Call call;
     if (parseCall(st, interp, *spec, objc, objv, call) != TCL_OK) return TCL_ERROR;
     call.run(nullptr);
@@ -917,7 +924,7 @@ int Mdance_Init(Tcl_Interp* interp) {
     Tcl_CreateNamespace(interp, "::mdance", nullptr, nullptr);
     for (auto& s : specs()) {
         std::string n = std::string("::mdance::") + s.name;
-        Tcl_CreateObjCommand(interp, n.c_str(), callCmd, st, nullptr);
+        Tcl_CreateObjCommand(interp, n.c_str(), callCmd, new CallCmd{st, &s}, callCmdDeleted);
     }
     Tcl_CreateObjCommand(interp, "::mdance::data", dataCmd, st, nullptr);
     Tcl_CreateObjCommand(interp, "::mdance::job", jobCmd, st, nullptr);
