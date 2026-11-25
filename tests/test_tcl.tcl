@@ -203,6 +203,26 @@ set j [::mdance::job start scan kmeans $d -ks {2 3} -kinit StratAll -percentage 
 ::mdance::job wait $j
 set js [::mdance::job result $j]
 check "  a scan as a job" [expr {[lmap r $js {dict get $r k}] eq {2 3} && [dict exists [lindex $js 1] labels]}]
+# a scan cancelled keeps what it made: its list, the rest "cancelled"
+set many [::mdance::data create 2000 20]
+for {set f 0} {$f < 2000} {incr f} {
+    set v {}
+    for {set q 0} {$q < 60} {incr q} { lappend v [expr {sin($f * 0.37 + $q) * 3 + ($f % 13)}] }
+    $many frame $f $v
+}
+set ks {}
+for {set k 2} {$k <= 80} {incr k} { lappend ks $k }
+set j [::mdance::job start scan kmeans $many -ks $ks -kinit DivSelect -percentage 50 -threads 2]
+after 400
+::mdance::job cancel $j
+::mdance::job wait $j
+set st [dict get [::mdance::job status $j] state]
+set cs [::mdance::job result $j]
+set nmade [llength [lmap r $cs {expr {[dict exists $r labels] ? 1 : [continue]}}]]
+set ncanc [llength [lmap r $cs {expr {[dict exists $r error] && [dict get $r error] eq "cancelled" ? 1 : [continue]}}]]
+check "  a scan cancelled: state cancelled, its list kept ($nmade made, $ncanc cancelled, of [llength $cs])" [expr {
+    $st eq "cancelled" && [llength $cs] == [llength $ks] && $ncanc > 0 && $nmade + $ncanc == [llength $ks]}]
+$many delete
 
 # ---------------------------------------------------------------- jobs
 set j [::mdance::job start kmeans $d 2 -kinit StratAll -percentage 50]

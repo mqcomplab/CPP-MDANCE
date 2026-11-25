@@ -572,7 +572,10 @@ Tcl_Obj* clusteringObj(const char* algorithm, const mdance_result_t* r) {
 // The call's answer as Tcl.
 int answer(Tcl_Interp* interp, Call& c) {
     const char* e = c.error();
-    if (e) return err(interp, tclNames(e));
+    // (a scan cancelled keeps what it made: its list, the values not made
+    // marked "cancelled"; the job's state says cancelled)
+    const bool scanCancelled = c.spec->kind == Kind::Scan && e && std::strcmp(e, "cancelled") == 0 && c.scn;
+    if (e && !scanCancelled) return err(interp, tclNames(e));
     switch (c.spec->kind) {
     case Kind::Cluster:
         Tcl_SetObjResult(interp, clusteringObj(c.spec->name, c.res));

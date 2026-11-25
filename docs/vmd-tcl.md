@@ -157,7 +157,9 @@ It returns a list with one dict a k, in the list's order:
 - or `k` and `error` for a value that failed, while the others are made.
 
 It runs as a job too: `::mdance::job start scan kmeans $d -ks {…}`, and Cancel stops
-every value still running.
+every value still running. A scan cancelled still answers: its `job result` is the list,
+with the values it made and `error cancelled` for the others; its `job status` state is
+`cancelled`.
 
 The coordinates' list is read as a list only. Version 1 made its text, about 19 bytes a
 number, kept with the list until VMD quit. Its options parser read every argument as
