@@ -129,11 +129,79 @@ Results:
 
 `mdance_kmeans`, `mdance_divine`, `mdance_helm`, `mdance_equal`, `mdance_analysis`,
 `mdance_prime` and `mdance_select` are kept. Each takes a row-major `coords` buffer and
-positional arguments, and returns the same objects. They now go through the same checks:
-- Coordinates that are not finite are refused.
-- So are values out of range: a percentage over 100 and labels past the frames
-  (`analysis` and `prime`).
-- An unknown DIVINE `end_mode` is refused; it used to be read as `k`.
+positional arguments, returns the same objects, and runs through the same checks as the
+calls on a dataset.
+
+## Compatibility with version 1
+
+The interface itself is compatible:
+- every version 1 function is still there, with the same name, arguments and results;
+- a program built against the version 1 header compiles and links unchanged;
+- a program built against the version 1 library runs with this one.
+
+The datasets, options and controls are additions. What changed is behaviour: some calls
+version 1 accepted are now errors, two results are different, and a few details around
+them changed.
+
+### Calls that are now errors
+
+| Call | Accepted by version 1 | Version 2 |
+|---|---|---|
+| all | coordinates that are NaN or infinite, processed as numbers | refused, naming the frame and column |
+| all | `natoms` 0 or negative (infinite or NaN values in some paths) | refused |
+| `mdance_kmeans`, `mdance_divine`, `mdance_equal` | any `percentage` | 0 to 100, for every seeding: `KmeansPP` and `Random`, which do not use it, refuse 200 too |
+| `mdance_divine` | any `end_mode` other than `"points"`, read as `"k"` (`"K"`, `"x"`) | `"k"` or `"points"`; `NULL` is still `"k"` |
+| `mdance_divine` | any `threshold` | 0 to 1 |
+| `mdance_helm` | `nclusters` above the frames | 0 to nframes |
+| `mdance_helm` | any `eps` | −1 (none), or above 0 as a float (−0.99999999 is −1, as in `mdance-cli`) |
+| `mdance_helm` | `trim_k` negative or not whole; `trim_val` negative | `trim_k` a whole number ≥ 0; `trim_val` ≥ 0 |
+| `mdance_helm` | any number of starting clusters | 5 000 at most: each pair's distance is kept |
+| `mdance_equal` | `threshold`, `n_seeds` or `min_samples` below 0 | refused |
+| `mdance_equal` | `align` `""`, read as `"none"` | refused; `NULL` is still `"none"` |
+| `mdance_analysis`, `mdance_prime` | a label below −1 (ignored), or past the frames (allocations of gigabytes, or a crash) | refused: a label is −1 (none) or 0 to nframes − 1. Label arrays shorter or longer than the frames are still padded with −1 or cut, as before |
+| `mdance_prime` | any `trim_frac` | in [0, 1) |
+| `mdance_select` | a `param` below 0 (taken as 0) | refused |
+
+These inputs crashed version 1 and are now errors as well: a CompSim or StratReduced
+seeding from fewer frames than k, a percentage over 100 there, DIVINE's refinement of
+identical frames, and labels of 2³¹ − 1.
+
+### Results that differ
+
+- **The RR diversity pick** (`mdance_select`, `"diversity"`, metric RR) returned the
+  number of columns as a frame, repeatedly. Every candidate's value was below the
+  starting −1. It now returns distinct frames.
+- **HELM with as many starting clusters as `nclusters`, or fewer,** returns them
+  unmerged. With fewer, version 1 merged them all into one cluster.
+
+Every other result is the same to the last digit, for a library built with the same
+flags (see [Performance](performance.md)). A build with `-march=native`, version 1's
+forced default and now `MDANCE_NATIVE`, differs from a portable one in the last digits
+of some MSDs: the fused multiply-add instructions round differently.
+
+### Other changes
+
+- **Error messages are worded otherwise.** They now name the call and the option, for
+  example `kmeans: option percentage: 200 is outside 0 .. 100`. Code that matches a
+  message's text should be checked. DIVINE's "not available in this build" is
+  unchanged.
+- **Nothing is printed.** Version 1 wrote a line to standard output at every k-means
+  call ("Initializing random number generator with: …"), two lines at every DIVINE
+  split, and warnings to standard error.
+- **The `*_error()` accessors given `NULL`** return "out of memory", so a result that
+  could not be made reads as failed. Version 1 never returned `NULL`; it ended the
+  process when out of memory.
+- **The k-means random seed** is per call. Before, it was one generator for the whole
+  process, which concurrent calls shared. It is drawn from the clock as before, and it
+  is never negative.
+- **`MDANCE_API` on Windows** is `dllimport` for a program that uses the header. A
+  program that compiles `mdance_capi.cpp` into itself defines `MDANCE_BUILDING` (to
+  export the functions) or `MDANCE_STATIC` (neither). A program that links the DLL
+  needs nothing.
+- **Release builds are portable.** They no longer use `-march=native` unless
+  `MDANCE_NATIVE=ON`.
+- **With MinGW the library carries its C++ runtime** (`MDANCE_STATIC_RUNTIME`, on by
+  default), so `libstdc++-6.dll` and its siblings are no longer needed beside it.
 
 ## Scores that are not defined
 

@@ -195,17 +195,31 @@ error. These include:
 
 ## Migrating from version 1
 
-- The calls, their positional arguments and the result keys are the same. A call made
-  correctly in version 1 gives the same answer. The exceptions are fixes: the RR
-  diversity pick returned the number of columns as a "frame", repeatedly, and HELM with
-  fewer starting clusters than k merged them all into one; it now leaves them as they
-  are.
-- Calls that version 1 accepted and version 2 refuses:
-  - an unknown or repeated option;
-  - a value that is not a number;
-  - out-of-range values;
-  - coordinates whose count is not a multiple of the frames (version 1 dropped the
-    rest);
-  - labels outside −1 … nframes − 1 for `analysis` and `prime`.
-- `::mdance::version` returns `2.0.0`.
-- `package require mdance_native` still works.
+The calls, their positional arguments and the result keys are the same. A call that was
+right in version 1 gives the same answer in version 2, with two exceptions, both fixes:
+- the RR diversity pick returned the number of columns as a frame, repeatedly;
+- HELM with as many starting clusters as k, or fewer, merged fewer into one cluster; it
+  now leaves them as they are.
+
+The library underneath has the same changes as the C interface, each listed in the
+[C API's compatibility section](c-api.md#compatibility-with-version-1). These include
+the values it now refuses: a percentage outside 0–100, coordinates that are not
+finite, labels outside −1 … nframes − 1, and DIVINE's `end_mode` other than `k` or
+`points`. The extension adds its own changes, which matter to a script that worked by
+accident:
+
+| Version 1 | Version 2 |
+|---|---|
+| An option it did not know, or a misspelt one, was ignored, and the call ran with the default | an error that lists the call's options |
+| An option given twice: the first was used | an error |
+| A value that was not a number (`-percentage abc`) silently became the default | an error naming the option |
+| A flag was found anywhere among the arguments, so `-refine 1` worked: the `1` was ignored | a flag takes no value; the `1` is read as an option and refused |
+| An option without its value at the end was ignored | an error |
+| Coordinates whose count is not a multiple of the frames: the rest was dropped | refused |
+| `-labels` for `analysis` and `prime` of any length: cut or padded | one label per frame |
+| Every call printed a k-means seed or DIVINE's splits to VMD's console | nothing is printed |
+
+Also:
+- `::mdance::version` returns `2.0.0`;
+- the result dicts have the same keys, plus `seed` for k-means;
+- `package require mdance_native`, the first version's name, still works.
