@@ -25,6 +25,9 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <atomic>
+#include <mutex>
+#include <thread>
 
 #include <Eigen/Dense>
 
@@ -102,6 +105,17 @@ struct mdance_options {
 };
 
 struct mdance_control : MD::Control {};
+
+struct mdance_scan {
+    std::vector<int> ks;
+    std::vector<mdance_result*> results;   // one per k, in ks' order
+    int threads = 0;
+    std::string error;
+    mdance_scan() = default;
+    mdance_scan(const mdance_scan&) = delete;
+    mdance_scan& operator=(const mdance_scan&) = delete;
+    ~mdance_scan() { for (mdance_result* r : results) delete r; }
+};
 
 namespace {
 
@@ -486,11 +500,16 @@ void runKmeans(mdance_result& r, const mdance_dataset& d, Reader& R) {
     int seed = (int)R.whole("seed", -1, -1, INT_MAX);
     R.finish();
 
-    KmeansNANI km(d.X, k, mt, ki, d.natoms, pct, 16, seed);
+    // (on the dataset itself: no copy, and a scan's threads share it)
+    KmeansNANI km(&d.X, k, mt, ki, d.natoms, pct, 16, seed);
     Veci kl = km.getLabels();
     std::vector<int> labels(kl.data(), kl.data() + kl.size());
     fill_common_results(&r, d.X, labels, k, d.natoms, mt);
-    r.seed = km.getSeed();
+    // (the seed of the seedings that draw: the others' answer is the same
+    // whatever it is, and two equal answers should look equal)
+    const bool draws = ki == MD::KinitType::Random || ki == MD::KinitType::KmeansPP ||
+                       ki == MD::KinitType::VanillaKmeansPP;
+    r.seed = draws ? km.getSeed() : -1;
 }
 
 void runDivine(mdance_result& r, const mdance_dataset& d, Reader& R) {
@@ -1053,6 +1072,110 @@ mdance_select_t* mdance_select_run(const mdance_dataset_t* d, const mdance_optio
         runSelect(s, ready(d), R);
     });
 }
+
+// ---------------------------------------------------------------- scans
+
+mdance_scan_t* mdance_scan_run(const mdance_dataset_t* d, const char* algorithm,
+                               const int* ks, int nks,
+                               const mdance_options_t* o, mdance_control_t* c) {
+    return guarded<mdance_scan_t>(c, [&](mdance_scan_t& s) {
+        std::string a = algorithm ? algorithm : "";
+        if (a != "kmeans" && a != "divine" && a != "helm")
+            throw std::runtime_error("scan: \"" + a + "\" takes no k (kmeans divine helm)");
+        if (!ks || nks <= 0) throw std::runtime_error("scan: no value of k given");
+        if (nks > 100000) throw std::runtime_error("scan: more than 100 000 values of k");
+        const mdance_dataset& D = ready(d);
+
+        // The options of every value of k: the caller's, with its k, less
+        // the scan's own ("threads"); a k among them is the caller's mistake.
+        mdance_options base;
+        if (o) base = *o;
+        if (base.text.count("k") || base.lists.count("k"))
+            throw std::runtime_error("scan: option k: the values of k are the scan's list");
+        long long threads = 0;
+        auto th = base.text.find("threads");
+        if (th != base.text.end()) {
+            if (!parseWhole(th->second, threads) || threads < 0 || threads > 1024)
+                throw std::runtime_error("scan: option threads: \"" + th->second + "\" is not a whole number in 0 .. 1024");
+            base.text.erase(th);
+        }
+        if (threads == 0) threads = std::max(1u, std::thread::hardware_concurrency());
+        const int nthreads = (int)std::min<long long>(threads, nks);
+
+        s.ks.assign(ks, ks + nks);
+        s.results.assign(nks, nullptr);
+        for (int i = 0; i < nks; ++i) {
+            s.results[i] = new mdance_result;
+        }
+        s.threads = nthreads;
+
+        // Each value of k on the next free thread. A thread has a control of
+        // its own (the algorithms' progress), whose parent is the caller's:
+        // a cancel reaches every one. Every exception stays in its value's
+        // result: one thrown out of a thread would end the process.
+        // (the largest k first: they take longest, and started last they
+        // left the other threads idle at the end; the results keep ks' order)
+        std::vector<int> order(nks);
+        for (int i = 0; i < nks; ++i) order[i] = i;
+        std::stable_sort(order.begin(), order.end(), [&](int x, int y) { return s.ks[x] > s.ks[y]; });
+        std::atomic<int> next{0}, done{0};
+        MD::Control* parent = c;
+        auto work = [&]() {
+            MD::Control mine;
+            mine.parent = parent;
+            MD::ControlScope scope(&mine);
+            for (int n = next++; n < nks; n = next++) {
+                const int i = order[n];
+                mdance_result& r = *s.results[i];
+                try {
+                    if (mine.cancelled()) throw MD::Cancelled();
+                    mdance_options oi = base;
+                    oi.text["k"] = std::to_string(s.ks[i]);
+                    Reader R(&oi, a);
+                    if (a == "kmeans") runKmeans(r, D, R);
+                    else if (a == "divine") runDivine(r, D, R);
+                    else runHelm(r, D, R);
+                } catch (...) {
+                    r.error = currentMessage();
+                    if (r.error.empty()) r.error = "error";
+                }
+                int finished = ++done;
+                if (parent) {
+                    parent->fraction.store((double)finished / nks, std::memory_order_relaxed);
+                    parent->stage.store("scan", std::memory_order_relaxed);
+                }
+            }
+        };
+        // (Eigen asks a program calling it from threads of its own to set it
+        // up first: its cache sizes, read once)
+        static std::once_flag eigenReady;
+        std::call_once(eigenReady, [] { Eigen::initParallel(); });
+        std::vector<std::thread> pool;
+        for (int t = 1; t < nthreads; ++t) {
+            try {
+                pool.emplace_back(work);
+            } catch (...) {
+                break;      // no more threads: the ones made, and this one, do the rest
+            }
+        }
+        work();
+        for (std::thread& t : pool) t.join();
+        if (parent && parent->cancelled()) s.error = "cancelled";
+    });
+}
+
+int mdance_scan_count(const mdance_scan_t* s) { return s ? (int)s->results.size() : 0; }
+int mdance_scan_k(const mdance_scan_t* s, int i) {
+    return (s && i >= 0 && i < (int)s->ks.size()) ? s->ks[i] : 0;
+}
+const mdance_result_t* mdance_scan_result(const mdance_scan_t* s, int i) {
+    return (s && i >= 0 && i < (int)s->results.size()) ? s->results[i] : nullptr;
+}
+int mdance_scan_threads(const mdance_scan_t* s) { return s ? s->threads : 0; }
+const char* mdance_scan_error(const mdance_scan_t* s) {
+    return s ? (s->error.empty() ? nullptr : s->error.c_str()) : kOutOfMemory;
+}
+void mdance_scan_free(mdance_scan_t* s) { delete s; }
 
 // ---------------------------------------------------------------- the first interface
 

@@ -223,7 +223,7 @@ void KmeansNANI::init_Mu() {
 }
 
 // ======================================================= Update Assignments Z
-void KmeansNANI::pairwise_distance( Mat &X, Mat &Mu, Mat &Dist ) {
+void KmeansNANI::pairwise_distance( const Mat &X, const Mat &Mu, Mat &Dist ) {
     int D = X.cols();
     int K = Mu.rows();
 
@@ -363,7 +363,18 @@ void KmeansNANI::rowSqNorms() {
     }
 }
 
-KmeansNANI::KmeansNANI(ArrayXXd data_, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold, int seed_) : data(std::move(data_)), kinit(kinit), seed(seed_), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
+KmeansNANI::KmeansNANI(ArrayXXd data_, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold, int seed_) : own(std::move(data_)), data(own), kinit(kinit), seed(seed_), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
+    run_seeded(vectThreshold);
+}
+
+// The same on data the caller keeps (and does not change meanwhile): no copy
+// of it is made, so concurrent runs (a scan's values of k on threads) share
+// one.
+KmeansNANI::KmeansNANI(const ArrayXXd* borrowed, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold, int seed_) : own(), data(*borrowed), kinit(kinit), seed(seed_), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
+    run_seeded(vectThreshold);
+}
+
+void KmeansNANI::run_seeded(int vectThreshold) {
     if (kClusters < 1 || kClusters > this->data.rows()) {
         throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
     }
@@ -384,7 +395,7 @@ KmeansNANI::KmeansNANI(ArrayXXd data_, int kClusters, MD::Metric mt, MD::KinitTy
 // This is in line with scikit-learns random_state=None, which we use in the python version 
 // set seed to any other number if we need deterministic random numbers for debugging purposes. 
 
-KmeansNANI::KmeansNANI(ArrayXXd data_, int kClusters, MD::Metric mt, Mat centers_, int nAtoms, int percentage, int vectThreshold, int seed_) : data(std::move(data_)), centers(std::move(centers_)), kinit(MD::KinitType::StratAll), seed(seed_), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
+KmeansNANI::KmeansNANI(ArrayXXd data_, int kClusters, MD::Metric mt, Mat centers_, int nAtoms, int percentage, int vectThreshold, int seed_) : own(std::move(data_)), data(own), centers(std::move(centers_)), kinit(MD::KinitType::StratAll), seed(seed_), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
     if (kClusters < 1 || kClusters > this->data.rows()) {
         throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
     }

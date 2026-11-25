@@ -17,7 +17,9 @@
 
 
 class KmeansNANI{
-    Mat data;
+    // (own before data: data refers to own, or to the caller's data)
+    Mat own;
+    const Mat& data;
     Mat centers;
     Mat dist;
     Veci labels;
@@ -43,7 +45,8 @@ class KmeansNANI{
     void sampleRowsPlusPlus();
     void reduced_init_Mu(bool isComp);
     void init_Mu();
-    void pairwise_distance(Mat &X, Mat &Mu, Mat &Dist);
+    void pairwise_distance(const Mat &X, const Mat &Mu, Mat &Dist);
+    void run_seeded(int vectThreshold);
     double assignClosest();
     void calcMu();
     void run_lloyd(int Niter);
@@ -52,11 +55,15 @@ public:
     // seed -1: a seed from the clock (scikit-learn's random_state=None); the
     // seed used is getSeed(). Only the Random and k-means++ seedings draw.
     KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, MD::KinitType kinit = MD::KinitType::StratAll, int nAtoms = 1, int percentage = 10, int vectThreshold=16, int seed = -1);
+    // On data the caller keeps unchanged while this runs (no copy is made).
+    KmeansNANI(const ArrayXXd* borrowed, int kClusters, MD::Metric mt, MD::KinitType kinit = MD::KinitType::StratAll, int nAtoms = 1, int percentage = 10, int vectThreshold=16, int seed = -1);
     KmeansNANI(ArrayXXd data, int kClusters, MD::Metric mt, Mat centers, int nAtoms = 1, int percentage = 10, int vectThreshold=16, int seed = -1);
     int getSeed() const { return seed; }
     map<int,vector<Index>> createClusterDict();
     pair<double, double> computeScores();
     Veci getLabels();
     Mat getCenters();
+    KmeansNANI(const KmeansNANI&) = delete;
+    KmeansNANI& operator=(const KmeansNANI&) = delete;
 };
 

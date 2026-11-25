@@ -424,3 +424,162 @@ TEST(Control, ConcurrentCallsAgree) {
     EXPECT_EQ(same.load(), 40);
     mdance_result_free(ref);
 }
+
+// ---------------------------------------------------------------- scans
+
+namespace {
+// every field of two clusterings, exactly
+void expectSame(const mdance_result_t* a, const mdance_result_t* b, const std::string& what) {
+    ASSERT_EQ(errOf(a), errOf(b)) << what;
+    if (mdance_result_error(a)) return;
+    int nf = mdance_result_nframes(a), k = mdance_result_nclusters(a);
+    ASSERT_EQ(nf, mdance_result_nframes(b)) << what;
+    ASSERT_EQ(k, mdance_result_nclusters(b)) << what;
+    for (int i = 0; i < nf; ++i) ASSERT_EQ(mdance_result_labels(a)[i], mdance_result_labels(b)[i]) << what << " frame " << i;
+    for (int c = 0; c < k; ++c) {
+        EXPECT_EQ(mdance_result_cluster_sizes(a)[c], mdance_result_cluster_sizes(b)[c]) << what;
+        EXPECT_EQ(mdance_result_representatives(a)[c], mdance_result_representatives(b)[c]) << what;
+        EXPECT_EQ(mdance_result_cluster_msd(a)[c], mdance_result_cluster_msd(b)[c]) << what;
+    }
+    EXPECT_EQ(mdance_result_ch_score(a), mdance_result_ch_score(b)) << what;
+    EXPECT_EQ(mdance_result_db_score(a), mdance_result_db_score(b)) << what;
+    int zr = mdance_result_zmatrix_rows(a), zc = mdance_result_zmatrix_cols(a);
+    ASSERT_EQ(zr, mdance_result_zmatrix_rows(b)) << what;
+    for (int i = 0; i < zr * zc; ++i) EXPECT_EQ(mdance_result_zmatrix(a)[i], mdance_result_zmatrix(b)[i]) << what;
+}
+
+// four blobs of n frames, 5 atoms
+std::vector<double> fourBlobs(int n) {
+    std::vector<double> v;
+    for (int f = 0; f < 4 * n; ++f) {
+        double off = 7.0 * (f / n);
+        for (int j = 0; j < 15; ++j) v.push_back(off + 0.3 * std::sin(f * 2.3 + j * 1.1) + 0.05 * std::cos(f * 0.7 * j));
+    }
+    return v;
+}
+}  // namespace
+
+TEST(Scan, EveryKIsTheSingleCallsAnswer) {
+    std::vector<double> v = fourBlobs(60);
+    Data d(v, 240, 5);
+    std::vector<int> ks;
+    for (int k = 2; k <= 13; ++k) ks.push_back(k);
+    for (const char* kinit : {"StratAll", "CompSim", "DivSelect"}) {
+        Opts o;
+        o.set("kinit", kinit).set("percentage", "30").set("threads", "4");
+        mdance_scan_t* s = mdance_scan_run(d.d, "kmeans", ks.data(), (int)ks.size(), o.o, nullptr);
+        ASSERT_EQ(mdance_scan_error(s), nullptr);
+        ASSERT_EQ(mdance_scan_count(s), (int)ks.size());
+        EXPECT_EQ(mdance_scan_threads(s), 4);
+        for (int i = 0; i < (int)ks.size(); ++i) {
+            EXPECT_EQ(mdance_scan_k(s, i), ks[i]);
+            Opts one;
+            one.set("kinit", kinit).set("percentage", "30").set("k", std::to_string(ks[i]).c_str());
+            mdance_result_t* r = mdance_cluster(d.d, "kmeans", one.o, nullptr);
+            expectSame(mdance_scan_result(s, i), r, std::string(kinit) + " k=" + std::to_string(ks[i]));
+            mdance_result_free(r);
+        }
+        mdance_scan_free(s);
+    }
+}
+
+TEST(Scan, AValueThatFailsFailsAlone) {
+    std::vector<double> v = fourBlobs(10);
+    Data d(v, 40, 5);
+    // at 10%, 4 frames seed: k 5 and 6 cannot be seeded, k 2 and 3 can; 50 > frames
+    int ks[] = {2, 5, 3, 50, 6};
+    Opts o;
+    o.set("kinit", "StratReduced").set("percentage", "10");
+    mdance_scan_t* s = mdance_scan_run(d.d, "kmeans", ks, 5, o.o, nullptr);
+    ASSERT_EQ(mdance_scan_error(s), nullptr);
+    EXPECT_EQ(errOf(mdance_scan_result(s, 0)), "");
+    EXPECT_NE(errOf(mdance_scan_result(s, 1)).find("centers"), std::string::npos);
+    EXPECT_EQ(errOf(mdance_scan_result(s, 2)), "");
+    EXPECT_NE(errOf(mdance_scan_result(s, 3)).find("outside"), std::string::npos);
+    EXPECT_NE(errOf(mdance_scan_result(s, 4)), "");
+    mdance_scan_free(s);
+}
+
+TEST(Scan, ItsOwnErrors) {
+    std::vector<double> v = fourBlobs(10);
+    Data d(v, 40, 5);
+    int ks[] = {2, 3};
+    auto scanErr = [&](const char* algo, const int* k, int n, Opts& o) {
+        mdance_scan_t* s = mdance_scan_run(d.d, algo, k, n, o.o, nullptr);
+        std::string e = mdance_scan_error(s) ? mdance_scan_error(s) : "";
+        mdance_scan_free(s);
+        return e;
+    };
+    { Opts o; EXPECT_NE(scanErr("equal", ks, 2, o).find("takes no k"), std::string::npos); }
+    { Opts o; EXPECT_NE(scanErr("kmeans", ks, 0, o).find("no value of k"), std::string::npos); }
+    { Opts o; o.set("k", "2"); EXPECT_NE(scanErr("kmeans", ks, 2, o).find("option k"), std::string::npos); }
+    { Opts o; o.set("threads", "-1"); EXPECT_NE(scanErr("kmeans", ks, 2, o).find("threads"), std::string::npos); }
+    // an option the algorithm does not take: every value's error
+    Opts o;
+    o.set("kinti", "StratAll");
+    mdance_scan_t* s = mdance_scan_run(d.d, "kmeans", ks, 2, o.o, nullptr);
+    EXPECT_NE(errOf(mdance_scan_result(s, 0)).find("unknown option kinti"), std::string::npos);
+    mdance_scan_free(s);
+}
+
+TEST(Scan, HelmAndDivine) {
+    std::vector<double> v = fourBlobs(20);
+    Data d(v, 80, 5);
+    std::vector<int> init(80);
+    for (int i = 0; i < 80; ++i) init[i] = i / 5;     // 16 starting clusters
+    int ks[] = {2, 3, 4, 5, 6};
+    Opts o;
+    o.ints("labels", init).set("merge_scheme", "Inter").set("threads", "3");
+    mdance_scan_t* s = mdance_scan_run(d.d, "helm", ks, 5, o.o, nullptr);
+    ASSERT_EQ(mdance_scan_error(s), nullptr);
+    for (int i = 0; i < 5; ++i) {
+        Opts one;
+        one.ints("labels", init).set("merge_scheme", "Inter").set("k", std::to_string(ks[i]).c_str());
+        mdance_result_t* r = mdance_cluster(d.d, "helm", one.o, nullptr);
+        expectSame(mdance_scan_result(s, i), r, "helm k=" + std::to_string(ks[i]));
+        mdance_result_free(r);
+    }
+    mdance_scan_free(s);
+    if (mdance_has_divine()) {
+        Opts od;
+        od.set("anchors", "SplinterPair");
+        s = mdance_scan_run(d.d, "divine", ks, 5, od.o, nullptr);
+        for (int i = 0; i < 5; ++i) {
+            Opts one;
+            one.set("anchors", "SplinterPair").set("k", std::to_string(ks[i]).c_str());
+            mdance_result_t* r = mdance_cluster(d.d, "divine", one.o, nullptr);
+            expectSame(mdance_scan_result(s, i), r, "divine k=" + std::to_string(ks[i]));
+            mdance_result_free(r);
+        }
+        mdance_scan_free(s);
+    }
+}
+
+TEST(Scan, CancelStopsEveryValue) {
+    const int nf = 3000;
+    std::vector<double> v((size_t)nf * 60);
+    for (int f = 0; f < nf; ++f)
+        for (int c = 0; c < 60; ++c) v[(size_t)f * 60 + c] = std::sin(f * 0.37 + c) * 3 + (f % 13);
+    Data d(v, nf, 20);
+    std::vector<int> ks;
+    for (int k = 2; k <= 60; ++k) ks.push_back(k);
+    Opts o;
+    o.set("kinit", "DivSelect").set("percentage", "50").set("threads", "2");
+    mdance_control_t* ctl = mdance_control_new();
+    std::thread t([&] {
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+        mdance_control_cancel(ctl);
+    });
+    auto t0 = std::chrono::steady_clock::now();
+    mdance_scan_t* s = mdance_scan_run(d.d, "kmeans", ks.data(), (int)ks.size(), o.o, ctl);
+    double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t0).count();
+    t.join();
+    EXPECT_STREQ(mdance_scan_error(s), "cancelled");
+    EXPECT_LT(secs, 5.0);
+    int cancelled = 0;
+    for (int i = 0; i < mdance_scan_count(s); ++i) cancelled += errOf(mdance_scan_result(s, i)) == "cancelled";
+    EXPECT_GT(cancelled, 0);
+    EXPECT_STREQ(mdance_control_stage(ctl), "scan");
+    mdance_scan_free(s);
+    mdance_control_free(ctl);
+}

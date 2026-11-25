@@ -25,6 +25,13 @@ struct Control {
     std::atomic<int> cancel{0};
     std::atomic<double> fraction{0.0};
     std::atomic<const char*> stage{""};     // a string literal
+    // A control of one part of a call (a scan's value of k on a thread):
+    // it takes its parent's cancel too, and keeps its own progress.
+    const Control* parent = nullptr;
+    bool cancelled() const {
+        return cancel.load(std::memory_order_relaxed) ||
+               (parent && parent->cancelled());
+    }
 };
 
 inline Control*& currentControl() {
@@ -34,7 +41,7 @@ inline Control*& currentControl() {
 
 inline void checkCancel() {
     Control* c = currentControl();
-    if (c && c->cancel.load(std::memory_order_relaxed)) throw Cancelled();
+    if (c && c->cancelled()) throw Cancelled();
 }
 
 // fraction in [0, 1] of the current stage; stage a string literal
@@ -43,7 +50,7 @@ inline void progress(double fraction, const char* stage = nullptr) {
     if (!c) return;
     c->fraction.store(fraction, std::memory_order_relaxed);
     if (stage) c->stage.store(stage, std::memory_order_relaxed);
-    if (c->cancel.load(std::memory_order_relaxed)) throw Cancelled();
+    if (c->cancelled()) throw Cancelled();
 }
 
 class ControlScope {

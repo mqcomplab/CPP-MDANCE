@@ -106,9 +106,10 @@ How these compare:
   - Diversity pick: 80–150 times.
   - eQUAL: 14–28 times.
   - DIVINE: 1.5–6 times.
-- **Where MDANCE wins: the k-means scan,** 1.6 s against 4.4 s. Its Lloyd iterations
-  are scikit-learn's, which run on all 4 cores with an optimized math library. Ours run
-  on one core with Eigen's matrix product.
+- **The k-means scan, one value at a time, is where MDANCE wins:** 1.6 s against 4.4 s.
+  Its Lloyd iterations are scikit-learn's, which run on all 4 cores with an optimized
+  math library. Ours run on one core with Eigen's matrix product. The scan call
+  (`mdance_scan_run`, `::mdance::scan`) runs the values of k on threads; see below.
 
 ### Inside VMD (tau, 6001 frames × 99 atoms), in milliseconds
 
@@ -190,15 +191,34 @@ The work was profiled with `mdance_profile` and by reading the code.
   - Every call converted and copied the list again; a scan converted it 19 times.
   - Datasets now hold the coordinates once, and jobs keep VMD responsive.
 
+### The k-means scan on threads
+
+A scan of k = 2…20 (StratAll, 10%) as one call, `mdance_scan_run`, its values run at once
+on threads. The machine was the same 4 cores, at about 27% background load. Each value's
+CH and DB scores were the same, to the last digit, as the single calls' and in every
+threaded run:
+
+| k = 2…20 | sim.csv | tau heavy atoms |
+|---|---:|---:|
+| one call per k, one after another | 5.19 s | 9.24 s |
+| scan, 1 thread | 4.49 s | 9.39 s |
+| scan, 2 threads | 2.60 s | 5.06 s |
+| scan, 4 threads | 1.90 s | 3.68 s |
+| MDANCE (Python, scikit-learn on 4 cores) | 1.58 s | 3.78 s |
+
+- **On tau,** 4 threads match MDANCE.
+- **On sim.csv** they come within 20% of it.
+- **Why not 4 times faster:** the four threads share the memory bus as they read the same
+  coordinates at every iteration, and a quarter of a core was busy with other work.
+- **A native build** (`MDANCE_NATIVE`) did not reliably help the threaded scan: 1.7–2.1 s
+  on sim.csv, 5.0–5.2 s on tau, over a few runs.
+
 ## What is still slow
 
-- **The k-means scan.** A scan is up to 19 independent k-means runs; ours run one at a
-  time on one core. Options:
-  - run the k's of a scan on threads: they share the dataset;
-  - or use Elkan's or Hamerly's bounds in the Lloyd iterations.
-
-  Either should close most of the distance to scikit-learn. But k-means with the same
-  seeds must keep giving the same labels, which the golden-output comparison would check.
+- **The k-means scan, one value at a time.** Each value's Lloyd iterations run on one
+  core. Elkan's or Hamerly's bounds would skip most distance computations, but k-means
+  with the same seeds must keep giving the same labels, which the golden-output
+  comparison would check. The scan call already runs the values at once.
 - **eQUAL with comp_sim seeds on large sets.** It is 28 times faster, but still minutes on
   6000 frames of 99 atoms: every iteration diversity-selects 10% of all the frames again.
   Seeds whose neighbourhood was already computed could be remembered between iterations.

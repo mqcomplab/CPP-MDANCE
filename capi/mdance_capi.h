@@ -205,6 +205,29 @@ MDANCE_API mdance_prime_t* mdance_prime_run(const mdance_dataset_t* d, const mda
 MDANCE_API mdance_select_t* mdance_select_run(const mdance_dataset_t* d, const mdance_options_t* o,
                                               mdance_control_t* c);
 
+/* A scan: the same clustering at every k of ks[0..nks-1] ("kmeans",
+ * "divine" or "helm", with that algorithm's options but k), the values of k
+ * run at once on threads (option "threads": how many, 0 or absent: one a
+ * processor, never more than the values of k). Each value of k gives the
+ * result a call of mdance_cluster with it would give, to the last digit: the
+ * threads change the time only. A value of k that fails (too few frames to
+ * seed it, say) has its error in its own result; the others are made. The
+ * threads share the dataset, which is not copied. A control cancels every
+ * value of k still running or waiting; its progress is the share of the
+ * values done. mdance_scan_error is the scan's own failure (no dataset, no
+ * such algorithm, no k given, "cancelled"), else NULL. */
+typedef struct mdance_scan mdance_scan_t;
+
+MDANCE_API mdance_scan_t* mdance_scan_run(const mdance_dataset_t* d, const char* algorithm,
+                                          const int* ks, int nks,
+                                          const mdance_options_t* o, mdance_control_t* c);
+MDANCE_API int                    mdance_scan_count(const mdance_scan_t* s);
+MDANCE_API int                    mdance_scan_k(const mdance_scan_t* s, int i);
+MDANCE_API const mdance_result_t* mdance_scan_result(const mdance_scan_t* s, int i);
+MDANCE_API int                    mdance_scan_threads(const mdance_scan_t* s);
+MDANCE_API const char*            mdance_scan_error(const mdance_scan_t* s);
+MDANCE_API void                   mdance_scan_free(mdance_scan_t* s);
+
 /* ======================================================================
  * The first interface: coords is row-major, nframes rows of ncols values
  * ====================================================================== */
@@ -275,7 +298,8 @@ MDANCE_API const double* mdance_result_cluster_msd(const mdance_result_t* r);
 MDANCE_API double        mdance_result_ch_score(const mdance_result_t* r);
 MDANCE_API double        mdance_result_db_score(const mdance_result_t* r);
 MDANCE_API const char*   mdance_result_error(const mdance_result_t* r);
-/* The k-means seed used (-1 for the other algorithms). */
+/* The k-means seed used by the seedings that draw (Random, KmeansPP,
+ * VanillaKmeansPP); -1 for the other seedings and algorithms. */
 MDANCE_API int           mdance_result_seed(const mdance_result_t* r);
 
 /* HELM z-matrix */

@@ -137,6 +137,28 @@ The results are the same dicts as in version 1:
   `medoidC0Trimmed` and `nClusters`.
 - `select` returns a list of frames.
 
+### Scans
+
+```tcl
+set rs [::mdance::scan kmeans $d -ks {2 3 4 5 6 7 8} -kinit StratAll ?-threads n?]
+foreach r $rs {
+    if {[dict exists $r error]} { puts "k [dict get $r k]: [dict get $r error]"; continue }
+    puts "k [dict get $r k]: CH [dict get $r score_calinskiHarabasz]"
+}
+```
+
+`::mdance::scan kmeans|divine|helm $d -ks {k …}` makes the clustering at every k, the
+values run at once on threads. By default it uses one thread a processor; `-threads n`
+sets another count. Its options are the algorithm's; HELM's starting clusters are
+`-labels {…}`.
+
+It returns a list with one dict a k, in the list's order:
+- the clustering's dict, with its `k`, which equals the single call's;
+- or `k` and `error` for a value that failed, while the others are made.
+
+It runs as a job too: `::mdance::job start scan kmeans $d -ks {…}`, and Cancel stops
+every value still running.
+
 The coordinates' list is read as a list only. Version 1 made its text, about 19 bytes a
 number, kept with the list until VMD quit. Its options parser read every argument as
 text, the coordinates included.

@@ -151,6 +151,36 @@ int main(int argc, char** argv) {
             mdance_result_free(r);
         }
         report("kmeans scan k=2..20 (total)", tot * repeat);
+#if defined(MDANCE_API_VERSION) && MDANCE_API_VERSION >= 2
+        /* the same scan as one call, its values of k on threads; each
+         * value's scores must be the single calls' */
+        {
+            mdance_dataset_t* d = mdance_dataset_from_rows(x, nf, nc, na);
+            int ks[19];
+            for (int i = 0; i < 19; i++) ks[i] = i + 2;
+            static const char* th[] = {"1", "2", "4", "0"};
+            for (int t = 0; t < 4; t++) {
+                mdance_options_t* o = mdance_options_new();
+                mdance_options_set(o, "kinit", "StratAll");
+                mdance_options_set(o, "percentage", "10");
+                mdance_options_set(o, "threads", th[t]);
+                double t0 = now_ms();
+                mdance_scan_t* s = mdance_scan_run(d, "kmeans", ks, 19, o, NULL);
+                double ms = now_ms() - t0;
+                snprintf(name, sizeof name, "kmeans scan, %d thread%s", mdance_scan_threads(s),
+                         mdance_scan_threads(s) > 1 ? "s" : "");
+                report(name, ms * repeat);
+                for (int i = 0; i < mdance_scan_count(s); i++) {
+                    const mdance_result_t* ri = mdance_scan_result(s, i);
+                    fprintf(out, "scan kmeans k=%d ch=%.10g db=%.10g\n", mdance_scan_k(s, i),
+                            mdance_result_ch_score(ri), mdance_result_db_score(ri));
+                }
+                mdance_scan_free(s);
+                mdance_options_free(o);
+            }
+            mdance_dataset_free(d);
+        }
+#endif
     }
     if (WANT("helm")) {
         r = mdance_kmeans(x, nf, nc, na, 40, "MSD", "StratAll", 50);

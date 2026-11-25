@@ -122,8 +122,39 @@ Results:
 | `mdance_result_labels`, `_cluster_sizes`, `_representatives`, `_cluster_msd` | Per frame and per cluster arrays. |
 | `_ch_score`, `_db_score` | The Calinski–Harabasz and Davies–Bouldin scores. |
 | `_zmatrix*` | HELM's merges. |
-| `_seed` | The seed k-means used. |
+| `_seed` | The seed k-means used, for the seedings that draw one (Random, KmeansPP, VanillaKmeansPP); −1 otherwise. |
 | `mdance_analysis_*`, `mdance_prime_*`, `mdance_select_*` | As in version 1. |
+
+## Scans: every k at once, on threads
+
+```c
+int ks[] = {2, 3, 4, 5, 6, 7, 8};
+mdance_options_set(o, "threads", "0");        /* 0 or absent: one a processor */
+mdance_scan_t* s = mdance_scan_run(d, "kmeans", ks, 7, o, c);
+for (int i = 0; i < mdance_scan_count(s); ++i) {
+    const mdance_result_t* r = mdance_scan_result(s, i);   /* k = mdance_scan_k(s, i) */
+    if (mdance_result_error(r)) continue;                   /* this k failed; the others did not */
+    /* ... */
+}
+mdance_scan_free(s);
+```
+
+`mdance_scan_run` makes the same clustering at every k of a list, the values run at once
+on threads. It takes `"kmeans"`, `"divine"` or `"helm"`, and that algorithm's options
+without `k`, plus `threads`:
+- **The answers.** Each k's result is the one `mdance_cluster` gives with it, to the last
+  digit. The threads change the time only.
+- **Memory.** The threads share the dataset, which is not copied.
+- **Order.** The values of k are run largest first, since they take longest; the results
+  keep the list's order.
+- **Errors.** A k that fails, for example too few frames to seed it, has the error in its
+  own result, and the others are made. `mdance_scan_error` is the scan's own failure: no
+  dataset, an algorithm without k, `k` among the options, or "cancelled".
+- **Controls.** A control cancels every k still running or waiting. Its progress is the
+  share of the values done, its stage `"scan"`.
+
+On 4 cores, a scan of k = 2…20 takes 2.4–2.5 times less time than the same values one
+after another (see [Performance](performance.md)).
 
 ## The first interface
 

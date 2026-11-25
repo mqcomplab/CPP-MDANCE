@@ -24,6 +24,9 @@
 //   ::mdance::helm    $d k labels ?options?    coords nframes natoms k labels ?options?
 //   ::mdance::equal   $d ?options?             coords nframes natoms ?options?
 //   ::mdance::analysis, ::mdance::prime, ::mdance::select: as equal
+//   ::mdance::scan kmeans|divine|helm $d -ks {k ...} ?-threads n? ?options?
+//       every k at once on threads (one a processor by default): a list
+//       of one dict a k, the clustering's with its k, or k and its error
 //
 // Options are -name value, or -name alone for a flag; each is read from the
 // options only (the coordinates are never turned into text), checked by the
@@ -424,7 +427,7 @@ int dataCmd(ClientData cd, Tcl_Interp* interp, int objc, Tcl_Obj* const objv[]) 
 
 // ---------------------------------------------------------------- calls
 
-enum class Kind { Cluster, Analysis, Prime, Select };
+enum class Kind { Cluster, Analysis, Prime, Select, Scan };
 
 // How a call's Tcl options map to the library's.
 struct OptSpec {
@@ -470,6 +473,9 @@ const std::vector<CallSpec>& specs() {
         {"select", Kind::Select, false, false,
          {{"-metric", "metric", OptSpec::Value}, {"-method", "method", OptSpec::Value},
           {"-param", "param", OptSpec::Value}, {"-nbins", "nbins", OptSpec::Value}}},
+        // (its options are the scanned algorithm's, and -ks, -threads, -labels:
+        // parseScan)
+        {"scan", Kind::Scan, false, false, {}},
     };
     return s;
 }
@@ -494,11 +500,15 @@ struct Call {
     mdance_analysis_t* ana = nullptr;
     mdance_prime_t* pri = nullptr;
     mdance_select_t* sel = nullptr;
+    mdance_scan_t* scn = nullptr;
+    std::string algo;           // a scan's algorithm
+    std::vector<int> ks;        // and its values of k
     void clear() {
         mdance_result_free(res); res = nullptr;
         mdance_analysis_free(ana); ana = nullptr;
         mdance_prime_free(pri); pri = nullptr;
         mdance_select_free(sel); sel = nullptr;
+        mdance_scan_free(scn); scn = nullptr;
     }
 
     void run(mdance_control_t* ctl) {
@@ -508,6 +518,7 @@ struct Call {
         case Kind::Analysis: ana = mdance_analyze(d, opts, ctl); break;
         case Kind::Prime: pri = mdance_prime_run(d, opts, ctl); break;
         case Kind::Select: sel = mdance_select_run(d, opts, ctl); break;
+        case Kind::Scan: scn = mdance_scan_run(d, algo.c_str(), ks.data(), (int)ks.size(), opts, ctl); break;
         }
     }
     const char* error() const {
@@ -516,6 +527,7 @@ struct Call {
         case Kind::Analysis: return mdance_analysis_error(ana);
         case Kind::Prime: return mdance_prime_error(pri);
         case Kind::Select: return mdance_select_error(sel);
+        case Kind::Scan: return mdance_scan_error(scn);
         }
         return "?";
     }
@@ -533,16 +545,11 @@ Tcl_Obj* doublesObj(const double* a, int n) {
 }
 void put(Tcl_Obj* d, const char* k, Tcl_Obj* v) { Tcl_DictObjPut(nullptr, d, Tcl_NewStringObj(k, -1), v); }
 
-// The call's answer as Tcl (the keys of the extension's first version).
-int answer(Tcl_Interp* interp, Call& c) {
-    const char* e = c.error();
-    if (e) return err(interp, tclNames(e));
-    switch (c.spec->kind) {
-    case Kind::Cluster: {
-        mdance_result_t* r = c.res;
+// A clustering's dict (the keys of the extension's first version).
+Tcl_Obj* clusteringObj(const char* algorithm, const mdance_result_t* r) {
         int nf = mdance_result_nframes(r), k = mdance_result_nclusters(r);
         Tcl_Obj* d = Tcl_NewDictObj();
-        put(d, "algorithm", Tcl_NewStringObj(c.spec->name, -1));
+        put(d, "algorithm", Tcl_NewStringObj(algorithm, -1));
         put(d, "nFrames", Tcl_NewIntObj(nf));
         put(d, "nClusters", Tcl_NewIntObj(k));
         if (mdance_result_labels(r)) put(d, "labels", intsObj(mdance_result_labels(r), nf));
@@ -559,7 +566,35 @@ int answer(Tcl_Interp* interp, Call& c) {
             for (int i = 0; i < zr; ++i) Tcl_ListObjAppendElement(nullptr, zm, doublesObj(z + (size_t)i * zc, zc));
             put(d, "zMatrix", zm);
         }
-        Tcl_SetObjResult(interp, d);
+        return d;
+}
+
+// The call's answer as Tcl.
+int answer(Tcl_Interp* interp, Call& c) {
+    const char* e = c.error();
+    if (e) return err(interp, tclNames(e));
+    switch (c.spec->kind) {
+    case Kind::Cluster:
+        Tcl_SetObjResult(interp, clusteringObj(c.spec->name, c.res));
+        return TCL_OK;
+    case Kind::Scan: {
+        // one dict a value of k, in their order: the clustering's, with k;
+        // or k and the error of a value that failed
+        Tcl_Obj* l = Tcl_NewListObj(0, nullptr);
+        for (int i = 0; i < mdance_scan_count(c.scn); ++i) {
+            const mdance_result_t* r = mdance_scan_result(c.scn, i);
+            const char* re = mdance_result_error(r);
+            Tcl_Obj* d;
+            if (re) {
+                d = Tcl_NewDictObj();
+                put(d, "error", Tcl_NewStringObj(tclNames(re).c_str(), -1));
+            } else {
+                d = clusteringObj(c.algo.c_str(), r);
+            }
+            put(d, "k", Tcl_NewIntObj(mdance_scan_k(c.scn, i)));
+            Tcl_ListObjAppendElement(nullptr, l, d);
+        }
+        Tcl_SetObjResult(interp, l);
         return TCL_OK;
     }
     case Kind::Analysis: {
@@ -602,7 +637,60 @@ int setOpt(Tcl_Interp* interp, mdance_options_t* o, const char* name, const std:
 // Parse a call: objv[0] is the call's name. Its positional arguments are
 // read by position and its options from where they start: the coordinates'
 // list is read as a list only.
+// ::mdance::scan algorithm dataset -ks {k ...} ?-threads n? ?-labels {...}?
+// ?the algorithm's options?
+int parseScan(State* st, Tcl_Interp* interp, const CallSpec& spec, int objc, Tcl_Obj* const objv[], Call& call) {
+    call.spec = &spec;
+    call.opts = mdance_options_new();
+    if (!call.opts) return err(interp, mdance_last_error());
+    if (objc < 3) {
+        Tcl_WrongNumArgs(interp, 1, objv, "kmeans|divine|helm dataset -ks {k ...} ?-threads n? ?options?");
+        return TCL_ERROR;
+    }
+    call.algo = Tcl_GetString(objv[1]);
+    const CallSpec* as = specOf(call.algo);
+    if (!as || !as->takesK)
+        return err(interp, "scan: \"" + call.algo + "\" takes no k (kmeans divine helm)");
+    if (!(call.ds = datasetOf(st, objv[2])))
+        return err(interp, std::string("scan: \"") + Tcl_GetString(objv[2]) + "\" is no dataset (::mdance::data)");
+    std::vector<OptSpec> opts = as->opts;
+    opts.push_back({"-ks", "ks", OptSpec::List});
+    opts.push_back({"-threads", "threads", OptSpec::Value});
+    if (as->takesLabels) opts.push_back({"-labels", "labels", OptSpec::List});
+    std::set<std::string> seen;
+    for (int i = 3; i < objc; ++i) {
+        std::string name = Tcl_GetString(objv[i]);
+        const OptSpec* o = nullptr;
+        for (auto& x : opts) if (name == x.tcl) o = &x;
+        if (!o) {
+            std::string all;
+            for (auto& x : opts) all += std::string(all.empty() ? "" : " ") + x.tcl;
+            return err(interp, "scan " + call.algo + ": unknown option \"" + name + "\" (the options: " + all + ")");
+        }
+        if (!seen.insert(name).second) return err(interp, "scan: " + name + " given twice");
+        if (o->type == OptSpec::Flag) {
+            if (setOpt(interp, call.opts, o->lib, "1") != TCL_OK) return TCL_ERROR;
+            continue;
+        }
+        if (i + 1 >= objc) return err(interp, "scan: " + name + " needs a value");
+        Tcl_Obj* v = objv[++i];
+        if (name == "-ks") {
+            if (!intList(interp, v, "scan -ks", call.ks)) return TCL_ERROR;
+        } else if (o->type == OptSpec::List) {
+            std::vector<int> l;
+            if (!intList(interp, v, ("scan " + name).c_str(), l)) return TCL_ERROR;
+            if (mdance_options_set_ints(call.opts, o->lib, l.data(), (int)l.size()) != 0) return err(interp, mdance_last_error());
+        } else {
+            if (setOpt(interp, call.opts, o->lib, Tcl_GetString(v)) != TCL_OK) return TCL_ERROR;
+        }
+    }
+    if (call.ks.empty()) return err(interp, "scan: -ks is required (the values of k)");
+    if (as->takesLabels && !seen.count("-labels")) return err(interp, "scan helm: -labels is required (the starting clusters)");
+    return TCL_OK;
+}
+
 int parseCall(State* st, Tcl_Interp* interp, const CallSpec& spec, int objc, Tcl_Obj* const objv[], Call& call) {
+    if (spec.kind == Kind::Scan) return parseScan(st, interp, spec, objc, objv, call);
     call.spec = &spec;
     call.opts = mdance_options_new();
     if (!call.opts) return err(interp, mdance_last_error());
@@ -783,7 +871,7 @@ int jobCmd(ClientData cd, Tcl_Interp* interp, int objc, Tcl_Obj* const objv[]) {
         if (i >= objc) { Tcl_WrongNumArgs(interp, 2, objv, "?-command script? call ?arg ...?"); return TCL_ERROR; }
         const CallSpec* spec = specOf(Tcl_GetString(objv[i]));
         if (!spec) return err(interp, std::string("job start: no call \"") + Tcl_GetString(objv[i]) +
-                                          "\" (kmeans divine helm equal analysis prime select)");
+                                          "\" (kmeans divine helm equal analysis prime select scan)");
         auto job = std::make_shared<Job>();
         if (parseCall(st, interp, *spec, objc - i, objv + i, job->call) != TCL_OK) return TCL_ERROR;
         job->ctl = mdance_control_new();

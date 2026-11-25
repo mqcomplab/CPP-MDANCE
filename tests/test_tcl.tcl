@@ -179,6 +179,31 @@ if {[dict get $inf divine]} {
     check "divine says it is not in this build" [string match "*not available*" [errof {::mdance::divine {0 0 0 1 1 1} 2 1 1}]]
 }
 
+# ---------------------------------------------------------------- scans
+set sc [::mdance::scan kmeans $d -ks {2 3 4 5} -kinit StratAll -percentage 50 -threads 3]
+check "scan: one dict a value of k, in order" [expr {[llength $sc] == 4 && [lmap r $sc {dict get $r k}] eq {2 3 4 5}}]
+set same 1
+foreach r $sc {
+    set one [::mdance::kmeans $d [dict get $r k] -kinit StratAll -percentage 50]
+    if {[dict remove $r k] ne $one} { set same 0 }
+}
+check "  each the single call's answer" $same
+set sc [::mdance::scan kmeans $d -ks {2 41 3} -kinit StratAll -percentage 50]
+check "  a value that cannot run has its error, the others their answer" [expr {
+    [dict exists [lindex $sc 0] labels] && [string match "*outside*" [dict get [lindex $sc 1] error]] && [dict exists [lindex $sc 2] labels]}]
+check "  -ks is required" [string match "*-ks is required*" [errof {::mdance::scan kmeans $d -kinit StratAll}]]
+check "  only an algorithm with k" [string match "*takes no k*" [errof {::mdance::scan equal $d -ks {2}}]]
+check "  on a dataset only" [string match "*is no dataset*" [errof {::mdance::scan kmeans {1 2 3} -ks {2}}]]
+check "  the algorithm's options, checked" [string match "*unknown option \"-split\"*" [errof {::mdance::scan kmeans $d -ks {2} -split MSD}]]
+check "  HELM needs -labels" [string match "*-labels is required*" [errof {::mdance::scan helm $d -ks {2}}]]
+set hs [::mdance::scan helm $d -ks {2 3} -labels $init]
+check "  HELM's scan: each the single call's answer" [expr {
+    [dict remove [lindex $hs 0] k] eq [::mdance::helm $d 2 $init] && [dict remove [lindex $hs 1] k] eq [::mdance::helm $d 3 $init]}]
+set j [::mdance::job start scan kmeans $d -ks {2 3} -kinit StratAll -percentage 50]
+::mdance::job wait $j
+set js [::mdance::job result $j]
+check "  a scan as a job" [expr {[lmap r $js {dict get $r k}] eq {2 3} && [dict exists [lindex $js 1] labels]}]
+
 # ---------------------------------------------------------------- jobs
 set j [::mdance::job start kmeans $d 2 -kinit StratAll -percentage 50]
 check "job start returns a job" [expr {[lsearch [::mdance::job names] $j] >= 0}]
