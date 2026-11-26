@@ -12,6 +12,7 @@ prediction, and a set of frame-selection tools. There are three ways to reach th
 | [`mdance-cli`](mdance-cli-quickstart.md) | Batch work on files: CSV in, JSON out |
 | [C API](c-api.md) | Embedding the library in another program or language |
 | [VMD / Tcl](vmd-tcl.md) | Clustering the trajectory already loaded in VMD |
+| [Performance](performance.md) | Speed against MDANCE and earlier builds, and how it was measured |
 
 ```{toctree}
 :maxdepth: 2
@@ -20,6 +21,7 @@ prediction, and a set of frame-selection tools. There are three ways to reach th
 mdance-cli-quickstart
 c-api
 vmd-tcl
+performance
 ```
 
 ## Getting started

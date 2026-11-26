@@ -103,6 +103,8 @@ void printUsage() {
               << "KMeans options:\n"
               << "  --kinit {StratAll|StratReduced|CompSim|DivSelect|KmeansPP|Random|VanillaKmeansPP}\n"
               << "  --percentage <int>  (default: 10)\n"
+              << "  --tol <float>       (default: 0, until the labels stop changing;\n"
+              << "                       1e-4: MDANCE's stop, scikit-learn's default)\n"
               << "\n"
 #ifdef MDANCE_HAS_DIVINE
               << "DIVINE options:\n"
@@ -376,9 +378,10 @@ int main(int argc, char* argv[]) {
         if (algorithm == "kmeans") {
             MD::KinitType kinit = parseKinit(args.get("kinit", "StratAll"));
             int percentage = args.getInt("percentage", 10);
+            double tol = args.getDouble("tol", 0.0);
 
             std::cerr << "Running KMeans NANI (k=" << nClusters << ")..." << std::endl;
-            KmeansNANI km(data, nClusters, metric, kinit, nAtoms, percentage);
+            KmeansNANI km(data, nClusters, metric, kinit, nAtoms, percentage, 16, -1, tol);
             Veci kLabels = km.getLabels();
             auto scores = km.computeScores();
 

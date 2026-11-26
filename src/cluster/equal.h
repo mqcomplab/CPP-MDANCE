@@ -24,7 +24,13 @@
  * receive label -1.
  */
 class Equal {
-    Mat data;
+    // The frames, row-major: every step compares a seed with every active
+    // frame, row against row (a row of a column-major array is strided by
+    // the number of frames).
+    Eigen::Array<double, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor> data;
+    ArrayXd bufC, bufS;     // pairDistance's buffers
+
+    double pairDistance(Index a, Index b);
     vector<int> labels;
 
     MD::Metric mt;

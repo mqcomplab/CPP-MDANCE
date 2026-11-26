@@ -64,3 +64,13 @@ target_compile_features(mdance_gtests PRIVATE cxx_std_17)
 # from tests/data makes that expression resolve for any build layout.
 add_test(NAME mdance_tests COMMAND mdance_gtests
          WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/data)
+
+# The C interface, as another program uses it (linked statically: the same
+# code as libmdance). capi/ is added after this folder: the target is known
+# at generate time.
+if(BUILD_SHARED OR BUILD_TCL)
+    add_executable(mdance_capi_tests test_capi.cpp)
+    target_link_libraries(mdance_capi_tests PRIVATE ${MDANCE_GTEST_LIBS} mdance_capi_static)
+    target_compile_features(mdance_capi_tests PRIVATE cxx_std_17)
+    add_test(NAME mdance_capi_tests COMMAND mdance_capi_tests)
+endif()

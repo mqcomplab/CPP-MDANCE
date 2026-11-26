@@ -12,9 +12,8 @@ void Divine::divisiveAlgorithm() {
     int counter=1;
     bool done=true;
     while (done) {
+        MD::progress(kClusters > 0 ? std::min(1.0, (double)clusters.size() / kClusters) : 0.0, "DIVINE");
         //stopping conditions
-        std::cout << "Divine iteration: " << counter << ", Number of clusters: " << clusters.size() << std::endl;
-        std::cout << "-------------------------------------------" << std::endl;
         if(counter>maxIter)   break;
         counter++;
         if(end==0){
@@ -35,7 +34,7 @@ void Divine::divisiveAlgorithm() {
             //determine which cluster to split
             Index clusterToSplit = selectClusterToSplit(failedSplits);
             if (clusterToSplit < 0) {
-                std::cerr<<"No more cluster splits possible that would yield valid subclusters."<<std::endl;
+                // no more splits would yield valid subclusters
                 done=false;
                 break;
             } 
@@ -60,9 +59,21 @@ Index Divine::selectClusterToSplit(vector<bool>& failedSplits) {
     */
     Index topCluster = -1;
     double bestScore = -1;
+    // Each cluster's score is computed once: it changes only when its frames
+    // do (splitCluster forgets the split one; a new one is new). Every
+    // iteration rescored every cluster from a copy of its frames, O(N D) a
+    // split and O(N^2 D) with end mode "points".
+    scoreCache.resize(clusters.size(), -2);
 
-    for (Index i = 0; i < clusters.size(); ++i) {
+    for (Index i = 0; i < (Index)clusters.size(); ++i) {
         if (failedSplits[i] || clusters[i].size() < 2) {
+            continue;
+        }
+        if (scoreCache[i] != -2) {
+            if (scoreCache[i] > bestScore) {
+                bestScore = scoreCache[i];
+                topCluster = i;
+            }
             continue;
         }
 
@@ -77,9 +88,11 @@ Index Divine::selectClusterToSplit(vector<bool>& failedSplits) {
 
             score = dists.maxCoeff();
         } else if (splitType == MD::DivineSplit::WeightedMSD) {
+            // (scoreCache[i] is set below)
             score = clusters[i].size() * extendedComparison(subdata, 0, nAtoms, false, mt);  
         }
 
+        scoreCache[i] = score;
         if (score > bestScore) {
             bestScore = score;
             topCluster = i;
@@ -100,9 +113,12 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
         bool: whether or not split was successful or not
     */
     if (clusters[clusterToSplit].size() < 2) {
-        std::cerr<<"Cannot split a cluster with less than 2 points";
         return false;
     }
+    // (the split cluster's score is computed again at the next selection:
+    // its frames change, or it is marked failed)
+    scoreCache.resize(clusters.size(), -2);
+    scoreCache[clusterToSplit] = -2;
 
     //subset the indices of the cluster to be split
     Veci subdataIndices;
@@ -118,12 +134,11 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
         ArrayXi sublabels;
         // check if minPercentage exceeds 100%. This shouldn't happen, but just in case, we set it to 100% if it does.
         if (minPercentage > 100){
-            std::cerr << "Calculated minimum percentage exceeds 100%. Setting percentage to 100%" << std::endl;
             minPercentage = 100;
         }
         // if the user-specified percentage is less than the minimum percentage, we adjust it to the minimum percentage.
         if (percentage < minPercentage) {
-            std::cerr << "Percentage is too low to select at least two points. Adjusting to " << minPercentage << "%." << std::endl;
+            // too low a percentage to select two points: the least that does
              KmeansNANI kmeans(subdata, 2, mt, kinit, nAtoms, minPercentage);
             sublabels = kmeans.getLabels();
         }
@@ -176,11 +191,18 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
         }
 
         if (refine) {
+            // Identical frames (or NaN) put every frame on one side: the
+            // refinement then read the first row of an empty group (a crash).
+            if (initialMask.empty() || notInitialMask.empty()) {
+                return false;
+            }
             Mat groupA = subdata(initialMask, Eigen::all);
             Mat groupB = subdata(notInitialMask, Eigen::all);
 
-            Index medoidA = groupA.size() <= 2 ? 0 : calculateMedoid(groupA, nAtoms, mt);
-            Index medoidB = groupB.size() <= 2 ? 0 : calculateMedoid(groupB, nAtoms, mt);
+            // (rows, not coefficients; the medoid of one or two frames is the
+            // first, which calculateMedoid also returned for two)
+            Index medoidA = groupA.rows() <= 2 ? 0 : calculateMedoid(groupA, nAtoms, mt);
+            Index medoidB = groupB.rows() <= 2 ? 0 : calculateMedoid(groupB, nAtoms, mt);
 
             Mat initiators = Mat::Zero(2, data.row(0).size());
             initiators.row(0) = groupA.row(medoidA);
@@ -195,7 +217,7 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
                 uniqueLabels.insert(i);
             }
             if(uniqueLabels.size() < 2){
-                std::cerr<<"K-Means refinement failed to find two distinct clusters."<<std::endl;
+                // the refinement found one cluster: the split before it is kept
                 vector<Index> cluster1, cluster2;
                 for (auto i : initialMask){
                     cluster1.push_back(subdataIndices[i]);
@@ -276,11 +298,14 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
             }
         }
         if (refine) {
+            if (mainGroup.empty() || splinterGroup.empty()) {
+                return false;
+            }
             Mat groupA = subdata(mainGroup, Eigen::all);
             Mat groupB = subdata(splinterGroup, Eigen::all);
 
-            Index medoidA = groupA.size() <= 2 ? 0 : calculateMedoid(groupA, nAtoms, mt);
-            Index medoidB = groupB.size() <= 2 ? 0 : calculateMedoid(groupB, nAtoms, mt);
+            Index medoidA = groupA.rows() <= 2 ? 0 : calculateMedoid(groupA, nAtoms, mt);
+            Index medoidB = groupB.rows() <= 2 ? 0 : calculateMedoid(groupB, nAtoms, mt);
 
             Mat initiators = Mat::Zero(2, data.row(0).size());
             initiators.row(0) = groupA.row(medoidA);
@@ -296,7 +321,6 @@ bool Divine::splitCluster(Index clusterToSplit, int minFrames) {
             }
             vector<Index> cluster1, cluster2;
             if(uniqueLabels.size() < 2){
-                std::cerr<<"K-Means refinement failed to find two distinct clusters."<<std::endl;
                 // use mainGroup and splinterGroup before refinement as the new clusters
                 
                 if(mainGroup.size()<minFrames || splinterGroup.size()<minFrames){
