@@ -347,6 +347,44 @@ void KmeansNANI::run_lloyd(int Niter )  {
     }
 }
 
+// Lloyd's iterations as scikit-learn's KMeans (algorithm "lloyd") runs
+// them, which MDANCE (Python) calls with its default tol, 1e-4. Each
+// iteration takes the labels from the centres, then the centres from the
+// labels; it stops when the labels are those of the iteration before
+// (strict convergence: the centres are already theirs), or when the
+// centres moved by at most tolAbs, the squared shift of every centre
+// summed, tolAbs being tol times the mean of the features' variances
+// (scikit-learn's _tolerance). Without strict convergence the labels are
+// taken once more from the last centres, as scikit-learn does, so that
+// they are those centres' (the centres stay).
+void KmeansNANI::run_lloyd_tol(int Niter) {
+    const Index N = data.rows(), D = data.cols();
+    double meanVar = 0.0;
+    for (Index j = 0; j < D; j++) {
+        const double* col = data.col(j).data();
+        double m = 0.0;
+        for (Index nn = 0; nn < N; nn++) m += col[nn];
+        m /= (double)N;
+        double v = 0.0;
+        for (Index nn = 0; nn < N; nn++) { double e = col[nn] - m; v += e * e; }
+        meanVar += v / (double)N;
+    }
+    const double tolAbs = tol * meanVar / (double)D;
+
+    Veci prevLabels = Veci::Constant(N, -1);
+    bool strict = false;
+    for (int iter = 0; iter < Niter; iter++) {
+        MD::checkCancel();
+        assignClosest();
+        Mat old = centers;
+        calcMu();
+        if ((labels == prevLabels).all()) { strict = true; break; }
+        if ((centers - old).square().sum() <= tolAbs) break;
+        prevLabels = labels;
+    }
+    if (!strict) assignClosest();
+}
+
 // Note: if seed is -1, we will generate a random seed. 
 // This is in line with scikit-learns random_state=None, which we use in the python version 
 // set seed to any other number if we need deterministic random numbers for debugging purposes. 
@@ -363,20 +401,23 @@ void KmeansNANI::rowSqNorms() {
     }
 }
 
-KmeansNANI::KmeansNANI(ArrayXXd data_, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold, int seed_) : own(std::move(data_)), data(own), kinit(kinit), seed(seed_), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
+KmeansNANI::KmeansNANI(ArrayXXd data_, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold, int seed_, double tol_) : own(std::move(data_)), data(own), kinit(kinit), seed(seed_), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage), tol(tol_) {
     run_seeded(vectThreshold);
 }
 
 // The same on data the caller keeps (and does not change meanwhile): no copy
 // of it is made, so concurrent runs (a scan's values of k on threads) share
 // one.
-KmeansNANI::KmeansNANI(const ArrayXXd* borrowed, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold, int seed_) : own(), data(*borrowed), kinit(kinit), seed(seed_), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
+KmeansNANI::KmeansNANI(const ArrayXXd* borrowed, int kClusters, MD::Metric mt, MD::KinitType kinit, int nAtoms, int percentage, int vectThreshold, int seed_, double tol_) : own(), data(*borrowed), kinit(kinit), seed(seed_), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage), tol(tol_) {
     run_seeded(vectThreshold);
 }
 
 void KmeansNANI::run_seeded(int vectThreshold) {
     if (kClusters < 1 || kClusters > this->data.rows()) {
         throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
+    }
+    if (!(tol >= 0.0) || tol > 1e300) {
+        throw std::invalid_argument("tol must be a finite number, 0 or more.");
     }
     if (this->data.cols() == 0) {
         throw std::invalid_argument("the data has no columns.");
@@ -388,14 +429,14 @@ void KmeansNANI::run_seeded(int vectThreshold) {
     set_seed();
     rowSqNorms();
     init_Mu();
-    run_lloyd(300);
+    if (tol > 0.0) run_lloyd_tol(300); else run_lloyd(300);
 }
 
 // Note: if seed is -1, we will generate a random seed. 
 // This is in line with scikit-learns random_state=None, which we use in the python version 
 // set seed to any other number if we need deterministic random numbers for debugging purposes. 
 
-KmeansNANI::KmeansNANI(ArrayXXd data_, int kClusters, MD::Metric mt, Mat centers_, int nAtoms, int percentage, int vectThreshold, int seed_) : own(std::move(data_)), data(own), centers(std::move(centers_)), kinit(MD::KinitType::StratAll), seed(seed_), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage) {
+KmeansNANI::KmeansNANI(ArrayXXd data_, int kClusters, MD::Metric mt, Mat centers_, int nAtoms, int percentage, int vectThreshold, int seed_) : own(std::move(data_)), data(own), centers(std::move(centers_)), kinit(MD::KinitType::StratAll), seed(seed_), kClusters(kClusters), mt(mt), nAtoms(nAtoms), percentage(percentage), tol(0.0) {
     if (kClusters < 1 || kClusters > this->data.rows()) {
         throw std::invalid_argument("kClusters must be between 1 and the number of data points.");
     }

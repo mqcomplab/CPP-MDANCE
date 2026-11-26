@@ -75,8 +75,19 @@ mdance-cli --algorithm kmeans \
 `Random`, `VanillaKmeansPP`. `--percentage` (default 10) sizes the high-density region
 used by the `CompSim` and `DivSelect` seeders.
 
+`--tol` (default 0) is when the iterations stop. With 0 they run until no frame changes
+cluster. Python MDANCE runs scikit-learn's `KMeans`, whose default `tol=1e-4` also stops
+once the centres move little: their squared shifts, summed, at most `tol` times the mean
+variance of the features. The labels are then taken once more from the last centres.
+`--tol 1e-4` stops there too, and gives MDANCE's labels; on a trajectory that converges
+slowly the two can differ by a few frames (on the tau peptide of BitQT's examples, Cα
+atoms, `DivSelect` and k 10: 78 of 6001 frames).
+
 These exact settings reproduce the Python MDANCE reference labels bit-for-bit on
 `sim.csv` (all 6001 frames), so they are a good sanity check that your build is sound.
+There the iterations settle before scikit-learn's tolerance stops them, so `--tol 0`
+and `--tol 1e-4` give the same labels; `tests/data/kmeans_tol.csv` is a case where they
+do not (`tests/make_kmeans_tol_data.py` made it).
 
 ### HELM
 

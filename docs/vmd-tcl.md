@@ -110,7 +110,7 @@ The options:
 
 | Call | Options (defaults) |
 |---|---|
-| kmeans | `-metric MSD` `-kinit StratAll` `-percentage 10` `-seed -1` |
+| kmeans | `-metric MSD` `-kinit StratAll` `-percentage 10` `-seed -1` `-tol 0` (1e-4: Python MDANCE's stop) |
 | divine | `-metric MSD` `-split WeightedMSD` `-anchors NANI` `-kinit StratAll` `-refine` (a flag) `-threshold 0` `-end-mode k` `-percentage 10` |
 | helm | `-metric MSD` `-merge-scheme Inter` `-eps -1` `-trim-start` (a flag) `-min-samples 0.01` `-trim-val 0` `-trim-k 0` |
 | equal | `-threshold` (required) `-metric MSD` `-seed-method medoid` `-n-seeds 1` `-percentage 10` `-min-samples 10` `-check-sim` (a flag) `-sim-threshold 0` `-reject-lowd` (a flag) `-align none` |

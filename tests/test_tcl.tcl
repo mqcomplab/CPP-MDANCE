@@ -143,6 +143,9 @@ check "dcd: a missing file is refused" [string match "*cannot be opened*" [errof
 
 # ---------------------------------------------------------------- options
 check "an unknown option is refused, with the options" [string match "*unknown option \"-kinti\"*-kinit*" [errof {::mdance::kmeans $d 2 -kinti StratAll}]]
+# -tol: MDANCE's stop (scikit-learn's KMeans); checked
+check "-tol is taken" [dict exists [::mdance::kmeans $d 2 -kinit StratAll -percentage 50 -tol 1e-4] labels]
+check "a negative -tol is refused" [string match "*tol*outside*" [errof {::mdance::kmeans $d 2 -percentage 50 -tol -1}]]
 check "an option given twice is refused" [string match "*given twice*" [errof {::mdance::kmeans $d 2 -percentage 50 -percentage 10}]]
 check "a value that is not a number is refused" [string match "*-percentage*not a whole number*" [errof {::mdance::kmeans $d 2 -percentage abc}]]
 check "\"010\" is ten, not eight" [expr {[errof {::mdance::kmeans $d 2 -percentage 010 -kinit StratAll}] eq ""}]

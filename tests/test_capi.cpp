@@ -258,6 +258,23 @@ TEST(CApi, BothInterfacesGiveTheSameAnswers) {
     mdance_result_free(b);
 }
 
+TEST(CApi, KmeansTolIsChecked) {
+    std::vector<double> v = blobs(20);
+    Data d(v, 40, 3);
+    auto run = [&](const char* tol) {
+        Opts o;
+        o.set("k", "3").set("tol", tol);
+        mdance_result_t* r = mdance_cluster(d.d, "kmeans", o.o, nullptr);
+        std::string e = errOf(r);
+        mdance_result_free(r);
+        return e;
+    };
+    EXPECT_EQ(run("1e-4"), "");
+    EXPECT_EQ(run("0"), "");
+    EXPECT_NE(run("-1e-4").find("outside"), std::string::npos);
+    EXPECT_NE(run("nan").find("not a finite number"), std::string::npos);
+}
+
 TEST(CApi, KmeansSeedMakesRandomSeedingRepeatable) {
     std::vector<double> v = blobs(20);
     Data d(v, 40, 3);

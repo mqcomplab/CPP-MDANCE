@@ -448,7 +448,8 @@ const std::vector<CallSpec>& specs() {
     static const std::vector<CallSpec> s = {
         {"kmeans", Kind::Cluster, true, false,
          {{"-metric", "metric", OptSpec::Value}, {"-kinit", "kinit", OptSpec::Value},
-          {"-percentage", "percentage", OptSpec::Value}, {"-seed", "seed", OptSpec::Value}}},
+          {"-percentage", "percentage", OptSpec::Value}, {"-seed", "seed", OptSpec::Value},
+          {"-tol", "tol", OptSpec::Value}}},
         {"divine", Kind::Cluster, true, false,
          {{"-metric", "metric", OptSpec::Value}, {"-split", "split", OptSpec::Value},
           {"-anchors", "anchors", OptSpec::Value}, {"-kinit", "kinit", OptSpec::Value},

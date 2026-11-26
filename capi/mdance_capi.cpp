@@ -498,10 +498,12 @@ void runKmeans(mdance_result& r, const mdance_dataset& d, Reader& R) {
     MD::KinitType ki = parseKinit(R.choice("kinit", "StratAll", KINITS));
     int pct = (int)R.whole("percentage", 10, 0, 100);
     int seed = (int)R.whole("seed", -1, -1, INT_MAX);
+    // (0: until the labels stop changing; MDANCE's, scikit-learn's: 1e-4)
+    double tol = R.number("tol", 0.0, 0.0, 1e300);
     R.finish();
 
     // (on the dataset itself: no copy, and a scan's threads share it)
-    KmeansNANI km(&d.X, k, mt, ki, d.natoms, pct, 16, seed);
+    KmeansNANI km(&d.X, k, mt, ki, d.natoms, pct, 16, seed, tol);
     Veci kl = km.getLabels();
     std::vector<int> labels(kl.data(), kl.data() + kl.size());
     fill_common_results(&r, d.X, labels, k, d.natoms, mt);

@@ -105,7 +105,7 @@ mdance_select_t*   mdance_select_run(d, o, c);
 
 | Call | Options (defaults) |
 |---|---|
-| kmeans | `k` (required), `metric` MSD, `kinit` StratAll, `percentage` 10, `seed` −1 (−1: from the clock; read it back with `mdance_result_seed`) |
+| kmeans | `k` (required), `metric` MSD, `kinit` StratAll, `percentage` 10, `seed` −1 (−1: from the clock; read it back with `mdance_result_seed`), `tol` 0 (0: until no label changes; 1e-4: Python MDANCE's stop, scikit-learn's `KMeans` default) |
 | divine | `k` (required; 0: until `end_mode`), `metric`, `split` WeightedMSD, `anchors` NANI, `kinit` StratAll, `refine` 0, `threshold` 0, `end_mode` k, `percentage` 10 |
 | helm | `labels` (required: one starting cluster per frame, at most 5000 distinct), `k`, `eps` −1, `metric`, `merge_scheme` Inter, `trim_start` 0, `min_samples` 0.01, `trim_val` 0, `trim_k` 0 |
 | equal | `threshold` (required), `metric`, `seed_method` medoid, `n_seeds` 1, `check_sim` 0, `sim_threshold` 0, `reject_lowd` 0, `min_samples` 10, `percentage` 10, `align` none |
